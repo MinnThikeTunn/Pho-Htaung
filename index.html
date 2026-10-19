@@ -21,9 +21,6 @@
       height: 100vh;
       overflow: hidden;
       background-color: #0c0a08;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       position: fixed;
       inset: 0;
     }
@@ -31,16 +28,15 @@
     #game-container {
       width: 100vw;
       height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background-color: #0c0a08;
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
     }
 
-    /* Keep canvas unconstrained by CSS !important so Phaser ScaleManager controls it cleanly */
     #game-container canvas {
-      box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
-      outline: none;
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
     }
   </style>
 </head>
