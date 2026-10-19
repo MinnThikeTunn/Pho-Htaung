@@ -2,22 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Machinarium — Point & Click Adventure</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Machinarium</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com">
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800;900&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --bg-base: #0f0d0b;
-      --surface-card: #1c1815;
-      --surface-border: rgba(245, 158, 11, 0.18);
-      --accent-amber: #f59e0b;
-      --accent-glow: rgba(245, 158, 11, 0.22);
-      --text-main: #f5f5f4;
-      --text-muted: #a8a29e;
-    }
-
     * {
       box-sizing: border-box;
       margin: 0;
@@ -26,169 +16,36 @@
       -webkit-user-select: none;
     }
 
-    body {
-      background-color: var(--bg-base);
-      color: var(--text-main);
-      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-      min-height: 100vh;
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #0c0a08;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 1.25rem;
-      overflow-x: hidden;
-    }
-
-    /* Minimalist Perplexity-inspired header */
-    .app-header {
-      text-align: center;
-      margin-bottom: 1.25rem;
-      animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .app-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.35rem 0.9rem;
-      border-radius: 9999px;
-      background: rgba(245, 158, 11, 0.1);
-      border: 1px solid rgba(245, 158, 11, 0.28);
-      color: var(--accent-amber);
-      font-size: 0.75rem;
-      font-weight: 800;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      margin-bottom: 0.65rem;
-    }
-
-    .badge-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--accent-amber);
-      box-shadow: 0 0 10px var(--accent-amber);
-    }
-
-    .app-title {
-      font-size: clamp(1.8rem, 3.6vw, 2.6rem);
-      font-weight: 900;
-      letter-spacing: -0.04em;
-      color: #ffffff;
-      line-height: 1.1;
-      margin-bottom: 0.35rem;
-    }
-
-    .app-subtitle {
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: var(--text-muted);
-    }
-
-    /* Primary game viewport container with rounded-[32px] aesthetic */
-    .game-wrapper {
-      position: relative;
-      background: var(--surface-card);
-      border: 1px solid var(--surface-border);
-      border-radius: 32px;
-      padding: 12px;
-      box-shadow: 0 30px 70px -15px rgba(0, 0, 0, 0.8), 0 0 45px var(--accent-glow);
-      overflow: hidden;
-      max-width: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-      animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      position: fixed;
+      inset: 0;
     }
 
     #game-container {
-      width: 960px;
-      max-width: 100%;
-      height: 600px;
-      border-radius: 24px;
-      overflow: hidden;
-      background: #14100c;
+      width: 100vw;
+      height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
+      background-color: #0c0a08;
     }
 
+    /* Keep canvas unconstrained by CSS !important so Phaser ScaleManager controls it cleanly */
     #game-container canvas {
-      display: block;
-      width: 100% !important;
-      height: 100% !important;
-      object-fit: contain;
-    }
-
-    /* Sleek control badge strip */
-    .controls-panel {
-      margin-top: 1.25rem;
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 0.75rem;
-      animation: fadeIn 0.9s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .key-badge {
-      display: flex;
-      align-items: center;
-      gap: 0.45rem;
-      padding: 0.4rem 0.85rem;
-      border-radius: 14px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: #e7e5e4;
-    }
-
-    .key-badge kbd {
-      background: rgba(245, 158, 11, 0.16);
-      border: 1px solid rgba(245, 158, 11, 0.3);
-      border-radius: 6px;
-      padding: 0.15rem 0.45rem;
-      font-family: inherit;
-      font-weight: 800;
-      font-size: 0.75rem;
-      color: #fef08a;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    @keyframes slideUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
+      box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
+      outline: none;
     }
   </style>
 </head>
 <body>
-  <header class="app-header">
-    <div class="app-badge">
-      <span class="badge-dot"></span>
-      Amanita Machinarium Inspired
-    </div>
-    <h1 class="app-title">Machinarium: The Scrapheap Awakening</h1>
-    <p class="app-subtitle">Point & Click Adventure • Phaser 3 Engine • Telescopic Stature Mechanic</p>
-  </header>
-
-  <main class="game-wrapper">
-    <div id="game-container"></div>
-  </main>
-
-  <nav class="controls-panel">
-    <div class="key-badge"><kbd>Left Click</kbd> Walk / Interact / Use Item</div>
-    <div class="key-badge"><kbd>W</kbd> / <kbd>▲</kbd> Stretch Josef Tall</div>
-    <div class="key-badge"><kbd>S</kbd> / <kbd>▼</kbd> Crouch Josef Low</div>
-    <div class="key-badge"><kbd>Space</kbd> Normal Height</div>
-    <div class="key-badge"><kbd>Top Bar</kbd> Inventory & Item Combining</div>
-    <div class="key-badge"><kbd>📖 Hint</kbd> Illustrated Puzzle Guide</div>
-  </nav>
-
+  <div id="game-container"></div>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>

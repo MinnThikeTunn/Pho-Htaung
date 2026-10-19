@@ -8,12 +8,14 @@ import VictoryScene from './scenes/VictoryScene.js';
 const config = {
   type: Phaser.AUTO,
   parent: 'game-container',
-  width: 960,
-  height: 600,
-  backgroundColor: '#14100c',
+  width: 1280,
+  height: 720,
+  backgroundColor: '#0c0a08',
   scale: {
     mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: 1280,
+    height: 720
   },
   physics: {
     default: 'arcade',
