@@ -5,6 +5,9 @@
 **Status:** ⏳ Pending Specialist Review on Recent File Edits
 
 ## Outstanding File Edits Pending Judgment
+- `src\scenes\VictoryScene.js`
+- `src\scenes\MachinariumGameScene.js`
+- `src\utils\MachinariumAudio.js`
 - `README.md`
 - `src\main.js`
 - `src\scenes\PauseScene.js`
