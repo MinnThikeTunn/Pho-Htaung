@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Phaser Web Game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #0b0f17;
+      --surface-card: #141b26;
+      --surface-border: rgba(255, 255, 255, 0.08);
+      --accent: #22d3ee;
+      --accent-glow: rgba(34, 211, 238, 0.25);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      overflow-x: hidden;
+    }
+
+    /* Minimalist Perplexity-inspired header */
+    .app-header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .app-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      background: rgba(34, 211, 238, 0.1);
+      border: 1px solid rgba(34, 211, 238, 0.25);
+      color: var(--accent);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    .app-title {
+      font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      color: #ffffff;
+      line-height: 1.1;
+      margin-bottom: 0.35rem;
+    }
+
+    .app-subtitle {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    /* Primary game viewport container with rounded-[32px] aesthetic */
+    .game-wrapper {
+      position: relative;
+      background: var(--surface-card);
+      border: 1px solid var(--surface-border);
+      border-radius: 32px;
+      padding: 12px;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6), 0 0 40px var(--accent-glow);
+      overflow: hidden;
+      max-width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    #game-container {
+      width: 960px;
+      max-width: 100%;
+      height: 600px;
+      border-radius: 24px;
+      overflow: hidden;
+      background: #050811;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #game-container canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: contain;
+    }
+
+    /* Modern control badge strip */
+    .controls-panel {
+      margin-top: 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.75rem;
+      animation: fadeIn 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .key-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.4rem 0.85rem;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+
+    .key-badge kbd {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      padding: 0.15rem 0.4rem;
+      font-family: inherit;
+      font-weight: 800;
+      font-size: 0.75rem;
+      color: #fff;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-badge">
+      <span class="badge-dot"></span>
+      Phaser 3 Engine Ready
+    </div>
+    <h1 class="app-title">Cosmic Orbit: Web Game</h1>
+    <p class="app-subtitle">Built with Phaser.io • Vite • Modern HTML5 Canvas</p>
+  </header>
+
+  <main class="game-wrapper">
+    <div id="game-container"></div>
+  </main>
+
+  <nav class="controls-panel">
+    <div class="key-badge"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or <kbd>Arrow Keys</kbd> Move Ship</div>
+    <div class="key-badge"><kbd>Space</kbd> Boost / Fire</div>
+    <div class="key-badge"><kbd>P</kbd> Pause Game</div>
+    <div class="key-badge"><kbd>M</kbd> Mute Audio</div>
+    <div class="key-badge"><kbd>Touch / Click</kbd> Mobile Steer</div>
+  </nav>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
