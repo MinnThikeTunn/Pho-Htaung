@@ -1,9 +1,13 @@
 import Phaser from 'phaser';
 import BootScene from './scenes/BootScene.js';
 import PreloadScene from './scenes/PreloadScene.js';
-import MainMenuScene from './scenes/MainMenuScene.js';
-import MachinariumGameScene from './scenes/MachinariumGameScene.js';
-import VictoryScene from './scenes/VictoryScene.js';
+import IntroScene from './scenes/IntroScene.js';
+import Chapter1Scene from './scenes/Chapter1Scene.js';
+import Chapter2Scene from './scenes/Chapter2Scene.js';
+import Chapter3Scene from './scenes/Chapter3Scene.js';
+import Chapter4Scene from './scenes/Chapter4Scene.js';
+import Chapter5Scene from './scenes/Chapter5Scene.js';
+import RevealScene from './scenes/RevealScene.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -25,12 +29,16 @@ const config = {
   scene: [
     BootScene,
     PreloadScene,
-    MainMenuScene,
-    MachinariumGameScene,
-    VictoryScene
+    IntroScene,
+    Chapter1Scene,
+    Chapter2Scene,
+    Chapter3Scene,
+    Chapter4Scene,
+    Chapter5Scene,
+    RevealScene
   ]
 };
 
 window.addEventListener('DOMContentLoaded', () => {
-  new Phaser.Game(config);
+  window.__GAME__ = new Phaser.Game(config);
 });

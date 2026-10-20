@@ -1,0 +1,564 @@
+
+
+
+
+1. Best 100% Free Tools for Drawing & Editing
+
+
+
+
+
+LibreSprite (libresprite.github.io)
+
+
+
+Best for: Pixel art characters, item icons, and frame-by-frame animation.
+
+
+
+Why use it: Free open-source clone of Aseprite with layers, palettes, and onion skinning.
+
+
+
+
+
+Piskel (piskelapp.com)
+
+
+
+Best for: Quick browser-based pixel edits (zero download).
+
+
+
+Why use it: Draw pixel by pixel, resize sprites, test animations in real time.
+
+
+
+
+
+Krita (krita.org)
+
+
+
+Best for: Hand-drawn, painterly art (Machinarium rusty backgrounds and characters).
+
+
+
+Why use it: Professional-grade brush engine, texture brushes, completely free and open source.
+
+
+
+
+
+Inkscape (inkscape.org)
+
+
+
+Best for: Modular 2D puppet characters (vector pieces like arms, heads, and legs).
+
+
+
+Why use it: Infinite scaling without blurriness; easy to export individual body parts.
+
+
+
+
+
+2. How to Edit an Existing Asset (Adding Details / Altering Pixels)
+
+
+
+
+
+Step 1: Open with Transparency intact
+
+
+
+Import your .png into LibreSprite, Piskel, or Krita. Never save as .jpg (it destroys transparency).
+
+
+
+
+
+Step 2: Add a New Layer
+
+
+
+Never draw directly over the original image. Create Layer 2 above the original asset.
+
+
+
+
+
+Step 3: Sample the Palette (Eyedropper Tool)
+
+
+
+Press I (Eyedropper) to pick existing outline and shadow colors from the asset so your new pixels blend in naturally.
+
+
+
+
+
+Step 4: Draw with a 1-Pixel Pencil
+
+
+
+Keep your brush size locked to 1 pixel for pixel art. Avoid soft/feathered brushes.
+
+
+
+
+
+Step 5: Export as PNG
+
+
+
+Hide any background guide layer and export as transparent 32-bit PNG.
+
+
+
+
+
+3. How to Make a Brand-New Character from Scratch (5-Step Workflow)
+
+
+
+
+
+Step 1: Start with a Small Canvas
+
+
+
+Do not start huge. Draw your character on a 32x32 or 64x64 pixel canvas first to keep details manageable.
+
+
+
+
+
+Step 2: Block Out the Silhouette First
+
+
+
+Use a single solid color (like dark gray). Focus only on the outline and posture—if the character is not recognizable by silhouette alone, the design will feel flat.
+
+
+
+
+
+Step 3: Add Flat Base Colors
+
+
+
+Fill in skin, clothes, and accessories with flat mid-tone colors. Limit your palette to 3–5 main colors.
+
+
+
+
+
+Step 4: Apply 2-Tone Shading
+
+
+
+Pick a light source (usually top-left). Add one darker shade for cast shadows and one lighter shade for highlights.
+
+
+
+
+
+Step 5: Separate Body Parts on Different Layers (For Animation)
+
+
+
+If building a modular character like Machinarium or Phoe Htaung: keep Head, Torso, Upper Arm, Forearm, and Legs on separate layers so you can pivot and animate them independently.
+
+
+
+
+
+4. Standard Canvas Sizes Cheat Sheet
+
+
+
+
+
+Item Icons (Inventory): 16x16, 24x24, or 32x32 pixels (retro) | 64x64 to 128x128 (detailed)
+
+
+
+Characters: 32x32 (mini retro) | 64x64 to 128x128 (standard 2D) | 256x256 to 512x512 (high-res hand-drawn)
+
+
+
+Level Backgrounds: 320x180 (upscaled 16:9 pixel art) | 1920x1080 (full HD hand-drawn)
+
+
+
+Video Demonstrations
+
+These beginner-friendly walkthroughs demonstrate how to construct a character silhouette, choose simple color ramps, and detail a sprite from scratch:
+
+
+
+
+-----------------------
+
+
+In-Browser Tools (No install needed)
+
+
+
+
+
+Game-Icons.net
+
+
+
+Cost: 100% Free
+
+
+
+How: Pick an icon -> change Foreground to #ffffff -> download transparent PNG.
+
+
+
+
+
+Photopea (photopea.com)
+
+
+
+Cost: 100% Free (Web Photoshop alternative)
+
+
+
+How: Open PNG -> press Ctrl+I (or Cmd+I on Mac) to invert black to white -> File -> Export as PNG.
+
+
+
+
+
+Piskel (piskelapp.com)
+
+
+
+Cost: 100% Free (Pixel art editor)
+
+
+
+How: Import sprite -> select Paint Bucket tool -> pick white -> click black pixels.
+
+
+
+
+
+
+
+
+
+Built-in Tools (Already on your computer)
+
+
+
+
+
+Windows Notepad / Mac TextEdit (For .SVG files)
+
+
+
+Cost: 100% Free (Pre-installed)
+
+
+
+How: Right-click .svg -> Open with Notepad -> change fill="black" or fill="#000000" to fill="white" -> Save.
+
+
+
+
+
+
+
+
+
+Free Downloadable Software (Open-Source)
+
+
+
+
+
+LibreSprite (libresprite.github.io)
+
+
+
+Cost: 100% Free & Open-source
+
+
+
+Best for: Pixel art and animated character sprites (free alternative to Aseprite).
+
+
+
+
+
+Inkscape (inkscape.org)
+
+
+
+Cost: 100% Free & Open-source
+
+
+
+Best for: Editing vector assets (.svg) and recoloring without losing quality.
+
+
+
+
+
+GIMP (gimp.org)
+
+
+
+Cost: 100% Free & Open-source
+
+
+
+Best for: General image editing an
+
+
+---------------------------
+
+
+In-Browser Tools (No install needed)
+
+
+
+
+
+Game-Icons.net
+
+
+
+Cost: 100% Free
+
+
+
+How: Pick an icon -> change Foreground to #ffffff -> download transparent PNG.
+
+
+
+
+
+Photopea (photopea.com)
+
+
+
+Cost: 100% Free (Web Photoshop alternative)
+
+
+
+How: Open PNG -> press Ctrl+I (or Cmd+I on Mac) to invert black to white -> File -> Export as PNG.
+
+
+
+
+
+Piskel (piskelapp.com)
+
+
+
+Cost: 100% Free (Pixel art editor)
+
+
+
+How: Import sprite -> select Paint Bucket tool -> pick white -> click black pixels.
+
+
+
+
+
+
+
+
+
+Built-in Tools (Already on your computer)
+
+
+
+
+
+Windows Notepad / Mac TextEdit (For .SVG files)
+
+
+
+Cost: 100% Free (Pre-installed)
+
+
+
+How: Right-click .svg -> Open with Notepad -> change fill="black" or fill="#000000" to fill="white" -> Save.
+
+
+
+
+
+
+
+
+
+Free Downloadable Software (Open-Source)
+
+
+
+
+
+LibreSprite (libresprite.github.io)
+
+
+
+Cost: 100% Free & Open-source
+
+
+
+Best for: Pixel art and animated character sprites (free alternative to Aseprite).
+
+
+
+
+
+Inkscape (inkscape.org)
+
+
+
+Cost: 100% Free & Open-source
+
+
+
+Best for: Editing vector assets (.svg) and recoloring without losing quality.
+
+
+
+
+
+GIMP (gimp.org)
+
+
+
+Cost: 100% Free & Open-source
+
+
+
+Best for: General image editing and batch recoloring.
+
+
+--------------------------------------
+
+
+Fonts & Voice Tools
+
+
+
+Google Fonts (Myanmar) (Free / Open Font License)
+
+Fonts: Padauk and Noto Sans Myanmar for dialogue box text.
+
+
+
+
+
+Audacity (Free / Open Source)
+
+Tool to edit Narrator audio: record with a phone, cut noise, and add light plate reverb for a tea-stall storyteller effect.
+
+-----------------------------
+
+Background Music (BGM)
+
+
+
+Incompetech (Kevin MacLeod) (Free / CC-BY)
+
+Best for: Mischievous, sneaky comedy tracks.
+
+Top picks: "Sneaky Snitch", "Scheming Weasel", "Temple of the Manes".
+
+
+
+
+
+Pixabay Music (Free for Commercial Use)
+
+Best for: Comedic acoustic guitar, bamboo percussion, wooden xylophone sounds.
+
+Filter by: Comedy, Acoustic Suspense, Asian / Traditional.
+
+
+
+
+
+Free Music Archive (FMA) (Free / Filter by License)
+
+Filter by: World / Folk and Experimental Comedy 
+
+
+----------------------------------
+
+
+Sound Effects (Slapstick & Troll Deaths)
+
+
+
+Freesound.org (Free / CC0 & CC-BY)
+Best for: Absurd death foley and comedic sound gags.
+
+Death search terms: cartoon splat, metal crunch, bone snap, squish.
+
+Trap search terms: anvil drop, steam hiss, spring boing, fail buzz.
+
+Puzzle search terms: stone slide, rusty lever, heavy chain.
+
+
+
+
+
+Sonniss GDC Audio Archive (Free / Commercial Royalty-Free)
+
+Best for: Cinematic stone doors, rumbling ancient mechanisms, jungle background ambience.
+
+
+
+
+
+ChipTone / Bfxr (Free Browser Tools)
+
+Best for: Generating instant button clicks, error buzzes, coin pickups, and death stingers in seconds.
+
+
+
+-----------------------------------------------
+
+. Inventory Icons & UI
+
+
+
+Game-Icons.net (Free / CC-BY 3.0)
+
+Over 4,000+ crisp black-and-white vector icons (PNG/SVG).
+
+Direct items to grab: Pliers/cutters (betel nut cutter), chili, nail, flask/gourd, scale, ruby, safe.
+
+
+
+
+
+SVGRepo.com / Flaticon (Free Tiers)
+
+Best for: Everyday items (flip-flops, woven shoulder bag, traditional knife).
+
+
+
+
+
+Kenney UI Packs (Free / CC0)
+
+Best for: Comic dialogue bubbles (for the Narrator), inventory trays, death counters, custom mouse cursors.
+
+------------------------

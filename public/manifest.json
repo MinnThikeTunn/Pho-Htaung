@@ -1,0 +1,18 @@
+{
+  "name": "ဖိုးထောင် - ပုဂံရွှေမြို့တော်ရှာပုံတော်",
+  "short_name": "ဖိုးထောင်",
+  "description": "Machinarium & Die Again inspired puzzle adventure set in ancient Bagan ruins.",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0c0a08",
+  "theme_color": "#0c0a08",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "64x64 128x128 256x256 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

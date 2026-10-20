@@ -5,6 +5,34 @@
 **Status:** ⏳ Pending Specialist Review on Recent File Edits
 
 ## Outstanding File Edits Pending Judgment
+- `C:\Users\USER\.gemini\antigravity-cli\brain\11b896bb-9349-4c02-b038-233a894d9a4c\scratch\take_ch1_screenshot.js`
+- `src\ui\GameHUD.js`
+- `src\utils\AmbientAtmosphere.js`
+- `public\manifest.json`
+- `public\favicon.svg`
+- `public\assets\cursors\cursor-interactive.svg`
+- `public\assets\cursors\cursor-default.svg`
+- `C:\Users\USER\.gemini\antigravity-cli\brain\11b896bb-9349-4c02-b038-233a894d9a4c\scratch\test_microinteractions.js`
+- `src\utils\MicroInteractions.js`
+- `C:\Users\USER\.gemini\antigravity-cli\brain\11b896bb-9349-4c02-b038-233a894d9a4c\scratch\check_console.js`
+- `C:\Users\USER\.gemini\antigravity-cli\brain\11b896bb-9349-4c02-b038-233a894d9a4c\scratch\colorize_svgs.ps1`
+- `C:\Users\USER\.gemini\antigravity-cli\brain\11b896bb-9349-4c02-b038-233a894d9a4c\scratch\process_svgs.ps1`
+- `C:\Users\USER\.gemini\antigravity-cli\brain\11b896bb-9349-4c02-b038-233a894d9a4c\scratch\download_game_icons.ps1`
+- `C:\Users\USER\.gemini\antigravity-cli\brain\11b896bb-9349-4c02-b038-233a894d9a4c\scratch\find_scissors.ps1`
+- `C:\Users\USER\.gemini\antigravity-cli\brain\11b896bb-9349-4c02-b038-233a894d9a4c\scratch\find_more.ps1`
+- `C:\Users\USER\.gemini\antigravity-cli\brain\11b896bb-9349-4c02-b038-233a894d9a4c\scratch\find_icons.ps1`
+- `src\ui\ThoughtBubble.js`
+- `src\scenes\RevealScene.js`
+- `src\scenes\Chapter5Scene.js`
+- `src\scenes\Chapter4Scene.js`
+- `src\scenes\Chapter3Scene.js`
+- `src\scenes\Chapter2Scene.js`
+- `src\scenes\Chapter1Scene.js`
+- `src\scenes\IntroScene.js`
+- `src\ui\InventoryBar.js`
+- `src\ui\SubtitleBox.js`
+- `src\utils\SoundEngine.js`
+- `src\utils\GameState.js`
 - `src\scenes\VictoryScene.js`
 - `src\scenes\MachinariumGameScene.js`
 - `src\utils\MachinariumAudio.js`
