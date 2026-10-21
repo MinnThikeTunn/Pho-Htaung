@@ -17,6 +17,8 @@ export default class Chapter3Scene extends Phaser.Scene {
     const width = this.scale.width;
     const height = this.scale.height;
 
+    this.cameras.main.fadeIn(400, 12, 10, 8);
+
     this.isDead = false;
     gameState.setCurrentScene('Chapter3Scene');
     this.wallScratched = gameState.getFlag('ch3_wall_scratched');
@@ -56,9 +58,10 @@ export default class Chapter3Scene extends Phaser.Scene {
     this.createDeityStatue(this.statueX, this.statueY);
 
     // 5. Phoe Htaung Player Character
+    this.playerBaseScale = 1.42;
     this.playerX = width * 0.28;
-    this.playerY = groundY - 42;
-    this.player = this.add.sprite(this.playerX, this.playerY, 'ph-idle').setDepth(30);
+    this.playerY = groundY - 58;
+    this.player = this.add.sprite(this.playerX, this.playerY, 'ph-idle').setScale(this.playerBaseScale).setDepth(30);
 
     // Point-and-click walking
     this.input.on('pointerdown', (pointer) => {
@@ -71,16 +74,25 @@ export default class Chapter3Scene extends Phaser.Scene {
     // 6. Floor Items (Stone 3, Gold 7, Red Gem, Chalk Stylus)
     this.createFloorItems(groundY);
 
-    // 7. Floating Dust Motes & Cavern Drips
+    // 7. Floating Dust Motes & Cavern Drips & Atmosphere Overlays
     AmbientAtmosphere.createDustMotes(this, 28);
     AmbientAtmosphere.startCavernDrips(this, groundY);
+    AmbientAtmosphere.createWeatheredOverlay(this);
+    AmbientAtmosphere.createForegroundSilhouettes(this, 'temple');
+    AmbientAtmosphere.createVolumetricRays(this, width * 0.52, 0);
 
-    // 8. HUD & Inventory Bar & Thought Bubble
+    // 8. Ambient Toys (Machinarium Juice)
+    this.createAmbientToys(groundY, width);
+
+    // 9. HUD & Auto-Hiding Inventory Bar & Thought Bubble
     this.hud = new GameHUD(this);
     this.inventoryBar = new InventoryBar(this);
     this.thought = new ThoughtBubble(this);
 
-    // 8. Subtitle Box
+    // Natural Signifiers
+    AmbientAtmosphere.startNaturalSignifiers(this, [this.stoneItem, this.goldItem, this.gemItem, this.chalkItem, this.wallContainer]);
+
+    // 10. Subtitle Box
     this.subtitle = new SubtitleBox(this);
 
     // Screen Vignette
@@ -270,23 +282,19 @@ export default class Chapter3Scene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     plaqueHit.on('pointerdown', () => {
-      const selected = this.inventoryBar.getSelected();
-      if (selected === 'betel_cutter' || selected === 'chalk') {
-        this.scratchInscription();
-      } else if (selected) {
-        MicroInteractions.triggerDenial(
-          this,
-          this.wallContainer,
-          this.player,
-          'ဒီပစ္စည်းနဲ့ ကျောက်စာကို ခြစ်ပြင်လို့ မရဘူးဗျာ!',
-          'item-betel-cutter',
-          this.thought,
-          this.subtitle
-        );
-      } else {
-        this.thought.show(this.player.x, this.player.y, 'item-betel-cutter', 'ကျောက်စာ ဂဏန်း ပြင်ဆင်ရန်');
-        this.subtitle.say('ကျောက်စာပေါ်မှာ "၁၀ ပိဿာ ညီမျှလျှင် တံခါးပွင့်အံ့" လို့ ရေးထားတယ်။ ချွန်ထက်တဲ့ ကွမ်းသီးညှပ် ဒါမှမဟုတ် ကျောက်ဖြူတုံးနဲ့ ဂဏန်းကို ခြစ်ပြင်လို့ ရနိုင်မလား?');
-      }
+      this.interactWithProximity(x, () => {
+        const selected = this.inventoryBar.getSelected();
+        if (selected === 'betel_cutter' || selected === 'chalk') {
+          this.scratchInscription();
+        } else if (selected) {
+          MicroInteractions.triggerSootPuff(this, this.player, () => {
+            this.subtitle.say('ဒီပစ္စည်းနဲ့ ကျောက်စာကို ခြစ်ပြင်လို့ မရဘူးဗျာ!');
+          });
+        } else {
+          this.thought.show(this.player.x, this.player.y, 'item-betel-cutter', 'ကျောက်စာ ဂဏန်း ပြင်ဆင်ရန်');
+          this.subtitle.say('ကျောက်စာပေါ်မှာ "၁၀ ပိဿာ ညီမျှလျှင် တံခါးပွင့်အံ့" လို့ ရေးထားတယ်။ ချွန်ထက်တဲ့ ကွမ်းသီးညှပ် ဒါမှမဟုတ် ကျောက်ဖြူတုံးနဲ့ ဂဏန်းကို ခြစ်ပြင်လို့ ရနိုင်မလား?');
+        }
+      });
     });
     this.wallContainer.add(plaqueHit);
   }
@@ -345,22 +353,18 @@ export default class Chapter3Scene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     this.eyesHitZone.on('pointerdown', () => {
-      const selected = this.inventoryBar.getSelected();
-      if (selected === 'red_gem') {
-        this.triggerRedGemLaserTrap();
-      } else if (selected) {
-        MicroInteractions.triggerDenial(
-          this,
-          this.statueContainer,
-          this.player,
-          'ဒါကို နတ်ရုပ်ကြီး မျက်လုံးထဲ ထည့်လို့ မရဘူး!',
-          'item-red-gem',
-          this.thought,
-          this.subtitle
-        );
-      } else {
-        this.subtitle.say('နတ်ရုပ်ကြီးက မျက်စိကန်းနေတယ်။ မျက်လုံးခေါင်းပေါက်ကြီးတွေ ဟနေတာပဲ။');
-      }
+      this.interactWithProximity(x, () => {
+        const selected = this.inventoryBar.getSelected();
+        if (selected === 'red_gem') {
+          this.triggerRedGemLaserTrap();
+        } else if (selected) {
+          MicroInteractions.triggerSootPuff(this, this.player, () => {
+            this.subtitle.say('ဒါကို နတ်ရုပ်ကြီး မျက်လုံးထဲ ထည့်လို့ မရဘူး!');
+          });
+        } else {
+          this.subtitle.say('နတ်ရုပ်ကြီးက မျက်စိကန်းနေတယ်။ မျက်လုံးခေါင်းပေါက်ကြီးတွေ ဟနေတာပဲ။');
+        }
+      });
     });
     this.statueContainer.add(this.eyesHitZone);
 
@@ -401,7 +405,9 @@ export default class Chapter3Scene extends Phaser.Scene {
     MicroInteractions.makeInteractiveHover(this.weight10Sprite, 0.95);
 
     this.weight10Sprite.on('pointerdown', () => {
-      this.kickWeight10();
+      this.interactWithProximity(x - 110, () => {
+        this.kickWeight10();
+      });
     });
 
     this.leftPanContainer.add([leftChains, leftPanPlate, this.weight10Sprite]);
@@ -425,7 +431,9 @@ export default class Chapter3Scene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     this.rightPanHit.on('pointerdown', () => {
-      this.handleRightPanClick();
+      this.interactWithProximity(x + 110, () => {
+        this.handleRightPanClick();
+      });
     });
 
     this.rightPanContainer.add([rightChains, rightPanPlate, this.rightPanHit]);
@@ -627,48 +635,86 @@ export default class Chapter3Scene extends Phaser.Scene {
     }
   }
 
+  createAmbientToys(groundY, width) {
+    // 1. Hanging bronze temple bell on left column
+    const bellContainer = this.add.container(width * 0.16, groundY - 140).setSize(40, 50).setDepth(14);
+    const chain = this.add.graphics();
+    chain.lineStyle(1.5, 0x64748b, 0.9);
+    chain.lineBetween(0, -30, 0, 0);
+    const bellImg = this.add.image(0, 8, 'item-cog').setScale(0.5).setTint(0xf59e0b);
+    bellContainer.add([chain, bellImg]);
+    MicroInteractions.attachAmbientToy(this, bellContainer, 'bell');
+
+    // 2. Stone offering bowl on sanctuary floor
+    const bowl = this.add.image(width * 0.62, groundY - 14, 'item-stone-3').setScale(0.8).setTint(0x57321a).setDepth(14);
+    MicroInteractions.attachAmbientToy(this, bowl, 'pot');
+  }
+
+  interactWithProximity(targetX, onReachCallback) {
+    if (this.isDead) return;
+    const distance = Math.abs(this.player.x - targetX);
+    const baseScale = this.playerBaseScale || 1.42;
+    if (distance <= 85) {
+      this.player.setScale(targetX > this.player.x ? baseScale : -baseScale, baseScale);
+      onReachCallback();
+    } else {
+      const walkToX = targetX > this.player.x ? targetX - 55 : targetX + 55;
+      this.targetX = walkToX;
+      this.pendingAction = () => {
+        this.player.setScale(targetX > this.player.x ? baseScale : -baseScale, baseScale);
+        onReachCallback();
+      };
+    }
+  }
+
   createFloorItems(groundY) {
     // 1. Stone 3 Viss
     if (!gameState.hasItem('stone_3') && !this.rightItems.includes('stone_3')) {
-      const stone = this.add.image(this.scale.width * 0.42, groundY - 18, 'item-stone-3')
-        .setScale(1);
+      const stone = this.add.image(this.scale.width * 0.42, groundY - 14, 'item-stone-3')
+        .setScale(0.52);
       MicroInteractions.makeInteractiveHover(stone, 1.15);
 
       stone.on('pointerdown', () => {
-        MicroInteractions.pickupItemToBag(this, stone, this.player, () => {
-          gameState.addItem('stone_3');
-          this.inventoryBar.refresh();
-          this.subtitle.say('၃ ပိဿာ အလေးချိန်ရှိတဲ့ ကျောက်ခဲကို ကောက်ရလိုက်ပြီ။');
+        this.interactWithProximity(stone.x, () => {
+          MicroInteractions.pickupItemToBag(this, stone, this.player, () => {
+            gameState.addItem('stone_3');
+            this.inventoryBar.refresh();
+            this.subtitle.say('၃ ပိဿာ အလေးချိန်ရှိတဲ့ ကျောက်ခဲကို ကောက်ရလိုက်ပြီ။');
+          });
         });
       });
     }
 
     // 2. Gold 7 Viss
     if (!gameState.hasItem('gold_7') && !this.rightItems.includes('gold_7')) {
-      const gold = this.add.image(this.scale.width * 0.47, groundY - 18, 'item-gold-7')
-        .setScale(1);
+      const gold = this.add.image(this.scale.width * 0.47, groundY - 14, 'item-gold-7')
+        .setScale(0.52);
       MicroInteractions.makeInteractiveHover(gold, 1.15);
 
       gold.on('pointerdown', () => {
-        MicroInteractions.pickupItemToBag(this, gold, this.player, () => {
-          gameState.addItem('gold_7');
-          this.inventoryBar.refresh();
-          this.subtitle.say('၇ ပိဿာ လေးတဲ့ ရွှေတုံးကြီးဗျာ! ဒါပေမဲ့ အရမ်းလေးနေတယ်။');
+        this.interactWithProximity(gold.x, () => {
+          MicroInteractions.pickupItemToBag(this, gold, this.player, () => {
+            gameState.addItem('gold_7');
+            this.inventoryBar.refresh();
+            this.subtitle.say('၇ ပိဿာ လေးတဲ့ ရွှေတုံးကြီးဗျာ! ဒါပေမဲ့ အရမ်းလေးနေတယ်။');
+          });
         });
       });
     }
 
     // 3. Red Gem
     if (!gameState.hasItem('red_gem')) {
-      const gem = this.add.image(this.scale.width * 0.68, groundY - 18, 'item-red-gem')
-        .setScale(1);
+      const gem = this.add.image(this.scale.width * 0.68, groundY - 14, 'item-red-gem')
+        .setScale(0.5);
       MicroInteractions.makeInteractiveHover(gem, 1.15);
 
       gem.on('pointerdown', () => {
-        MicroInteractions.pickupItemToBag(this, gem, this.player, () => {
-          gameState.addItem('red_gem');
-          this.inventoryBar.refresh();
-          this.subtitle.say('တောက်ပနေတဲ့ ကျောက်မျက်နီကြီး ကောက်ရလိုက်ပြီ။ မျက်လုံးနဲ့တောင် တူနေသလိုပဲ!');
+        this.interactWithProximity(gem.x, () => {
+          MicroInteractions.pickupItemToBag(this, gem, this.player, () => {
+            gameState.addItem('red_gem');
+            this.inventoryBar.refresh();
+            this.subtitle.say('တောက်ပနေတဲ့ ကျောက်မျက်နီကြီး ကောက်ရလိုက်ပြီ။ မျက်လုံးနဲ့တောင် တူနေသလိုပဲ!');
+          });
         });
       });
     }
@@ -679,15 +725,17 @@ export default class Chapter3Scene extends Phaser.Scene {
       chalkPed.fillStyle(0x332820, 1);
       chalkPed.fillRect(this.scale.width * 0.36 - 12, groundY - 14, 24, 14);
 
-      const chalk = this.add.image(this.scale.width * 0.36, groundY - 24, 'item-chalk')
-        .setScale(0.9);
+      const chalk = this.add.image(this.scale.width * 0.36, groundY - 20, 'item-chalk')
+        .setScale(0.48);
       MicroInteractions.makeInteractiveHover(chalk, 1.15);
 
       chalk.on('pointerdown', () => {
-        MicroInteractions.pickupItemToBag(this, chalk, this.player, () => {
-          gameState.addItem('chalk');
-          this.inventoryBar.refresh();
-          this.subtitle.say('ကျောက်ဖြူတုံးလေး ကောက်ရလိုက်ပြီ! ကျောက်စာတွေပေါ်မှာ စာရေး/စာပြင်လို့ ရတယ်!');
+        this.interactWithProximity(chalk.x, () => {
+          MicroInteractions.pickupItemToBag(this, chalk, this.player, () => {
+            gameState.addItem('chalk');
+            this.inventoryBar.refresh();
+            this.subtitle.say('ကျောက်ဖြူတုံးလေး ကောက်ရလိုက်ပြီ! ကျောက်စာတွေပေါ်မှာ စာရေး/စာပြင်လို့ ရတယ်!');
+          });
         });
       });
     }
@@ -695,15 +743,19 @@ export default class Chapter3Scene extends Phaser.Scene {
 
   update(time, delta) {
     if (this.isDead) return;
+    const baseScale = this.playerBaseScale || 1.42;
 
     if (this.targetX !== null) {
       const dist = this.targetX - this.player.x;
       if (Math.abs(dist) > 8) {
         this.player.x += Math.sign(dist) * 3.5;
-        this.player.setScale(Math.sign(dist), 1);
+        this.player.setScale(Math.sign(dist) * baseScale, baseScale);
         this.player.setAngle(2.5 * Math.sign(dist));
         this.playerX = this.player.x;
         this.lastMoveTime = time;
+        if (this.player.isPerformingIdle) {
+          MicroInteractions.cancelIdleAction(this, this.player);
+        }
 
         if (!this.stepTimer || time > this.stepTimer) {
           soundEngine.playFootstep();
@@ -714,21 +766,33 @@ export default class Chapter3Scene extends Phaser.Scene {
         }
       } else {
         this.targetX = null;
+        if (this.pendingAction) {
+          const act = this.pendingAction;
+          this.pendingAction = null;
+          act();
+        }
         this.player.setAngle(0);
-        if (this.player.texture.key !== 'ph-idle' && this.player.texture.key !== 'ph-ash' && this.player.texture.key !== 'ph-flat') {
+        const isIdleSpecial = this.player.isPerformingIdle || ['ph-mad', 'ph-think', 'ph-laugh', 'ph-bag-rummage'].includes(this.player.texture.key);
+        if (!isIdleSpecial && this.player.texture.key !== 'ph-idle' && this.player.texture.key !== 'ph-ash' && this.player.texture.key !== 'ph-flat') {
           this.player.setTexture('ph-idle');
         }
       }
     } else {
       this.player.setAngle(0);
-      if (this.player.texture.key !== 'ph-idle' && this.player.texture.key !== 'ph-ash' && this.player.texture.key !== 'ph-flat') {
+      const isIdleSpecial = this.player.isPerformingIdle || ['ph-mad', 'ph-think', 'ph-laugh', 'ph-bag-rummage'].includes(this.player.texture.key);
+      if (!isIdleSpecial && this.player.texture.key !== 'ph-idle' && this.player.texture.key !== 'ph-ash' && this.player.texture.key !== 'ph-flat') {
         this.player.setTexture('ph-idle');
       }
 
-      // Machinarium Idle Micro-Behaviors (Betel spitting, bag adjust, cheek twitch)
-      if (time - this.lastMoveTime > 4500 && time > this.nextIdleTime) {
+      // Continuous Organic Inhaling/Exhaling Breathing Animation
+      if (!isIdleSpecial && this.player.texture.key === 'ph-idle') {
+        MicroInteractions.applyIdleBreathing(this.player, time, 1.0);
+      }
+
+      // Machinarium Idle Micro-Behaviors (Laughing, Thinking, Mad, Betel spitting, fly swatting)
+      if (time - this.lastMoveTime > 3500 && time > this.nextIdleTime) {
         MicroInteractions.triggerIdleAction(this, this.player, this.groundY);
-        this.nextIdleTime = time + Phaser.Math.Between(4500, 7500);
+        this.nextIdleTime = time + Phaser.Math.Between(4000, 6500);
       }
     }
   }

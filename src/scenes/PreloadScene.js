@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { audioDirector } from '../audio/AudioDirector.js';
 
 export default class PreloadScene extends Phaser.Scene {
   constructor() {
@@ -66,25 +67,91 @@ export default class PreloadScene extends Phaser.Scene {
       percentText.setText(`${Math.floor(value * 100)}%`);
     });
 
-    // Load official Game-Icons.net vector assets
-    this.load.svg('item-chili', 'assets/icons/chili-pepper.svg', { width: 56, height: 56 });
-    this.load.svg('item-torn-bottle', 'assets/icons/broken-bottle.svg', { width: 56, height: 56 });
-    this.load.svg('item-betel-cutter', 'assets/icons/pincers.svg', { width: 56, height: 56 });
-    this.load.svg('item-rusty-spike', 'assets/icons/nails.svg', { width: 56, height: 56 });
-    this.load.svg('item-cog', 'assets/icons/cog.svg', { width: 56, height: 56 });
-    this.load.svg('item-red-gem', 'assets/icons/fire-gem.svg', { width: 56, height: 56 });
-    this.load.svg('item-twigs', 'assets/icons/dead-wood.svg', { width: 56, height: 56 });
-    this.load.svg('item-stone-3', 'assets/icons/rune-stone.svg', { width: 56, height: 56 });
-    this.load.svg('item-gold-7', 'assets/icons/gold-stack.svg', { width: 56, height: 56 });
+    this.load.on('loaderror', (file) => {
+      console.warn('Asset failed to load, falling back to procedural canvas:', file.key, file.src);
+    });
+
+    // Authentic Hand-Drawn Adolf Lachman / Machinarium Item Sprites (Muted Earthy Watercolor & Fine Ink)
+    this.load.image('item-betel-cutter', 'assets/items/item_betel_cutter.png');
+    this.load.image('item-torn-bottle', 'assets/items/item_torn_bottle.png');
+    this.load.image('item-half-bottle', 'assets/items/item_half_bottle.png');
+    this.load.image('item-rusty-spike', 'assets/items/item_rusty_spike.png');
+    this.load.image('item-cog', 'assets/items/item_cog.png');
+    this.load.image('item-bamboo-pole', 'assets/items/item_bamboo_pole.png');
+    this.load.image('item-chili', 'assets/items/item_chili.png');
+    this.load.image('item-twigs', 'assets/items/item_twigs.png');
+    this.load.image('item-stone-3', 'assets/items/item_stone_3.png');
+    this.load.image('item-gold-7', 'assets/items/item_gold_7.png');
+    this.load.image('item-red-gem', 'assets/items/item_red_gem.png');
+    this.load.image('item-chalk', 'assets/items/item_chalk.png');
+    this.load.image('item-engineer-note', 'assets/items/item_engineer_note.png');
     this.load.svg('icon-scales', 'assets/icons/metal-scales.svg', { width: 96, height: 96 });
     this.load.svg('icon-shears', 'assets/icons/gardening-shears.svg', { width: 64, height: 64 });
     this.load.svg('icon-chest', 'assets/icons/treasure-chest.svg', { width: 72, height: 72 });
     this.load.svg('icon-lock', 'assets/icons/dial-padlock.svg', { width: 64, height: 64 });
     this.load.svg('icon-barn', 'assets/icons/barn.svg', { width: 80, height: 80 });
+
+    // 5-Layer Machinarium Parallax Backgrounds (Bagan Architecture)
+    this.load.image('bg-layer-0-sky', 'assets/parallax/layer_0_sky.png');
+    this.load.image('bg-layer-1-pagodas', 'assets/parallax/layer_1_pagodas.png');
+    this.load.image('bg-layer-2-ruins', 'assets/parallax/layer_2_ruins.png');
+    this.load.image('bg-layer-3-ground', 'assets/parallax/layer_3_ground.png');
+    this.load.image('bg-layer-4-foreground', 'assets/parallax/layer_4_foreground.png');
+
+    // 5-Layer Machinarium Chapter 1 Parallax Backgrounds (Canyon Chasm & Machinery)
+    this.load.image('ch1-layer-0-sky', 'assets/parallax/chapter1/ch1_layer_0_sky.png');
+    this.load.image('ch1-layer-1-machinery', 'assets/parallax/chapter1/ch1_layer_1_machinery.png');
+    this.load.image('ch1-layer-2-cliffs', 'assets/parallax/chapter1/ch1_layer_2_cliffs.png');
+    this.load.image('ch1-layer-3-ground', 'assets/parallax/chapter1/ch1_layer_3_ground.png');
+    this.load.image('ch1-layer-4-foreground', 'assets/parallax/chapter1/ch1_layer_4_foreground.png');
+
+    // Authentic Hand-Inked Machinarium Props & Ambient Toys (Amanita Art Style)
+    this.load.image('prop-bird', 'assets/props/prop_bird.png');
+    this.load.image('prop-brick', 'assets/props/prop_brick.png');
+    this.load.image('prop-bell', 'assets/props/prop_bell.png');
+    this.load.image('prop-gecko', 'assets/props/prop_gecko.png');
+    this.load.image('prop-cave-door', 'assets/props/prop_cave_door.png');
+    this.load.image('prop-drawbridge', 'assets/props/prop_drawbridge.png');
+    this.load.image('prop-winch-machine', 'assets/props/prop_winch_machine.png');
+
+    // Handcrafted Phoe Htaung Character Sprites (Exact 60x84 Platform-Friendly Scale)
+    this.load.image('ph-idle', 'assets/character/ph_idle.png');
+    this.load.image('ph-walk-1', 'assets/character/ph_walk_1.png');
+    this.load.image('ph-walk-2', 'assets/character/ph_walk_2.png');
+    this.load.image('ph-walk-3', 'assets/character/ph_walk_3.png');
+    this.load.image('ph-walk-4', 'assets/character/ph_walk_4.png');
+    this.load.image('ph-crouch', 'assets/character/ph_crouch.png');
+    this.load.image('ph-jump-prep', 'assets/character/ph_jump_prep.png');
+    this.load.image('ph-jump-up', 'assets/character/ph_jump_up.png');
+    this.load.image('ph-jump-apex', 'assets/character/ph_jump_apex.png');
+    this.load.image('ph-jump-fall', 'assets/character/ph_jump_fall.png');
+    this.load.image('ph-jump-land', 'assets/character/ph_jump_land.png');
+    this.load.image('ph-shock', 'assets/character/ph_shock.png');
+    this.load.image('ph-flat', 'assets/character/ph_flat.png');
+    this.load.image('ph-boiled', 'assets/character/ph_boiled.png');
+    this.load.image('ph-skeleton', 'assets/character/ph_skeleton.png');
+    this.load.image('ph-ash', 'assets/character/ph_ash.png');
+    this.load.image('ph-denial', 'assets/character/ph_denial.png');
+    this.load.image('ph-bag-rummage', 'assets/character/ph_bag_rummage.png');
+    this.load.image('ph-mad', 'assets/character/ph_mad.png');
+    this.load.image('ph-think', 'assets/character/ph_think.png');
+    this.load.image('ph-laugh', 'assets/character/ph_laugh.png');
+    this.load.image('ph-portrait', 'assets/character/ph_portrait.png');
   }
 
   create() {
-    this.createAllGameAssets();
+    try {
+      this.createAllGameAssets();
+    } catch (err) {
+      console.error('Error generating game assets in PreloadScene:', err);
+    }
+
+    try {
+      audioDirector.init();
+    } catch (err) {
+      console.warn('AudioDirector initialization deferred:', err);
+    }
+
     this.time.delayedCall(300, () => {
       this.scene.start('IntroScene');
     });
@@ -500,197 +567,313 @@ export default class PreloadScene extends Phaser.Scene {
       ctx.restore();
     };
 
-    // 1. ph-idle
-    const phCanvas = this.textures.createCanvas('ph-idle', 60, 84);
-    drawPH(phCanvas.getContext(), 'idle');
-    phCanvas.refresh();
-
-    // 2. ph-walk-1
-    const w1Canvas = this.textures.createCanvas('ph-walk-1', 60, 84);
-    drawPH(w1Canvas.getContext(), 'walk-1');
-    w1Canvas.refresh();
-
-    // 3. ph-walk-2
-    const w2Canvas = this.textures.createCanvas('ph-walk-2', 60, 84);
-    drawPH(w2Canvas.getContext(), 'walk-2');
-    w2Canvas.refresh();
-
-    // 4. Flattened / Smashed Pancake Phoe Htaung (90x30)
-    const flatCanvas = this.textures.createCanvas('ph-flat', 90, 30);
-    const fctx = flatCanvas.getContext();
-    // Squished flat pancake face & body
-    fctx.fillStyle = '#b47a46';
-    fctx.beginPath();
-    fctx.ellipse(45, 19, 42, 9, 0, 0, Math.PI * 2);
-    fctx.fill();
-    fctx.fillStyle = '#d49b6a';
-    fctx.beginPath();
-    fctx.ellipse(45, 17, 39, 8, 0, 0, Math.PI * 2);
-    fctx.fill();
-
-    // Squashed green checkered longyi
-    fctx.fillStyle = '#064e3b';
-    fctx.fillRect(20, 11, 50, 7);
-    fctx.strokeStyle = '#022c22';
-    fctx.lineWidth = 1;
-    for (let x = 24; x < 68; x += 6) {
-      fctx.strokeRect(x, 11, 4, 7);
+    // 1. ph-idle (Fallback if image not loaded)
+    if (!this.textures.exists('ph-idle')) {
+      const phCanvas = this.textures.createCanvas('ph-idle', 60, 84);
+      drawPH(phCanvas.getContext(), 'idle');
+      phCanvas.refresh();
     }
 
-    // Goofy spiral/star stunned eyes
-    fctx.strokeStyle = '#1e293b';
-    fctx.lineWidth = 1.5;
-    fctx.beginPath();
-    // Left eye spiral
-    fctx.arc(36, 17, 4, 0, Math.PI * 1.5);
-    fctx.stroke();
-    fctx.beginPath();
-    // Right eye spiral
-    fctx.arc(54, 17, 4, 0, Math.PI * 1.5);
-    fctx.stroke();
+    // 2. ph-walk-1 (Fallback)
+    if (!this.textures.exists('ph-walk-1')) {
+      const w1Canvas = this.textures.createCanvas('ph-walk-1', 60, 84);
+      drawPH(w1Canvas.getContext(), 'walk-1');
+      w1Canvas.refresh();
+    }
 
-    // Betel juice splatter puddle
-    fctx.fillStyle = '#b91c1c';
-    fctx.beginPath();
-    fctx.arc(72, 18, 6, 0, Math.PI * 2);
-    fctx.arc(78, 20, 3.5, 0, Math.PI * 2);
-    fctx.arc(82, 17, 2, 0, Math.PI * 2);
-    fctx.fill();
+    // 3. ph-walk-2 (Fallback)
+    if (!this.textures.exists('ph-walk-2')) {
+      const w2Canvas = this.textures.createCanvas('ph-walk-2', 60, 84);
+      drawPH(w2Canvas.getContext(), 'walk-2');
+      w2Canvas.refresh();
+    }
 
-    // Blue flip-flop popped off to the side
-    fctx.fillStyle = '#1d4ed8';
-    fctx.fillRect(6, 20, 10, 4);
-    fctx.fillStyle = '#f8fafc';
-    fctx.fillRect(9, 18, 3, 2);
+    // 4. Flattened / Smashed Pancake Phoe Htaung (90x30 Fallback)
+    if (!this.textures.exists('ph-flat')) {
+      const flatCanvas = this.textures.createCanvas('ph-flat', 90, 30);
+      const fctx = flatCanvas.getContext();
+      // Squished flat pancake face & body
+      fctx.fillStyle = '#b47a46';
+      fctx.beginPath();
+      fctx.ellipse(45, 19, 42, 9, 0, 0, Math.PI * 2);
+      fctx.fill();
+      fctx.fillStyle = '#d49b6a';
+      fctx.beginPath();
+      fctx.ellipse(45, 17, 39, 8, 0, 0, Math.PI * 2);
+      fctx.fill();
 
-    // Stunned yellow stars floating
-    fctx.fillStyle = '#facc15';
-    fctx.beginPath();
-    fctx.arc(30, 6, 2, 0, Math.PI * 2);
-    fctx.arc(45, 4, 2.5, 0, Math.PI * 2);
-    fctx.arc(60, 6, 2, 0, Math.PI * 2);
-    fctx.fill();
-    flatCanvas.refresh();
+      // Squashed green checkered longyi
+      fctx.fillStyle = '#064e3b';
+      fctx.fillRect(20, 11, 50, 7);
+      fctx.strokeStyle = '#022c22';
+      fctx.lineWidth = 1;
+      for (let x = 24; x < 68; x += 6) {
+        fctx.strokeRect(x, 11, 4, 7);
+      }
 
-    // 5. Boiled Red Shrimp Phoe Htaung (Steam death - 60x84)
-    const boilCanvas = this.textures.createCanvas('ph-boiled', 60, 84);
-    const bctx = boilCanvas.getContext();
-    drawPH(bctx, 'idle');
-    // Overlap searing lobster/prawn red overlay
-    bctx.fillStyle = 'rgba(239, 68, 68, 0.65)';
-    bctx.beginPath();
-    bctx.arc(30, 20, 13, 0, Math.PI * 2);
-    bctx.fillRect(18, 32, 24, 46);
-    bctx.fill();
+      // Goofy spiral/star stunned eyes
+      fctx.strokeStyle = '#1e293b';
+      fctx.lineWidth = 1.5;
+      fctx.beginPath();
+      // Left eye spiral
+      fctx.arc(36, 17, 4, 0, Math.PI * 1.5);
+      fctx.stroke();
+      fctx.beginPath();
+      // Right eye spiral
+      fctx.arc(54, 17, 4, 0, Math.PI * 1.5);
+      fctx.stroke();
 
-    // Blistering steam bubbles & sweat drops
-    bctx.fillStyle = '#fee2e2';
-    bctx.beginPath();
-    bctx.arc(22, 14, 3, 0, Math.PI * 2);
-    bctx.arc(38, 12, 4, 0, Math.PI * 2);
-    bctx.arc(43, 28, 2.5, 0, Math.PI * 2);
-    bctx.arc(17, 40, 3, 0, Math.PI * 2);
-    bctx.fill();
+      // Betel juice splatter puddle
+      fctx.fillStyle = '#b91c1c';
+      fctx.beginPath();
+      fctx.arc(72, 18, 6, 0, Math.PI * 2);
+      fctx.arc(78, 20, 3.5, 0, Math.PI * 2);
+      fctx.arc(82, 17, 2, 0, Math.PI * 2);
+      fctx.fill();
 
-    // X_X dazed cartoon eyes
-    bctx.strokeStyle = '#ffffff';
-    bctx.lineWidth = 2;
-    bctx.beginPath();
-    // left X
-    bctx.moveTo(24, 17); bctx.lineTo(28, 21);
-    bctx.moveTo(28, 17); bctx.lineTo(24, 21);
-    // right X
-    bctx.moveTo(31, 17); bctx.lineTo(35, 21);
-    bctx.moveTo(35, 17); bctx.lineTo(31, 21);
-    bctx.stroke();
+      // Blue flip-flop popped off to the side
+      fctx.fillStyle = '#1d4ed8';
+      fctx.fillRect(6, 20, 10, 4);
+      fctx.fillStyle = '#f8fafc';
+      fctx.fillRect(9, 18, 3, 2);
 
-    // Rising steam puffs
-    bctx.fillStyle = 'rgba(241, 245, 249, 0.8)';
-    bctx.beginPath();
-    bctx.arc(28, 6, 3, 0, Math.PI * 2);
-    bctx.arc(34, 4, 3.5, 0, Math.PI * 2);
-    bctx.fill();
-    boilCanvas.refresh();
+      // Stunned yellow stars floating
+      fctx.fillStyle = '#facc15';
+      fctx.beginPath();
+      fctx.arc(30, 6, 2, 0, Math.PI * 2);
+      fctx.arc(45, 4, 2.5, 0, Math.PI * 2);
+      fctx.arc(60, 6, 2, 0, Math.PI * 2);
+      fctx.fill();
+      flatCanvas.refresh();
+    }
 
-    // 6. Ash Pile with Blinking Eyes (Laser / Trap death - 70x40)
-    const ashCanvas = this.textures.createCanvas('ph-ash', 70, 40);
-    const actx = ashCanvas.getContext();
-    // Ash mound
-    actx.fillStyle = '#334155';
-    actx.beginPath();
-    actx.ellipse(35, 28, 32, 10, 0, 0, Math.PI * 2);
-    actx.fill();
-    actx.fillStyle = '#1e293b';
-    actx.beginPath();
-    actx.ellipse(35, 25, 24, 8, 0, 0, Math.PI * 2);
-    actx.fill();
+    // 5. Boiled Red Shrimp Phoe Htaung (Steam death - 60x84 Fallback)
+    if (!this.textures.exists('ph-boiled')) {
+      const boilCanvas = this.textures.createCanvas('ph-boiled', 60, 84);
+      const bctx = boilCanvas.getContext();
+      drawPH(bctx, 'idle');
+      // Overlap searing lobster/prawn red overlay
+      bctx.fillStyle = 'rgba(239, 68, 68, 0.65)';
+      bctx.beginPath();
+      bctx.arc(30, 20, 13, 0, Math.PI * 2);
+      bctx.fillRect(18, 32, 24, 46);
+      bctx.fill();
 
-    // Glowing orange embers inside ash
-    actx.fillStyle = '#ea580c';
-    actx.beginPath();
-    actx.arc(22, 28, 2, 0, Math.PI * 2);
-    actx.arc(46, 27, 2.5, 0, Math.PI * 2);
-    actx.arc(34, 32, 1.8, 0, Math.PI * 2);
-    actx.fill();
-    actx.fillStyle = '#f97316';
-    actx.beginPath();
-    actx.arc(22, 28, 1, 0, Math.PI * 2);
-    actx.arc(46, 27, 1.2, 0, Math.PI * 2);
-    actx.fill();
+      // Blistering steam bubbles & sweat drops
+      bctx.fillStyle = '#fee2e2';
+      bctx.beginPath();
+      bctx.arc(22, 14, 3, 0, Math.PI * 2);
+      bctx.arc(38, 12, 4, 0, Math.PI * 2);
+      bctx.arc(43, 28, 2.5, 0, Math.PI * 2);
+      bctx.arc(17, 40, 3, 0, Math.PI * 2);
+      bctx.fill();
 
-    // Big wide white cartoon eyeballs peering out of ash
-    actx.fillStyle = '#ffffff';
-    actx.beginPath();
-    actx.arc(29, 17, 5.5, 0, Math.PI * 2);
-    actx.arc(41, 17, 5.5, 0, Math.PI * 2);
-    actx.fill();
-    actx.strokeStyle = '#0f172a';
-    actx.lineWidth = 1.4;
-    actx.stroke();
+      // X_X dazed cartoon eyes
+      bctx.strokeStyle = '#ffffff';
+      bctx.lineWidth = 2;
+      bctx.beginPath();
+      // left X
+      bctx.moveTo(24, 17); bctx.lineTo(28, 21);
+      bctx.moveTo(28, 17); bctx.lineTo(24, 21);
+      // right X
+      bctx.moveTo(31, 17); bctx.lineTo(35, 21);
+      bctx.moveTo(35, 17); bctx.lineTo(31, 21);
+      bctx.stroke();
 
-    // Bewildered cartoon pupils
-    actx.fillStyle = '#0f172a';
-    actx.beginPath();
-    actx.arc(30, 17, 2.2, 0, Math.PI * 2);
-    actx.arc(42, 17, 2.2, 0, Math.PI * 2);
-    actx.fill();
+      // Rising steam puffs
+      bctx.fillStyle = 'rgba(241, 245, 249, 0.8)';
+      bctx.beginPath();
+      bctx.arc(28, 6, 3, 0, Math.PI * 2);
+      bctx.arc(34, 4, 3.5, 0, Math.PI * 2);
+      bctx.fill();
+      boilCanvas.refresh();
+    }
 
-    // Smoke wisp rising
-    actx.strokeStyle = 'rgba(203, 213, 225, 0.6)';
-    actx.lineWidth = 1.5;
-    actx.beginPath();
-    actx.moveTo(35, 12);
-    actx.quadraticCurveTo(32, 6, 36, 2);
-    actx.stroke();
-    ashCanvas.refresh();
+    // 6. Ash Pile with Blinking Eyes (Laser / Trap death - 70x40 Fallback)
+    if (!this.textures.exists('ph-ash')) {
+      const ashCanvas = this.textures.createCanvas('ph-ash', 70, 40);
+      const actx = ashCanvas.getContext();
+      // Ash mound
+      actx.fillStyle = '#334155';
+      actx.beginPath();
+      actx.ellipse(35, 28, 32, 10, 0, 0, Math.PI * 2);
+      actx.fill();
+      actx.fillStyle = '#1e293b';
+      actx.beginPath();
+      actx.ellipse(35, 25, 24, 8, 0, 0, Math.PI * 2);
+      actx.fill();
+
+      // Glowing orange embers inside ash
+      actx.fillStyle = '#ea580c';
+      actx.beginPath();
+      actx.arc(22, 28, 2, 0, Math.PI * 2);
+      actx.arc(46, 27, 2.5, 0, Math.PI * 2);
+      actx.arc(34, 32, 1.8, 0, Math.PI * 2);
+      actx.fill();
+      actx.fillStyle = '#f97316';
+      actx.beginPath();
+      actx.arc(22, 28, 1, 0, Math.PI * 2);
+      actx.arc(46, 27, 1.2, 0, Math.PI * 2);
+      actx.fill();
+
+      // Big wide white cartoon eyeballs peering out of ash
+      actx.fillStyle = '#ffffff';
+      actx.beginPath();
+      actx.arc(29, 17, 5.5, 0, Math.PI * 2);
+      actx.arc(41, 17, 5.5, 0, Math.PI * 2);
+      actx.fill();
+      actx.strokeStyle = '#0f172a';
+      actx.lineWidth = 1.4;
+      actx.stroke();
+
+      // Bewildered cartoon pupils
+      actx.fillStyle = '#0f172a';
+      actx.beginPath();
+      actx.arc(30, 17, 2.2, 0, Math.PI * 2);
+      actx.arc(42, 17, 2.2, 0, Math.PI * 2);
+      actx.fill();
+
+      // Smoke wisp rising
+      actx.strokeStyle = 'rgba(203, 213, 225, 0.6)';
+      actx.lineWidth = 1.5;
+      actx.beginPath();
+      actx.moveTo(35, 12);
+      actx.quadraticCurveTo(32, 6, 36, 2);
+      actx.stroke();
+      ashCanvas.refresh();
+    }
 
     // 7. Cut Legs Phoe Htaung (Scissor / Razor trap death - 60x84)
-    const cutCanvas = this.textures.createCanvas('ph-cut-legs', 60, 84);
-    const cctx = cutCanvas.getContext();
-    drawPH(cctx, 'idle');
+    if (!this.textures.exists('ph-cut-legs')) {
+      const cutCanvas = this.textures.createCanvas('ph-cut-legs', 60, 84);
+      if (cutCanvas) {
+        const cctx = cutCanvas.getContext();
+        drawPH(cctx, 'idle');
 
-    // Sever torso at hip line with 8px horizontal gap
-    cctx.clearRect(0, 52, 60, 10);
+        // Sever torso at hip line with 8px horizontal gap
+        cctx.clearRect(0, 52, 60, 10);
 
-    // Scream mouth on face
-    cctx.fillStyle = '#7f1d1d';
-    cctx.beginPath();
-    cctx.ellipse(31, 26, 4, 3, 0, 0, Math.PI * 2);
-    cctx.fill();
+        // Scream mouth on face
+        cctx.fillStyle = '#7f1d1d';
+        cctx.beginPath();
+        cctx.ellipse(31, 26, 4, 3, 0, 0, Math.PI * 2);
+        cctx.fill();
 
-    // Giant shock sweat droplets spraying out
-    cctx.fillStyle = '#38bdf8';
-    cctx.beginPath();
-    cctx.arc(46, 12, 3.5, 0, Math.PI * 2);
-    cctx.arc(14, 16, 3, 0, Math.PI * 2);
-    cctx.arc(49, 36, 2.5, 0, Math.PI * 2);
-    cctx.fill();
-    cutCanvas.refresh();
+        // Giant shock sweat droplets spraying out
+        cctx.fillStyle = '#38bdf8';
+        cctx.beginPath();
+        cctx.arc(46, 12, 3.5, 0, Math.PI * 2);
+        cctx.arc(14, 16, 3, 0, Math.PI * 2);
+        cctx.arc(49, 36, 2.5, 0, Math.PI * 2);
+        cctx.fill();
+        cutCanvas.refresh();
+      }
+    }
+
+    // 8. Machinarium Denial & Out-of-Reach Stretch (60x90 Fallback)
+    if (!this.textures.exists('ph-denial')) {
+      const denCanvas = this.textures.createCanvas('ph-denial', 60, 90);
+      if (denCanvas) {
+        const dctx = denCanvas.getContext();
+        drawPH(dctx, 'idle');
+        // Sweat drop of bewilderment
+        dctx.fillStyle = '#38bdf8';
+        dctx.beginPath();
+        dctx.arc(42, 14, 3, 0, Math.PI * 2);
+        dctx.fill();
+        // Confused open O-mouth
+        dctx.fillStyle = '#7f1d1d';
+        dctx.beginPath();
+        dctx.ellipse(32, 27, 3, 3.5, 0, 0, Math.PI * 2);
+        dctx.fill();
+        denCanvas.refresh();
+      }
+    }
+
+    // 9. Comedic Soot / Misfire Smoke Face (60x84)
+    if (!this.textures.exists('ph-soot')) {
+      const sootCanvas = this.textures.createCanvas('ph-soot', 60, 84);
+      if (sootCanvas) {
+        const sctx = sootCanvas.getContext();
+        drawPH(sctx, 'idle');
+        // Black soot overlay across face and shirt
+        sctx.fillStyle = 'rgba(28, 25, 23, 0.72)';
+        sctx.beginPath();
+        sctx.ellipse(30, 22, 12, 12, 0, 0, Math.PI * 2);
+        sctx.fill();
+        sctx.fillRect(18, 34, 24, 20);
+        // Shocked blinking white cartoon eyes
+        sctx.fillStyle = '#ffffff';
+        sctx.beginPath();
+        sctx.arc(26, 20, 4, 0, Math.PI * 2);
+        sctx.arc(34, 20, 4, 0, Math.PI * 2);
+        sctx.fill();
+        sctx.fillStyle = '#0f172a';
+        sctx.beginPath();
+        sctx.arc(26, 20, 1.8, 0, Math.PI * 2);
+        sctx.arc(34, 20, 1.8, 0, Math.PI * 2);
+        sctx.fill();
+        sootCanvas.refresh();
+      }
+    }
+
+    // 10. Phoe Htaung Being Mad / Furious Tantrum (60x84 Fallback)
+    if (!this.textures.exists('ph-mad')) {
+      const madCanvas = this.textures.createCanvas('ph-mad', 60, 84);
+      if (madCanvas) {
+        const mctx = madCanvas.getContext();
+        drawPH(mctx, 'idle');
+        // Red angry flush
+        mctx.fillStyle = 'rgba(239, 68, 68, 0.45)';
+        mctx.beginPath();
+        mctx.ellipse(30, 22, 12, 12, 0, 0, Math.PI * 2);
+        mctx.fill();
+        // Steam puffs out of ears
+        mctx.fillStyle = 'rgba(248, 250, 252, 0.9)';
+        mctx.beginPath();
+        mctx.arc(14, 20, 3.5, 0, Math.PI * 2);
+        mctx.arc(46, 20, 3.5, 0, Math.PI * 2);
+        mctx.fill();
+        madCanvas.refresh();
+      }
+    }
+
+    // 11. Phoe Htaung Thinking / Pondering (60x84 Fallback)
+    if (!this.textures.exists('ph-think')) {
+      const thinkCanvas = this.textures.createCanvas('ph-think', 60, 84);
+      if (thinkCanvas) {
+        const tctx = thinkCanvas.getContext();
+        drawPH(tctx, 'idle');
+        // Thoughtful tilted brow and chin hand
+        tctx.fillStyle = '#b47a46';
+        tctx.beginPath();
+        tctx.arc(38, 28, 4, 0, Math.PI * 2);
+        tctx.fill();
+        thinkCanvas.refresh();
+      }
+    }
+
+    // 12. Phoe Htaung Laughing / Chuckling (60x84 Fallback)
+    if (!this.textures.exists('ph-laugh')) {
+      const laughCanvas = this.textures.createCanvas('ph-laugh', 60, 84);
+      if (laughCanvas) {
+        const lctx = laughCanvas.getContext();
+        drawPH(lctx, 'idle');
+        // Broad laughing grinning open mouth
+        lctx.fillStyle = '#7f1d1d';
+        lctx.beginPath();
+        lctx.ellipse(30, 26, 5, 3.5, 0, 0, Math.PI * 2);
+        lctx.fill();
+        laughCanvas.refresh();
+      }
+    }
   }
 
   createUGyiTextures() {
+    if (this.textures.exists('ugyi-standing')) return;
     // U Gyi: Shady broker smoking a cheroot (ဆေးပေါ့လိပ်)
     const ugCanvas = this.textures.createCanvas('ugyi-standing', 70, 96);
+    if (!ugCanvas) return;
     const uctx = ugCanvas.getContext();
 
     // 1. Golden Silk Gaungbaung Turban (ခေါင်းပေါင်း)
@@ -1103,221 +1286,321 @@ export default class PreloadScene extends Phaser.Scene {
     }
 
     // 12. Chalk / Charcoal Stylus (ကျောက်ဖြူတုံး)
-    const chkCanvas = this.textures.createCanvas('item-chalk', 44, 44);
-    const chkctx = chkCanvas.getContext();
-    chkctx.fillStyle = '#f1f5f9';
-    chkctx.beginPath();
-    chkctx.roundRect(14, 10, 16, 26, 4);
-    chkctx.fill();
-    chkctx.strokeStyle = '#94a3b8';
-    chkctx.lineWidth = 2;
-    chkctx.stroke();
-    chkCanvas.refresh();
+    if (!this.textures.exists('item-chalk')) {
+      const chkCanvas = this.textures.createCanvas('item-chalk', 44, 44);
+      if (chkCanvas) {
+        const chkctx = chkCanvas.getContext();
+        chkctx.fillStyle = '#f1f5f9';
+        chkctx.beginPath();
+        chkctx.roundRect(14, 10, 16, 26, 4);
+        chkctx.fill();
+        chkctx.strokeStyle = '#94a3b8';
+        chkctx.lineWidth = 2;
+        chkctx.stroke();
+        chkCanvas.refresh();
+      }
+    }
 
     // 13. Folded Parchment Engineer Note (လျှို့ဝှက်ပုံကြမ်း စာရွက်)
-    const ntCanvas = this.textures.createCanvas('item-engineer-note', 44, 44);
-    const ntctx = ntCanvas.getContext();
-    ntctx.fillStyle = '#fef3c7';
-    ntctx.beginPath();
-    ntctx.roundRect(8, 8, 28, 30, 4);
-    ntctx.fill();
-    ntctx.strokeStyle = '#d97706';
-    ntctx.lineWidth = 2;
-    ntctx.stroke();
-    // Blueprint text lines
-    ntctx.fillStyle = '#92400e';
-    ntctx.fillRect(12, 14, 20, 2);
-    ntctx.fillRect(12, 20, 16, 2);
-    ntctx.fillRect(12, 26, 18, 2);
-    ntCanvas.refresh();
+    if (!this.textures.exists('item-engineer-note')) {
+      const ntCanvas = this.textures.createCanvas('item-engineer-note', 44, 44);
+      if (ntCanvas) {
+        const ntctx = ntCanvas.getContext();
+        ntctx.fillStyle = '#fef3c7';
+        ntctx.beginPath();
+        ntctx.roundRect(8, 8, 28, 30, 4);
+        ntctx.fill();
+        ntctx.strokeStyle = '#d97706';
+        ntctx.lineWidth = 2;
+        ntctx.stroke();
+        // Blueprint text lines
+        ntctx.fillStyle = '#92400e';
+        ntctx.fillRect(12, 14, 20, 2);
+        ntctx.fillRect(12, 20, 16, 2);
+        ntctx.fillRect(12, 26, 18, 2);
+        ntCanvas.refresh();
+      }
+    }
   }
 
   createTrapObjects() {
     // 50-Ton "VICTORY!" Stone Block (Chapter 5)
-    const vicCanvas = this.textures.createCanvas('victory-block', 240, 120);
-    const vctx = vicCanvas.getContext();
-    vctx.fillStyle = '#475569';
-    vctx.fillRect(4, 4, 232, 112);
-    vctx.lineWidth = 4;
-    vctx.strokeStyle = '#1e293b';
-    vctx.strokeRect(4, 4, 232, 112);
-    vctx.fillStyle = '#f8fafc';
-    vctx.font = '900 36px Plus Jakarta Sans';
-    vctx.fillText('VICTORY!', 38, 72);
-    vicCanvas.refresh();
+    if (!this.textures.exists('victory-block')) {
+      const vicCanvas = this.textures.createCanvas('victory-block', 240, 120);
+      if (vicCanvas) {
+        const vctx = vicCanvas.getContext();
+        vctx.fillStyle = '#475569';
+        vctx.fillRect(4, 4, 232, 112);
+        vctx.lineWidth = 4;
+        vctx.strokeStyle = '#1e293b';
+        vctx.strokeRect(4, 4, 232, 112);
+        vctx.fillStyle = '#f8fafc';
+        vctx.font = '900 36px Plus Jakarta Sans';
+        vctx.fillText('VICTORY!', 38, 72);
+        vicCanvas.refresh();
+      }
+    }
 
     // Gold Coin (Chapter 1 Bait)
-    const coinCanvas = this.textures.createCanvas('coin-bait', 48, 48);
-    const cctx = coinCanvas.getContext();
-    cctx.fillStyle = '#eab308';
-    cctx.beginPath();
-    cctx.arc(24, 24, 20, 0, Math.PI * 2);
-    cctx.fill();
-    cctx.strokeStyle = '#ca8a04';
-    cctx.lineWidth = 3;
-    cctx.stroke();
-    cctx.fillStyle = '#713f12';
-    cctx.font = '900 20px Plus Jakarta Sans';
-    cctx.fillText('$', 18, 31);
-    coinCanvas.refresh();
+    if (!this.textures.exists('coin-bait')) {
+      const coinCanvas = this.textures.createCanvas('coin-bait', 48, 48);
+      if (coinCanvas) {
+        const cctx = coinCanvas.getContext();
+        cctx.fillStyle = '#eab308';
+        cctx.beginPath();
+        cctx.arc(24, 24, 20, 0, Math.PI * 2);
+        cctx.fill();
+        cctx.strokeStyle = '#ca8a04';
+        cctx.lineWidth = 3;
+        cctx.stroke();
+        cctx.fillStyle = '#713f12';
+        cctx.font = '900 20px Plus Jakarta Sans';
+        cctx.fillText('$', 18, 31);
+        coinCanvas.refresh();
+      }
+    }
 
     // Giant Iron Safe (Chapter 4)
-    const safeCanvas = this.textures.createCanvas('iron-safe', 160, 180);
-    const sfctx = safeCanvas.getContext();
-    sfctx.fillStyle = '#334155';
-    sfctx.beginPath();
-    sfctx.roundRect(6, 6, 148, 168, 16);
-    sfctx.fill();
-    sfctx.lineWidth = 4;
-    sfctx.strokeStyle = '#0f172a';
-    sfctx.stroke();
+    if (!this.textures.exists('iron-safe')) {
+      const safeCanvas = this.textures.createCanvas('iron-safe', 160, 180);
+      if (safeCanvas) {
+        const sfctx = safeCanvas.getContext();
+        sfctx.fillStyle = '#334155';
+        sfctx.beginPath();
+        sfctx.roundRect(6, 6, 148, 168, 16);
+        sfctx.fill();
+        sfctx.lineWidth = 4;
+        sfctx.strokeStyle = '#0f172a';
+        sfctx.stroke();
 
-    // Round Vault Door
-    sfctx.fillStyle = '#475569';
-    sfctx.beginPath();
-    sfctx.arc(80, 90, 56, 0, Math.PI * 2);
-    sfctx.fill();
-    sfctx.lineWidth = 3;
-    sfctx.strokeStyle = '#1e293b';
-    sfctx.stroke();
+        // Round Vault Door
+        sfctx.fillStyle = '#475569';
+        sfctx.beginPath();
+        sfctx.arc(80, 90, 56, 0, Math.PI * 2);
+        sfctx.fill();
+        sfctx.lineWidth = 3;
+        sfctx.strokeStyle = '#1e293b';
+        sfctx.stroke();
 
-    // Keyhole
-    sfctx.fillStyle = '#0f172a';
-    sfctx.beginPath();
-    sfctx.arc(80, 84, 8, 0, Math.PI * 2);
-    sfctx.fillRect(77, 84, 6, 18);
-    sfctx.fill();
-    safeCanvas.refresh();
+        // Keyhole
+        sfctx.fillStyle = '#0f172a';
+        sfctx.beginPath();
+        sfctx.arc(80, 84, 8, 0, Math.PI * 2);
+        sfctx.fillRect(77, 84, 6, 18);
+        sfctx.fill();
+        safeCanvas.refresh();
+      }
+    }
 
     // 10-Viss Weight
-    const wCanvas = this.textures.createCanvas('weight-10', 50, 50);
-    const wctx = wCanvas.getContext();
-    wctx.fillStyle = '#1e293b';
-    wctx.beginPath();
-    wctx.roundRect(4, 12, 42, 34, 6);
-    wctx.fill();
-    wctx.fillRect(18, 4, 14, 8);
-    wctx.fillStyle = '#f8fafc';
-    wctx.font = 'bold 13px Noto Sans Myanmar, Plus Jakarta Sans';
-    wctx.fillText('၁၀', 15, 34);
-    wCanvas.refresh();
+    if (!this.textures.exists('weight-10')) {
+      const wCanvas = this.textures.createCanvas('weight-10', 50, 50);
+      if (wCanvas) {
+        const wctx = wCanvas.getContext();
+        wctx.fillStyle = '#1e293b';
+        wctx.beginPath();
+        wctx.roundRect(4, 12, 42, 34, 6);
+        wctx.fill();
+        wctx.fillRect(18, 4, 14, 8);
+        wctx.fillStyle = '#f8fafc';
+        wctx.font = 'bold 13px Noto Sans Myanmar, Plus Jakarta Sans';
+        wctx.fillText('၁၀', 15, 34);
+        wCanvas.refresh();
+      }
+    }
+
+    // Ancient Adolf Lachman Die Again Trap Block (Chapter 1)
+    if (!this.textures.exists('ch1-trap-block')) {
+      const tbCanvas = this.textures.createCanvas('ch1-trap-block', 64, 64);
+      if (tbCanvas) {
+        const tbctx = tbCanvas.getContext();
+        // Weathered Limestone Masonry Block
+        tbctx.fillStyle = '#6b5344';
+        tbctx.fillRect(2, 2, 60, 60);
+
+        // Stone bevel highlights & shadows
+        tbctx.fillStyle = '#9c8270';
+        tbctx.fillRect(2, 2, 60, 5);
+        tbctx.fillRect(2, 2, 5, 60);
+        tbctx.fillStyle = '#3a2b20';
+        tbctx.fillRect(2, 57, 60, 5);
+        tbctx.fillRect(57, 2, 5, 60);
+
+        // Sepia ink crosshatching & cracks
+        tbctx.strokeStyle = '#271c14';
+        tbctx.lineWidth = 1.5;
+        tbctx.strokeRect(4, 4, 56, 56);
+        tbctx.beginPath();
+        tbctx.moveTo(12, 12); tbctx.lineTo(22, 28); tbctx.lineTo(28, 24);
+        tbctx.moveTo(42, 10); tbctx.lineTo(38, 22); tbctx.lineTo(48, 30);
+        tbctx.stroke();
+
+        // Carved mischievous troll skull / grin
+        tbctx.fillStyle = '#1e140d';
+        tbctx.beginPath();
+        tbctx.arc(24, 32, 5, 0, Math.PI * 2);
+        tbctx.arc(40, 32, 5, 0, Math.PI * 2);
+        tbctx.fill();
+
+        // Jagged teeth grin
+        tbctx.strokeStyle = '#1e140d';
+        tbctx.lineWidth = 2;
+        tbctx.beginPath();
+        tbctx.moveTo(18, 44);
+        tbctx.lineTo(23, 41); tbctx.lineTo(28, 45); tbctx.lineTo(32, 41);
+        tbctx.lineTo(36, 45); tbctx.lineTo(41, 41); tbctx.lineTo(46, 44);
+        tbctx.stroke();
+
+        // Rusty Iron Corner Brackets with Rivets
+        tbctx.fillStyle = '#453225';
+        tbctx.fillRect(2, 2, 11, 11);
+        tbctx.fillRect(51, 2, 11, 11);
+        tbctx.fillRect(2, 51, 11, 11);
+        tbctx.fillRect(51, 51, 11, 11);
+        tbctx.fillStyle = '#d97706';
+        tbctx.fillRect(5, 5, 5, 5);
+        tbctx.fillRect(54, 5, 5, 5);
+        tbctx.fillRect(5, 54, 5, 5);
+        tbctx.fillRect(54, 54, 5, 5);
+
+        tbCanvas.refresh();
+      }
+    }
 
     // Ancient Cable Winch Mechanism (Chapter 1 Machinarium Contraption)
-    const winchCanvas = this.textures.createCanvas('winch-machine', 80, 90);
-    const wnctx = winchCanvas.getContext();
-    wnctx.fillStyle = '#334155';
-    wnctx.fillRect(15, 30, 50, 55);
-    wnctx.lineWidth = 3;
-    wnctx.strokeStyle = '#1e293b';
-    wnctx.strokeRect(15, 30, 50, 55);
-    // Cable Spool
-    wnctx.fillStyle = '#78350f';
-    wnctx.beginPath();
-    wnctx.arc(40, 48, 16, 0, Math.PI * 2);
-    wnctx.fill();
-    wnctx.strokeStyle = '#d97706';
-    wnctx.lineWidth = 2;
-    wnctx.stroke();
-    // Cable wires
-    wnctx.strokeStyle = '#94a3b8';
-    wnctx.beginPath();
-    wnctx.moveTo(40, 32);
-    wnctx.lineTo(80, 20);
-    wnctx.stroke();
-    winchCanvas.refresh();
+    if (!this.textures.exists('winch-machine')) {
+      const winchCanvas = this.textures.createCanvas('winch-machine', 80, 90);
+      if (winchCanvas) {
+        const wnctx = winchCanvas.getContext();
+        wnctx.fillStyle = '#334155';
+        wnctx.fillRect(15, 30, 50, 55);
+        wnctx.lineWidth = 3;
+        wnctx.strokeStyle = '#1e293b';
+        wnctx.strokeRect(15, 30, 50, 55);
+        // Cable Spool
+        wnctx.fillStyle = '#78350f';
+        wnctx.beginPath();
+        wnctx.arc(40, 48, 16, 0, Math.PI * 2);
+        wnctx.fill();
+        wnctx.strokeStyle = '#d97706';
+        wnctx.lineWidth = 2;
+        wnctx.stroke();
+        // Cable wires
+        wnctx.strokeStyle = '#94a3b8';
+        wnctx.beginPath();
+        wnctx.moveTo(40, 32);
+        wnctx.lineTo(80, 20);
+        wnctx.stroke();
+        winchCanvas.refresh();
+      }
+    }
 
     // Canyon Chalk Diagram (Chapter 1 Mechanical Hint)
-    const cdCanvas = this.textures.createCanvas('chalk-diagram', 140, 90);
-    const cdctx = cdCanvas.getContext();
-    cdctx.strokeStyle = '#e2e8f0';
-    cdctx.lineWidth = 2;
-    cdctx.setLineDash([4, 4]);
-    // Draw bridge sketch & gear arrow
-    cdctx.strokeRect(10, 20, 60, 40);
-    cdctx.beginPath();
-    cdctx.arc(40, 40, 12, 0, Math.PI * 2);
-    cdctx.stroke();
-    // Left secret tunnel hint arrow
-    cdctx.setLineDash([]);
-    cdctx.strokeStyle = '#facc15';
-    cdctx.beginPath();
-    cdctx.moveTo(110, 50);
-    cdctx.lineTo(75, 50);
-    cdctx.lineTo(85, 40);
-    cdctx.moveTo(75, 50);
-    cdctx.lineTo(85, 60);
-    cdctx.stroke();
-    cdCanvas.refresh();
+    if (!this.textures.exists('chalk-diagram')) {
+      const cdCanvas = this.textures.createCanvas('chalk-diagram', 140, 90);
+      if (cdCanvas) {
+        const cdctx = cdCanvas.getContext();
+        cdctx.strokeStyle = '#e2e8f0';
+        cdctx.lineWidth = 2;
+        cdctx.setLineDash([4, 4]);
+        // Draw bridge sketch & gear arrow
+        cdctx.strokeRect(10, 20, 60, 40);
+        cdctx.beginPath();
+        cdctx.arc(40, 40, 12, 0, Math.PI * 2);
+        cdctx.stroke();
+        // Left secret tunnel hint arrow
+        cdctx.setLineDash([]);
+        cdctx.strokeStyle = '#facc15';
+        cdctx.beginPath();
+        cdctx.moveTo(110, 50);
+        cdctx.lineTo(75, 50);
+        cdctx.lineTo(85, 40);
+        cdctx.moveTo(75, 50);
+        cdctx.lineTo(85, 60);
+        cdctx.stroke();
+        cdCanvas.refresh();
+      }
+    }
 
     // Engineer's Parchment Note Overlay (Chapter 4 Clue)
-    const noCanvas = this.textures.createCanvas('note-overlay', 380, 260);
-    const noctx = noCanvas.getContext();
-    noctx.fillStyle = '#fef3c7';
-    noctx.beginPath();
-    noctx.roundRect(10, 10, 360, 240, 14);
-    noctx.fill();
-    noctx.strokeStyle = '#b45309';
-    noctx.lineWidth = 3;
-    noctx.stroke();
+    if (!this.textures.exists('note-overlay')) {
+      const noCanvas = this.textures.createCanvas('note-overlay', 380, 260);
+      if (noCanvas) {
+        const noctx = noCanvas.getContext();
+        noctx.fillStyle = '#fef3c7';
+        noctx.beginPath();
+        noctx.roundRect(10, 10, 360, 240, 14);
+        noctx.fill();
+        noctx.strokeStyle = '#b45309';
+        noctx.lineWidth = 3;
+        noctx.stroke();
 
-    // Header
-    noctx.fillStyle = '#78350f';
-    noctx.font = 'bold 14px Noto Sans Myanmar, Plus Jakarta Sans';
-    noctx.fillText('📜 အင်ဂျင်နီယာ၏ လျှို့ဝှက်ပုံကြမ်း (Secret Blueprint)', 30, 42);
+        // Header
+        noctx.fillStyle = '#78350f';
+        noctx.font = 'bold 14px Noto Sans Myanmar, Plus Jakarta Sans';
+        noctx.fillText('📜 အင်ဂျင်နီယာ၏ လျှို့ဝှက်ပုံကြမ်း (Secret Blueprint)', 30, 42);
 
-    // Trap 1 Warning: 4-2-3 with Big Red X and Scissors
-    noctx.strokeStyle = '#ef4444';
-    noctx.lineWidth = 4;
-    noctx.strokeRect(40, 65, 120, 90);
-    noctx.beginPath();
-    noctx.moveTo(40, 65);
-    noctx.lineTo(160, 155);
-    noctx.moveTo(160, 65);
-    noctx.lineTo(40, 155);
-    noctx.stroke();
+        // Trap 1 Warning: 4-2-3 with Big Red X and Scissors
+        noctx.strokeStyle = '#ef4444';
+        noctx.lineWidth = 4;
+        noctx.strokeRect(40, 65, 120, 90);
+        noctx.beginPath();
+        noctx.moveTo(40, 65);
+        noctx.lineTo(160, 155);
+        noctx.moveTo(160, 65);
+        noctx.lineTo(40, 155);
+        noctx.stroke();
 
-    noctx.fillStyle = '#ef4444';
-    noctx.font = 'bold 18px Plus Jakarta Sans';
-    noctx.fillText('4 - 2 - 3', 68, 105);
-    noctx.font = 'bold 12px Noto Sans Myanmar';
-    noctx.fillText('⚠️ ထောင်ချောက် (TRAP!)', 48, 135);
+        noctx.fillStyle = '#ef4444';
+        noctx.font = 'bold 18px Plus Jakarta Sans';
+        noctx.fillText('4 - 2 - 3', 68, 105);
+        noctx.font = 'bold 12px Noto Sans Myanmar';
+        noctx.fillText('⚠️ ထောင်ချောက် (TRAP!)', 48, 135);
 
-    // True Solution Clue: Chili Pepper sneezing
-    noctx.strokeStyle = '#15803d';
-    noctx.lineWidth = 3;
-    noctx.strokeRect(200, 65, 140, 90);
+        // True Solution Clue: Chili Pepper sneezing
+        noctx.strokeStyle = '#15803d';
+        noctx.lineWidth = 3;
+        noctx.strokeRect(200, 65, 140, 90);
 
-    noctx.fillStyle = '#dc2626';
-    noctx.font = 'bold 24px sans-serif';
-    noctx.fillText('🌶️ ➔ 🔑', 225, 105);
-    noctx.fillStyle = '#15803d';
-    noctx.font = 'bold 12px Noto Sans Myanmar';
-    noctx.fillText('💨 အဟွတ်! ဟက်ချိုး!', 220, 135);
+        noctx.fillStyle = '#dc2626';
+        noctx.font = 'bold 24px sans-serif';
+        noctx.fillText('🌶️ ➔ 🔑', 225, 105);
+        noctx.fillStyle = '#15803d';
+        noctx.font = 'bold 12px Noto Sans Myanmar';
+        noctx.fillText('💨 အဟွတ်! ဟက်ချိုး!', 220, 135);
 
-    // Footer advice
-    noctx.fillStyle = '#451a03';
-    noctx.font = '12px Noto Sans Myanmar';
-    noctx.fillText('“သော့ခလောက်ပြုလုပ်သူသည် ငရုတ်သီးနှင့် ဓာတ်မတည့်ပါ”', 45, 195);
-    noctx.fillStyle = '#94a3b8';
-    noctx.font = '11px Plus Jakarta Sans';
-    noctx.fillText('[ Click anywhere to close ]', 125, 230);
-    noCanvas.refresh();
+        // Footer advice
+        noctx.fillStyle = '#451a03';
+        noctx.font = '12px Noto Sans Myanmar';
+        noctx.fillText('“သော့ခလောက်ပြုလုပ်သူသည် ငရုတ်သီးနှင့် ဓာတ်မတည့်ပါ”', 45, 195);
+        noctx.fillStyle = '#94a3b8';
+        noctx.font = '11px Plus Jakarta Sans';
+        noctx.fillText('[ Click anywhere to close ]', 125, 230);
+        noCanvas.refresh();
+      }
+    }
   }
 
   createParticlesAndVignette() {
-    const steamG = this.make.graphics({ x: 0, y: 0, add: false });
-    steamG.fillStyle(0xe2e8f0, 0.5);
-    steamG.fillCircle(12, 12, 12);
-    steamG.generateTexture('steam-puff', 24, 24);
+    if (!this.textures.exists('steam-puff')) {
+      const steamG = this.make.graphics({ x: 0, y: 0, add: false });
+      steamG.fillStyle(0xe2e8f0, 0.5);
+      steamG.fillCircle(12, 12, 12);
+      steamG.generateTexture('steam-puff', 24, 24);
+    }
 
-    const vigCanvas = this.textures.createCanvas('screen-vignette', 512, 512);
-    const vctx = vigCanvas.getContext();
-    const vGrad = vctx.createRadialGradient(256, 256, 140, 256, 256, 256);
-    vGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    vGrad.addColorStop(0.75, 'rgba(12, 10, 8, 0.45)');
-    vGrad.addColorStop(1, 'rgba(12, 10, 8, 0.9)');
-    vctx.fillStyle = vGrad;
-    vctx.fillRect(0, 0, 512, 512);
-    vigCanvas.refresh();
+    if (!this.textures.exists('screen-vignette')) {
+      const vigCanvas = this.textures.createCanvas('screen-vignette', 512, 512);
+      if (vigCanvas) {
+        const vctx = vigCanvas.getContext();
+        const vGrad = vctx.createRadialGradient(256, 256, 140, 256, 256, 256);
+        vGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        vGrad.addColorStop(0.75, 'rgba(12, 10, 8, 0.45)');
+        vGrad.addColorStop(1, 'rgba(12, 10, 8, 0.9)');
+        vctx.fillStyle = vGrad;
+        vctx.fillRect(0, 0, 512, 512);
+        vigCanvas.refresh();
+      }
+    }
   }
 }

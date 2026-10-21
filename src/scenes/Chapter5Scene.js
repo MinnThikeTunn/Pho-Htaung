@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import SubtitleBox from '../ui/SubtitleBox.js';
+import InventoryBar from '../ui/InventoryBar.js';
 import GameHUD from '../ui/GameHUD.js';
 import { gameState } from '../utils/GameState.js';
 import { soundEngine } from '../utils/SoundEngine.js';
@@ -14,6 +15,8 @@ export default class Chapter5Scene extends Phaser.Scene {
   create() {
     const width = this.scale.width;
     const height = this.scale.height;
+
+    this.cameras.main.fadeIn(400, 12, 10, 8);
 
     this.isCrushed = false;
     gameState.setCurrentScene('Chapter5Scene');
@@ -39,11 +42,22 @@ export default class Chapter5Scene extends Phaser.Scene {
     this.playerY = groundY - 42;
     this.player = this.add.sprite(this.playerX, this.playerY, 'ph-idle').setDepth(20);
 
-    // 4. Floating Golden Dust Motes & Perplexity GameHUD
+    // 4. Floating Golden Dust Motes & Perplexity GameHUD & Atmosphere Overlays
     AmbientAtmosphere.createDustMotes(this, 30);
-    this.hud = new GameHUD(this);
+    AmbientAtmosphere.createWeatheredOverlay(this);
+    AmbientAtmosphere.createForegroundSilhouettes(this, 'temple');
+    AmbientAtmosphere.createVolumetricRays(this, width * 0.65, 0);
 
-    // 5. Subtitle Box
+    // 5. Ambient Toys
+    this.createAmbientToys(groundY, width);
+
+    this.hud = new GameHUD(this);
+    this.inventoryBar = new InventoryBar(this);
+
+    // Natural Signifiers
+    AmbientAtmosphere.startNaturalSignifiers(this, [this.treasureContainer]);
+
+    // 6. Subtitle Box
     this.subtitle = new SubtitleBox(this);
 
     // Vignette
@@ -59,6 +73,16 @@ export default class Chapter5Scene extends Phaser.Scene {
     this.time.delayedCall(400, () => {
       this.subtitle.say('နောက်ဆုံးတော့... မောင်ဖိုးထောင်တစ်ယောက် ရွှေမြို့တော် ဗဟိုချက်မကို ရောက်လာခဲ့ပြီဗျာ! ဟောဒီမှာ ကြည့်စမ်း... ရွှေတွေ၊ ငွေတွေ၊ စိန်ရတနာတွေ ပုံလိုက်ကြီးပဲ! မင်း ချမ်းသာပြီ ဖိုးထောင်ရေ! ပြေးစမ်း... ပြေးယူလိုက်စမ်း! (ရတနာပုံကို နှိပ်ပါ)');
     });
+  }
+
+  createAmbientToys(groundY, width) {
+    // 1. Royal Gilded Gong on pillar
+    const gong = this.add.image(130, groundY - 80, 'item-cog').setScale(0.75).setTint(0xfacc15).setDepth(14);
+    MicroInteractions.attachAmbientToy(this, gong, 'bell');
+
+    // 2. Ornate Royal Vase
+    const vase = this.add.image(width - 120, groundY - 14, 'item-stone-3').setScale(0.85).setTint(0xd97706).setDepth(14);
+    MicroInteractions.attachAmbientToy(this, vase, 'pot');
   }
 
   createGoldenHall(width, height) {
@@ -199,7 +223,7 @@ export default class Chapter5Scene extends Phaser.Scene {
   }
 
   createTreasurePile(x, y) {
-    this.treasureContainer = this.add.container(x, y).setDepth(15);
+    this.treasureContainer = this.add.container(x, y).setSize(240, 120).setDepth(15);
 
     // Mountain of gold
     const goldG = this.add.graphics();

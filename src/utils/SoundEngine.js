@@ -1,6 +1,8 @@
 // Procedural Sound Engine for Phoe Htaung: Die Again in the Golden City
 // Implements Web Audio API synthesis as defined in Section 5.1 of the Technical Specification.
 
+import { audioDirector } from '../audio/AudioDirector.js';
+
 class SoundEngine {
   constructor() {
     this.ctx = null;
@@ -23,7 +25,7 @@ class SoundEngine {
   }
 
   toggleMute() {
-    this.muted = !this.muted;
+    this.muted = audioDirector.toggleMute();
     if (this.muted) {
       this.stopBGM();
     } else {
@@ -123,7 +125,140 @@ class SoundEngine {
   }
 
   // Animal Crossing / Undertale style rapid voice blip for U Gyi's Burmese typewriter dialogue
+  // Formant-filtered with subtle random pitch & vowel shifts for conversational cadence
   playVoiceBlip() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const filter = this.ctx.createBiquadFilter();
+    const gain = this.ctx.createGain();
+
+    osc.type = Math.random() > 0.5 ? 'triangle' : 'sawtooth';
+    // Modulate pitch slightly around U Gyi's gruff older man voice
+    const baseFreq = 140 + (Math.random() * 50 - 25);
+    osc.frequency.setValueAtTime(baseFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.88, now + 0.048);
+
+    // Formant vocal filter (simulating nasal / throat resonance)
+    filter.type = 'bandpass';
+    const formants = [500, 850, 1400, 1800];
+    const targetFormant = formants[Math.floor(Math.random() * formants.length)];
+    filter.frequency.setValueAtTime(targetFormant, now);
+    filter.Q.setValueAtTime(4.5, now);
+
+    gain.gain.setValueAtTime(0.08, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.048);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.048);
+  }
+
+  // Mumbled vocalization grunt ("အဟမ်း", "ဟဲ့", "အယ်") for U Gyi or Phoe Htaung
+  playMumbledGrunt(type = 'phoe_htaung') {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const filter = this.ctx.createBiquadFilter();
+    const gain = this.ctx.createGain();
+
+    if (type === 'u_gyi') {
+      // Lower, gruff cynical chuckle
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(110, now);
+      osc.frequency.exponentialRampToValueAtTime(80, now + 0.18);
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(450, now);
+      filter.Q.setValueAtTime(3.5, now);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+    } else {
+      // Phoe Htaung: higher pitch, bewildered / comical squeak
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(260, now);
+      osc.frequency.exponentialRampToValueAtTime(380, now + 0.07);
+      osc.frequency.exponentialRampToValueAtTime(180, now + 0.16);
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(1200, now);
+      gain.gain.setValueAtTime(0.11, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+    }
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.2);
+  }
+
+  // Comedic Phoe Htaung Chuckle / Laugh ("ဟိဟိဟိ")
+  playLaugh() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const pitches = [320, 420, 380, 460];
+    pitches.forEach((freq, idx) => {
+      const t = this.ctx.currentTime + idx * 0.09;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t);
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.15, t + 0.04);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.9, t + 0.08);
+
+      gain.gain.setValueAtTime(0.08, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.085);
+    });
+  }
+
+  // Impatient / Furious Mad Grunt ("အာ... မရဘူး")
+  playMadGrunt() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const filter = this.ctx.createBiquadFilter();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(140, now);
+    osc.frequency.linearRampToValueAtTime(220, now + 0.08);
+    osc.frequency.exponentialRampToValueAtTime(95, now + 0.24);
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(650, now);
+    filter.Q.setValueAtTime(4.0, now);
+
+    gain.gain.setValueAtTime(0.14, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.25);
+  }
+
+  // Contemplative / Thinking Chime ("ဟင်...")
+  playThinkingChime() {
     if (this.muted) return;
     this.init();
     if (!this.ctx) return;
@@ -132,20 +267,17 @@ class SoundEngine {
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
 
-    osc.type = 'triangle';
-    // Modulate pitch slightly around U Gyi's gruff older man voice
-    const baseFreq = 160 + (Math.random() * 40 - 20);
-    osc.frequency.setValueAtTime(baseFreq, now);
-    osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.85, now + 0.045);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(360, now);
+    osc.frequency.exponentialRampToValueAtTime(540, now + 0.18);
 
-    gain.gain.setValueAtTime(0.09, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+    gain.gain.setValueAtTime(0.07, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
 
     osc.connect(gain);
     gain.connect(this.ctx.destination);
-
     osc.start(now);
-    osc.stop(now + 0.045);
+    osc.stop(now + 0.29);
   }
 
   // Jump: Rising sine wave (150 Hz -> 400 Hz)
@@ -246,6 +378,33 @@ class SoundEngine {
       osc.start(now);
       osc.stop(now + 0.22);
     });
+  }
+
+  // Chain unspool / rattle sound (drawbridge release)
+  playChainRattle() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const clicks = 5;
+    for (let i = 0; i < clicks; i++) {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const t = now + i * 0.045;
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(680 + (i % 3) * 160, t);
+      osc.frequency.exponentialRampToValueAtTime(300, t + 0.04);
+
+      gain.gain.setValueAtTime(0.08, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.04);
+    }
   }
 
   // Laser zap (deity statue firing eyes)
@@ -407,27 +566,218 @@ class SoundEngine {
     osc.stop(now + 0.1);
   }
 
-  // Soft flip-flop / footstep sound
-  playFootstep() {
+  // Synchronized Footsteps: Alternating dry stone clicks, sand scuffs, and flip-flop slaps
+  playFootstep(surface = 'stone') {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+
+    // Flip-flop slap / sole impact
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'triangle';
+    const baseFreq = surface === 'sand' ? 70 : 100;
+    osc.frequency.setValueAtTime(baseFreq + Math.random() * 25, now);
+    osc.frequency.exponentialRampToValueAtTime(30, now + 0.055);
+
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.055);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.055);
+
+    // Sand / gravel scrape (short filtered noise burst)
+    const bufSize = Math.floor(this.ctx.sampleRate * 0.04);
+    const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.35;
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buf;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = surface === 'sand' ? 'lowpass' : 'bandpass';
+    filter.frequency.setValueAtTime(surface === 'sand' ? 900 : 1800, now);
+
+    const nGain = this.ctx.createGain();
+    nGain.gain.setValueAtTime(0.07, now);
+    nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+    noise.connect(filter);
+    filter.connect(nGain);
+    nGain.connect(this.ctx.destination);
+    noise.start(now);
+    noise.stop(now + 0.04);
+  }
+
+  // Faint rustle of longyi fabric (*ပုဆိုးသံ*)
+  playLongyiRustle() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const bufSize = Math.floor(this.ctx.sampleRate * 0.08);
+    const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.2;
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buf;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.setValueAtTime(2200, now);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.04, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+    noise.start(now);
+    noise.stop(now + 0.08);
+  }
+
+  // Ambient toy: Clay pot wobble with hollow ceramic thud
+  playPotWobble() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    [210, 340].forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + idx * 0.04);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.7, now + idx * 0.04 + 0.12);
+
+      gain.gain.setValueAtTime(0.12, now + idx * 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.04 + 0.12);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now + idx * 0.04);
+      osc.stop(now + idx * 0.04 + 0.12);
+    });
+  }
+
+  // Ambient toy: Temple bronze bell chime with deep decay
+  playTempleBell() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const partials = [587.33, 880.00, 1174.66, 1760.00]; // D5, A5, D6, A6 harmonics
+    partials.forEach((f, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f + (Math.random() * 4 - 2), now);
+
+      const amp = 0.08 / (idx + 1);
+      gain.gain.setValueAtTime(amp, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.8 - idx * 0.3);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 1.8);
+    });
+  }
+
+  // Ambient toy: Stray dog lazy grunt / snore
+  playDogGrunt() {
     if (this.muted) return;
     this.init();
     if (!this.ctx) return;
 
     const now = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
+    const filter = this.ctx.createBiquadFilter();
     const gain = this.ctx.createGain();
 
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(90 + Math.random() * 20, now);
-    osc.frequency.exponentialRampToValueAtTime(30, now + 0.05);
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(85, now);
+    osc.frequency.linearRampToValueAtTime(110, now + 0.15);
+    osc.frequency.exponentialRampToValueAtTime(65, now + 0.32);
 
-    gain.gain.setValueAtTime(0.06, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(280, now);
 
-    osc.connect(gain);
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+
+    osc.connect(filter);
+    filter.connect(gain);
     gain.connect(this.ctx.destination);
     osc.start(now);
-    osc.stop(now + 0.05);
+    osc.stop(now + 0.32);
+  }
+
+  // Comedic Slapstick: Black soot puff / misfire smoke sound
+  playSootPuff() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const bufSize = Math.floor(this.ctx.sampleRate * 0.28);
+    const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.7;
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buf;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(600, now);
+    filter.frequency.exponentialRampToValueAtTime(180, now + 0.28);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+    noise.start(now);
+    noise.stop(now + 0.28);
+  }
+
+  // Deep resonant Bagan temple gong (*မောင်းတော်ကြီးသံ*)
+  playTempleGong() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const baseFreq = 110; // A2
+    const partials = [110, 222, 336, 560];
+
+    partials.forEach((f, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f, now);
+
+      gain.gain.setValueAtTime(0.14 / (idx + 1), now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 3.2);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 3.2);
+    });
   }
 
   // Machinarium Brass Gear ratchet click
@@ -514,6 +864,106 @@ class SoundEngine {
 
     noise.start(now);
     noise.stop(now + 0.12);
+  }
+
+  // Machinarium Temple Sparrow / Mechanical Bird Chirp
+  playBirdChirp() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const notes = [
+      { f1: 1850, f2: 2650, delay: 0 },
+      { f1: 2400, f2: 3150, delay: 0.08 }
+    ];
+
+    notes.forEach((n) => {
+      const t = this.ctx.currentTime + n.delay;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(n.f1, t);
+      osc.frequency.exponentialRampToValueAtTime(n.f2, t + 0.04);
+      osc.frequency.exponentialRampToValueAtTime(n.f1 * 0.9, t + 0.07);
+
+      gain.gain.setValueAtTime(0.09, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.075);
+    });
+  }
+
+  // Ancient Bagan Wall Gecko / Insect Scuttle (rapid clicking)
+  playInsectScuttle() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    for (let i = 0; i < 5; i++) {
+      const t = this.ctx.currentTime + i * 0.038;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(1400 + Math.random() * 600, t);
+      osc.frequency.exponentialRampToValueAtTime(700, t + 0.02);
+
+      gain.gain.setValueAtTime(0.06, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.02);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.025);
+    }
+  }
+
+  // Crumbling Loose Brick Rattle & Dust
+  playBrickRattle() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    // 1. Heavy thud
+    const osc = this.ctx.createOscillator();
+    const oGain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(130, now);
+    osc.frequency.exponentialRampToValueAtTime(60, now + 0.12);
+    oGain.gain.setValueAtTime(0.18, now);
+    oGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    osc.connect(oGain);
+    oGain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.12);
+
+    // 2. Gritty sand grit noise
+    const bufferSize = Math.floor(this.ctx.sampleRate * 0.18);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.6;
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(450, now);
+    filter.Q.setValueAtTime(2.5, now);
+
+    const nGain = this.ctx.createGain();
+    nGain.gain.setValueAtTime(0.12, now);
+    nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+    noise.connect(filter);
+    filter.connect(nGain);
+    nGain.connect(this.ctx.destination);
+    noise.start(now);
+    noise.stop(now + 0.18);
   }
 
   // Thought Bubble Pop
@@ -696,7 +1146,7 @@ class SoundEngine {
   }
 
   isMuted() {
-    return this.muted;
+    return audioDirector.getMuted();
   }
 
   // Floex-style Subterranean Atmospheric Drone

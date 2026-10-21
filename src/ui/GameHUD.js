@@ -6,13 +6,14 @@ import { gameState, toBurmeseNumeral } from '../utils/GameState.js';
 import { soundEngine } from '../utils/SoundEngine.js';
 import { AmbientAtmosphere } from '../utils/AmbientAtmosphere.js';
 import { MicroInteractions } from '../utils/MicroInteractions.js';
+import SettingsModal from './SettingsModal.js';
 
 export default class GameHUD {
   constructor(scene, options = {}) {
     this.scene = scene;
     this.options = options;
     this.container = null;
-    this.menuModal = null;
+    this.settingsModal = new SettingsModal(scene);
     this.create();
   }
 
@@ -97,8 +98,14 @@ export default class GameHUD {
     this.setupHotkeys();
 
     // Resize handler
-    this.scene.scale.on('resize', (gameSize) => {
-      this.resize(gameSize.width, gameSize.height);
+    const resizeHandler = (gameSize) => {
+      if (this.container && this.container.active) {
+        this.resize(gameSize.width, gameSize.height);
+      }
+    };
+    this.scene.scale.on('resize', resizeHandler);
+    this.scene.events.once('shutdown', () => {
+      this.scene.scale.off('resize', resizeHandler);
     });
   }
 
@@ -141,7 +148,7 @@ export default class GameHUD {
   }
 
   toggleOptionsMenu() {
-    if (this.menuModal) {
+    if (this.settingsModal && this.settingsModal.isOpen()) {
       this.closeOptionsMenu();
     } else {
       this.openOptionsMenu();
@@ -149,121 +156,15 @@ export default class GameHUD {
   }
 
   openOptionsMenu() {
-    soundEngine.playPickup();
-    const width = this.scene.scale.width;
-    const height = this.scene.scale.height;
-
-    this.menuModal = this.scene.add.container(width / 2, height / 2).setDepth(500);
-
-    // Dim background
-    const dim = this.scene.add.rectangle(0, 0, width, height, 0x000000, 0.72)
-      .setInteractive();
-    dim.on('pointerdown', (p, lx, ly, ev) => {
-      ev.stopPropagation();
-      this.closeOptionsMenu();
-    });
-
-    // Modal dialog box (rounded-[32px], Perplexity aesthetic)
-    const box = this.scene.add.graphics();
-    box.fillStyle(0x17120e, 0.98);
-    box.fillRoundedRect(-180, -140, 360, 280, 32);
-    box.lineStyle(2, 0xd97706, 0.85);
-    box.strokeRoundedRect(-180, -140, 360, 280, 32);
-
-    const title = this.scene.add.text(0, -95, '⚙️ မီနူး / OPTIONS', {
-      fontFamily: 'Noto Sans Myanmar, Plus Jakarta Sans',
-      fontSize: '17px',
-      fontStyle: '900',
-      color: '#f59e0b',
-      letterSpacing: '1px'
-    }).setOrigin(0.5);
-
-    const subtitle = this.scene.add.text(0, -65, 'ဖိုးထောင် - ပုဂံရွှေမြို့တော်ရှာပုံတော်', {
-      fontFamily: 'Noto Sans Myanmar',
-      fontSize: '12px',
-      color: '#a8a29e'
-    }).setOrigin(0.5);
-
-    // Button 1: Restart Chapter
-    const restartBtn = this.createMenuButton(0, -15, '🔄 အခန်း ပြန်စမည် (Restart Chapter)', () => {
-      this.closeOptionsMenu();
-      soundEngine.playPickup();
-      this.scene.scene.restart();
-    });
-
-    // Button 2: Main Menu
-    const menuBtn = this.createMenuButton(0, 45, '🏠 ပင်မ မီနူး (Main Menu)', () => {
-      this.closeOptionsMenu();
-      soundEngine.playPickup();
-      this.scene.cameras.main.fade(400, 12, 10, 8);
-      this.scene.time.delayedCall(400, () => {
-        this.scene.scene.start('IntroScene');
-      });
-    });
-
-    // Close X button
-    const closeBtn = this.createMenuButton(0, 100, '❌ ပိတ်မည် (Close)', () => {
-      this.closeOptionsMenu();
-    });
-
-    this.menuModal.add([dim, box, title, subtitle, restartBtn, menuBtn, closeBtn]);
-
-    // Animate open
-    this.menuModal.setScale(0.9);
-    this.menuModal.setAlpha(0);
-    this.scene.tweens.add({
-      targets: this.menuModal,
-      scale: 1,
-      alpha: 1,
-      duration: 180,
-      ease: 'Back.Out'
-    });
-  }
-
-  createMenuButton(x, y, labelText, onClick) {
-    const btn = this.scene.add.container(x, y).setSize(280, 42);
-
-    const bg = this.scene.add.graphics();
-    bg.fillStyle(0x271e17, 1);
-    bg.fillRoundedRect(-140, -21, 280, 42, 21);
-    bg.lineStyle(1.5, 0x78350f, 0.9);
-    bg.strokeRoundedRect(-140, -21, 280, 42, 21);
-
-    const text = this.scene.add.text(0, 0, labelText, {
-      fontFamily: 'Noto Sans Myanmar, Plus Jakarta Sans',
-      fontSize: '13px',
-      fontStyle: 'bold',
-      color: '#ffffff'
-    }).setOrigin(0.5);
-
-    btn.add([bg, text]);
-    btn.setInteractive({ useHandCursor: true });
-    MicroInteractions.makeInteractiveHover(btn, 1.05);
-
-    btn.on('pointerdown', (p, lx, ly, ev) => {
-      if (ev && ev.stopPropagation) ev.stopPropagation();
-      onClick();
-    });
-
-    return btn;
+    if (this.settingsModal) {
+      this.settingsModal.show();
+    }
   }
 
   closeOptionsMenu() {
-    if (!this.menuModal) return;
-    soundEngine.playPickup();
-    this.scene.tweens.add({
-      targets: this.menuModal,
-      scale: 0.9,
-      alpha: 0,
-      duration: 140,
-      ease: 'Quad.In',
-      onComplete: () => {
-        if (this.menuModal) {
-          this.menuModal.destroy();
-          this.menuModal = null;
-        }
-      }
-    });
+    if (this.settingsModal) {
+      this.settingsModal.close();
+    }
   }
 
   resize(width, height) {
@@ -276,8 +177,8 @@ export default class GameHUD {
         this.container.setScale(1);
       }
     }
-    if (this.menuModal) {
-      this.menuModal.setPosition(width / 2, height / 2);
+    if (this.settingsModal && this.settingsModal.container) {
+      this.settingsModal.container.setPosition(width / 2, height / 2);
     }
   }
 }

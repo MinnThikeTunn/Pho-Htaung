@@ -3,7 +3,7 @@ import SubtitleBox from '../ui/SubtitleBox.js';
 import InventoryBar from '../ui/InventoryBar.js';
 import ThoughtBubble from '../ui/ThoughtBubble.js';
 import GameHUD from '../ui/GameHUD.js';
-import { gameState } from '../utils/GameState.js';
+import { gameState, BURMESE_DIGITS } from '../utils/GameState.js';
 import { soundEngine } from '../utils/SoundEngine.js';
 import { MicroInteractions } from '../utils/MicroInteractions.js';
 import { AmbientAtmosphere } from '../utils/AmbientAtmosphere.js';
@@ -16,6 +16,8 @@ export default class Chapter4Scene extends Phaser.Scene {
   create() {
     const width = this.scale.width;
     const height = this.scale.height;
+
+    this.cameras.main.fadeIn(400, 12, 10, 8);
 
     this.isDead = false;
     gameState.setCurrentScene('Chapter4Scene');
@@ -47,15 +49,17 @@ export default class Chapter4Scene extends Phaser.Scene {
     this.createIronSafe(this.safeX, this.safeY);
 
     // 4. Phoe Htaung Player Character (Left of Safe)
+    this.playerBaseScale = 1.42;
     this.playerX = width * 0.44;
-    this.playerY = groundY - 42;
-    this.player = this.add.sprite(this.playerX, this.playerY, 'ph-idle').setDepth(30);
+    this.playerY = groundY - 58;
+    this.player = this.add.sprite(this.playerX, this.playerY, 'ph-idle').setScale(this.playerBaseScale).setDepth(30);
 
     // Point-and-click walking
     this.input.on('pointerdown', (pointer) => {
       if (this.blueprintOpen) return;
       if (pointer.y > groundY - 100 && pointer.y < groundY + 80) {
         this.targetX = pointer.x;
+        this.pendingAction = null;
         MicroInteractions.spawnClickMarker(this, pointer.x, groundY - 20);
       }
     });
@@ -63,17 +67,25 @@ export default class Chapter4Scene extends Phaser.Scene {
     // 5. Tool Pickups (Engineer's Secret Note)
     this.createFloorItems(groundY);
 
-    // 6. Floating Dust Motes & Cavern Drips
+    // 6. Floating Dust Motes & Cavern Drips & Atmosphere Overlays
     AmbientAtmosphere.createDustMotes(this, 24);
     AmbientAtmosphere.startCavernDrips(this, groundY);
+    AmbientAtmosphere.createWeatheredOverlay(this);
+    AmbientAtmosphere.createForegroundSilhouettes(this, 'canyon');
+    AmbientAtmosphere.createVolumetricRays(this, width * 0.68, 0);
 
-    // 7. HUD & Inventory Bar & Thought Bubble
+    // 7. Ambient Toys (Machinarium Juice)
+    this.createAmbientToys(groundY, width);
+
+    // 8. HUD & Auto-Hiding Inventory Bar & Thought Bubble
     this.hud = new GameHUD(this);
     this.thought = new ThoughtBubble(this);
-
     this.inventoryBar = new InventoryBar(this, (combined) => {});
 
-    // 7. Subtitle Box
+    // Natural Signifiers
+    AmbientAtmosphere.startNaturalSignifiers(this, [this.noteItem, this.safeContainer, this.keyholeHitZone]);
+
+    // 9. Subtitle Box
     this.subtitle = new SubtitleBox(this);
 
     // Screen Vignette
@@ -276,7 +288,9 @@ export default class Chapter4Scene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     this.keyholeHitZone.on('pointerdown', () => {
-      this.handleKeyholeClick();
+      this.interactWithProximity(this.safeX - 35, () => {
+        this.handleKeyholeClick();
+      });
     });
 
     this.vaultDoor.add([vaultPlate, this.keyholeG, this.keyholeHitZone]);
@@ -290,20 +304,21 @@ export default class Chapter4Scene extends Phaser.Scene {
       const dx = dialXOffsets[i];
       const dy = -25;
 
-      // Dial frame
+      // Dial frame (Heavy brass Machinarium tumbler)
       const dialBox = this.add.graphics();
       dialBox.fillStyle(0x0f172a, 1);
-      dialBox.fillRoundedRect(dx - 18, dy - 24, 36, 48, 8);
-      dialBox.lineStyle(1.5, 0x64748b, 1);
-      dialBox.strokeRoundedRect(dx - 18, dy - 24, 36, 48, 8);
+      dialBox.fillRoundedRect(dx - 18, dy - 26, 36, 52, 8);
+      dialBox.lineStyle(1.8, 0xd97706, 1);
+      dialBox.strokeRoundedRect(dx - 18, dy - 26, 36, 52, 8);
       this.safeContainer.add(dialBox);
 
-      // Dial number text
-      const dText = this.add.text(dx, dy, '0', {
-        fontFamily: 'Plus Jakarta Sans',
-        fontSize: '22px',
+      // Dial number text with Burmese numeral pair
+      const dText = this.add.text(dx, dy, `0\n၀`, {
+        fontFamily: 'Noto Sans Myanmar, Plus Jakarta Sans',
+        fontSize: '14px',
         fontStyle: '900',
-        color: '#38bdf8'
+        align: 'center',
+        color: '#fde047'
       }).setOrigin(0.5);
       this.safeContainer.add(dText);
       this.dialTexts.push(dText);
@@ -315,7 +330,9 @@ export default class Chapter4Scene extends Phaser.Scene {
       }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
       upBtn.on('pointerdown', () => {
-        this.changeDial(i, 1);
+        this.interactWithProximity(this.safeX - 45, () => {
+          this.changeDial(i, 1);
+        });
       });
       this.safeContainer.add(upBtn);
 
@@ -326,7 +343,9 @@ export default class Chapter4Scene extends Phaser.Scene {
       }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
       downBtn.on('pointerdown', () => {
-        this.changeDial(i, -1);
+        this.interactWithProximity(this.safeX - 45, () => {
+          this.changeDial(i, -1);
+        });
       });
       this.safeContainer.add(downBtn);
     }
@@ -351,7 +370,9 @@ export default class Chapter4Scene extends Phaser.Scene {
     this.safeContainer.add(this.handleBtn);
 
     this.handleBtn.on('pointerdown', () => {
-      this.submitCode();
+      this.interactWithProximity(this.safeX - 45, () => {
+        this.submitCode();
+      });
     });
 
     if (this.safeUnlocked) {
@@ -363,7 +384,7 @@ export default class Chapter4Scene extends Phaser.Scene {
   changeDial(index, delta) {
     if (this.safeUnlocked || this.isDead) return;
     this.dials[index] = (this.dials[index] + delta + 10) % 10;
-    this.dialTexts[index].setText(`${this.dials[index]}`);
+    this.dialTexts[index].setText(`${this.dials[index]}\n${BURMESE_DIGITS[this.dials[index]]}`);
     soundEngine.playGearClick();
   }
 
@@ -436,15 +457,9 @@ export default class Chapter4Scene extends Phaser.Scene {
     if (selected === 'dried_chili') {
       this.triggerChiliSneezeUnlock();
     } else if (selected) {
-      MicroInteractions.triggerDenial(
-        this,
-        this.safeContainer,
-        this.player,
-        'ဒါကို သော့ပေါက်ထဲ ထိုးထည့်လို့ မရဘူး!',
-        'item-chili',
-        this.thought,
-        this.subtitle
-      );
+      MicroInteractions.triggerSootPuff(this, this.player, () => {
+        this.subtitle.say('ဒါကို သော့ပေါက်ထဲ ထိုးထည့်လို့ မရဘူးဟေ့! မီးခိုးတွေ မင်းမျက်နှာထဲ မှုတ်ထုတ်လိုက်ပြီ!');
+      });
     } else {
       this.thought.show(this.player.x, this.player.y, 'item-chili', 'ငရုတ်သီး ထိုးထည့်ရန်');
       this.subtitle.say('သော့ပေါက်ကြီး ဟောင်းလောင်း ဖြစ်နေတယ်။ ပုံကြမ်းထဲကလို ငရုတ်သီးနဲ့ စမ်းသပ်ကြည့်ရင် ကောင်းမလား?');
@@ -518,17 +533,46 @@ export default class Chapter4Scene extends Phaser.Scene {
     });
   }
 
+  createAmbientToys(groundY, width) {
+    // 1. Clockwork Wall Cavity Gear Toy
+    const gearToy = this.add.image(width * 0.12, this.scale.height * 0.38, 'item-cog').setScale(0.8).setTint(0xf59e0b).setDepth(14);
+    MicroInteractions.attachAmbientToy(this, gearToy, 'pot');
+
+    // 2. Heavy iron scrap bucket / pot
+    const ironUrn = this.add.image(width * 0.22, groundY - 16, 'item-stone-3').setScale(0.9).setTint(0x475569).setDepth(14);
+    MicroInteractions.attachAmbientToy(this, ironUrn, 'pot');
+  }
+
+  interactWithProximity(targetX, onReachCallback) {
+    if (this.isDead || this.blueprintOpen) return;
+    const distance = Math.abs(this.player.x - targetX);
+    const baseScale = this.playerBaseScale || 1.42;
+    if (distance <= 85) {
+      this.player.setScale(targetX > this.player.x ? baseScale : -baseScale, baseScale);
+      onReachCallback();
+    } else {
+      const walkToX = targetX > this.player.x ? targetX - 55 : targetX + 55;
+      this.targetX = walkToX;
+      this.pendingAction = () => {
+        this.player.setScale(targetX > this.player.x ? baseScale : -baseScale, baseScale);
+        onReachCallback();
+      };
+    }
+  }
+
   createFloorItems(groundY) {
     if (!gameState.hasItem('engineer_note')) {
-      this.noteItem = this.add.image(this.scale.width * 0.38, groundY - 18, 'item-engineer-note')
-        .setScale(1);
+      this.noteItem = this.add.image(this.scale.width * 0.38, groundY - 14, 'item-engineer-note')
+        .setScale(0.5);
       MicroInteractions.makeInteractiveHover(this.noteItem, 1.15);
 
       this.noteItem.on('pointerdown', () => {
-        MicroInteractions.pickupItemToBag(this, this.noteItem, this.player, () => {
-          gameState.addItem('engineer_note');
-          this.inventoryBar.refresh();
-          this.showBlueprintOverlay();
+        this.interactWithProximity(this.noteItem.x, () => {
+          MicroInteractions.pickupItemToBag(this, this.noteItem, this.player, () => {
+            gameState.addItem('engineer_note');
+            this.inventoryBar.refresh();
+            this.showBlueprintOverlay();
+          });
         });
       });
     }
@@ -561,7 +605,27 @@ export default class Chapter4Scene extends Phaser.Scene {
       this.closeBlueprintOverlay();
     });
 
-    this.blueprintContainer.add([dim, blueprintImg]);
+    // Close Pill Button
+    const closeBtn = this.add.container(0, 165).setSize(140, 36);
+    const cBg = this.add.graphics();
+    cBg.fillStyle(0x271e17, 0.95);
+    cBg.fillRoundedRect(-70, -18, 140, 36, 18);
+    cBg.lineStyle(1.5, 0xd97706, 0.85);
+    cBg.strokeRoundedRect(-70, -18, 140, 36, 18);
+
+    const cText = this.add.text(0, 0, '❌ ပိတ်မည်', {
+      fontFamily: 'Noto Sans Myanmar, Plus Jakarta Sans, sans-serif',
+      fontSize: '12px',
+      fontStyle: '900',
+      color: '#ffffff'
+    }).setOrigin(0.5);
+
+    closeBtn.add([cBg, cText]);
+    closeBtn.setInteractive({ useHandCursor: true });
+    MicroInteractions.makeInteractiveHover(closeBtn, 1.08);
+    closeBtn.on('pointerdown', () => this.closeBlueprintOverlay());
+
+    this.blueprintContainer.add([dim, blueprintImg, closeBtn]);
 
     this.subtitle.say('အင်ဂျင်နီယာ ရေးဆွဲထားတဲ့ လျှို့ဝှက်ပုံကြမ်းပဲ! ၄-၂-၃ ဆိုတဲ့ စကားထာအဖြေက ကတ်ကြေးထောင်ချောက်တဲ့ဗျာ! ငရုတ်သီးနဲ့မှ သော့ခလောက် ပြုတ်ကျမှာတဲ့!');
   }
@@ -577,15 +641,19 @@ export default class Chapter4Scene extends Phaser.Scene {
 
   update(time, delta) {
     if (this.isDead || this.blueprintOpen) return;
+    const baseScale = this.playerBaseScale || 1.42;
 
     if (this.targetX !== null) {
       const dist = this.targetX - this.player.x;
       if (Math.abs(dist) > 8) {
         this.player.x += Math.sign(dist) * 3.5;
-        this.player.setScale(Math.sign(dist), 1);
+        this.player.setScale(Math.sign(dist) * baseScale, baseScale);
         this.player.setAngle(2.5 * Math.sign(dist));
         this.playerX = this.player.x;
         this.lastMoveTime = time;
+        if (this.player.isPerformingIdle) {
+          MicroInteractions.cancelIdleAction(this, this.player);
+        }
 
         if (!this.stepTimer || time > this.stepTimer) {
           soundEngine.playFootstep();
@@ -596,21 +664,33 @@ export default class Chapter4Scene extends Phaser.Scene {
         }
       } else {
         this.targetX = null;
+        if (this.pendingAction) {
+          const act = this.pendingAction;
+          this.pendingAction = null;
+          act();
+        }
         this.player.setAngle(0);
-        if (this.player.texture.key !== 'ph-idle' && this.player.texture.key !== 'ph-cut-legs' && this.player.texture.key !== 'ph-flat') {
+        const isIdleSpecial = this.player.isPerformingIdle || ['ph-mad', 'ph-think', 'ph-laugh', 'ph-bag-rummage'].includes(this.player.texture.key);
+        if (!isIdleSpecial && this.player.texture.key !== 'ph-idle' && this.player.texture.key !== 'ph-cut-legs' && this.player.texture.key !== 'ph-flat') {
           this.player.setTexture('ph-idle');
         }
       }
     } else {
       this.player.setAngle(0);
-      if (this.player.texture.key !== 'ph-idle' && this.player.texture.key !== 'ph-cut-legs' && this.player.texture.key !== 'ph-flat') {
+      const isIdleSpecial = this.player.isPerformingIdle || ['ph-mad', 'ph-think', 'ph-laugh', 'ph-bag-rummage'].includes(this.player.texture.key);
+      if (!isIdleSpecial && this.player.texture.key !== 'ph-idle' && this.player.texture.key !== 'ph-cut-legs' && this.player.texture.key !== 'ph-flat') {
         this.player.setTexture('ph-idle');
       }
 
-      // Machinarium Idle Micro-Behaviors (Betel spitting, bag adjust, cheek twitch)
-      if (time - this.lastMoveTime > 4500 && time > this.nextIdleTime) {
+      // Continuous Organic Inhaling/Exhaling Breathing Animation
+      if (!isIdleSpecial && this.player.texture.key === 'ph-idle') {
+        MicroInteractions.applyIdleBreathing(this.player, time, 1.0);
+      }
+
+      // Machinarium Idle Micro-Behaviors (Laughing, Thinking, Mad, Betel spitting, fly swatting)
+      if (time - this.lastMoveTime > 3500 && time > this.nextIdleTime) {
         MicroInteractions.triggerIdleAction(this, this.player, this.groundY);
-        this.nextIdleTime = time + Phaser.Math.Between(4500, 7500);
+        this.nextIdleTime = time + Phaser.Math.Between(4000, 6500);
       }
     }
   }

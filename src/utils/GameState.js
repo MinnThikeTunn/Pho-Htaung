@@ -31,6 +31,37 @@ export const ITEM_NAMES_MY = {
   engineer_note: 'လျှို့ဝှက်ပုံကြမ်း စာရွက်'
 };
 
+export const ITEM_TEXTURE_KEYS = {
+  betel_cutter: 'item-betel-cutter',
+  torn_bottle: 'item-torn-bottle',
+  half_bottle: 'item-half-bottle',
+  rusty_spike: 'item-rusty-spike',
+  dried_chili: 'item-chili',
+  dry_twigs: 'item-twigs',
+  stone_3: 'item-stone-3',
+  gold_7: 'item-gold-7',
+  red_gem: 'item-red-gem',
+  bamboo_pole: 'item-bamboo-pole',
+  rusty_cog: 'item-cog',
+  chalk: 'item-chalk',
+  engineer_note: 'item-engineer-note'
+};
+
+export const ALL_STARTING_ITEMS = [
+  'betel_cutter',
+  'torn_bottle',
+  'rusty_cog',
+  'bamboo_pole',
+  'rusty_spike',
+  'dried_chili',
+  'dry_twigs',
+  'stone_3',
+  'gold_7',
+  'red_gem',
+  'chalk',
+  'engineer_note'
+];
+
 class GameStateManager {
   constructor() {
     this.resetState();
@@ -59,6 +90,14 @@ class GameStateManager {
               ...parsed,
               flags: { ...this.state.flags, ...(parsed.flags || {}) }
             };
+            // Guarantee all items are available to start
+            if (Array.isArray(this.state.inventory)) {
+              ALL_STARTING_ITEMS.forEach((item) => {
+                if (!this.state.inventory.includes(item)) {
+                  this.state.inventory.push(item);
+                }
+              });
+            }
             return true;
           }
         }
@@ -90,7 +129,7 @@ class GameStateManager {
     this.state = {
       currentScene: 'INTRO',
       deathCount: 0,
-      inventory: ['betel_cutter', 'torn_bottle'],
+      inventory: [...ALL_STARTING_ITEMS],
       flags: {
         ch1_tunnel_open: false,
         ch2_bottle_cut: false,

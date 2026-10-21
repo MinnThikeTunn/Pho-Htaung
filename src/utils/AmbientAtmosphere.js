@@ -143,4 +143,178 @@ export class AmbientAtmosphere {
       });
     }
   }
+
+  /**
+   * Machinarium Weathered Parchment & Grunge Texture Overlay
+   * Applies subtle paper grain, dust motes, and weathered vignette across the viewport.
+   */
+  static createWeatheredOverlay(scene) {
+    const width = scene.scale.width;
+    const height = scene.scale.height;
+
+    const overlay = scene.add.container(0, 0).setDepth(240);
+
+    // Subtle grunge grain mask
+    const grain = scene.add.graphics();
+    grain.fillStyle(0x0c0a08, 0.12);
+    for (let i = 0; i < 90; i++) {
+      const gx = Phaser.Math.Between(0, width);
+      const gy = Phaser.Math.Between(0, height);
+      const gw = Phaser.Math.Between(2, 6);
+      const gh = Phaser.Math.Between(1, 3);
+      grain.fillRect(gx, gy, gw, gh);
+    }
+    overlay.add(grain);
+
+    // Warm golden-hour vignette edges
+    const vignette = scene.add.graphics();
+    vignette.fillStyle(0x27170a, 0.08);
+    vignette.fillRect(0, 0, width, 24);
+    vignette.fillRect(0, height - 24, width, 24);
+    vignette.fillRect(0, 0, 24, height);
+    vignette.fillRect(width - 24, 0, 24, height);
+    overlay.add(vignette);
+
+    scene.events.once('shutdown', () => {
+      overlay.destroy();
+    });
+
+    return overlay;
+  }
+
+  /**
+   * Layer 4: Dark Silhouette Foreground (Overhanging ancient temple archways & banyan vines)
+   * Moves with subtle parallax to create authentic 2.5D depth.
+   */
+  static createForegroundSilhouettes(scene, style = 'canyon') {
+    const width = scene.scale.width;
+    const height = scene.scale.height;
+    const fg = scene.add.graphics().setDepth(250);
+
+    fg.fillStyle(0x080605, 0.96);
+
+    if (style === 'canyon' || style === 'temple') {
+      // Top-left jagged stone arch overhang
+      fg.beginPath();
+      fg.moveTo(0, 0);
+      fg.lineTo(width * 0.28, 0);
+      fg.lineTo(width * 0.22, 45);
+      fg.lineTo(width * 0.16, 32);
+      fg.lineTo(width * 0.08, 70);
+      fg.lineTo(0, 95);
+      fg.closePath();
+      fg.fill();
+
+      // Hanging ancient roots / vines from arch
+      fg.lineStyle(2.5, 0x050403, 1);
+      fg.beginPath();
+      fg.moveTo(width * 0.08, 70);
+      fg.lineTo(width * 0.09, 110);
+      fg.lineTo(width * 0.07, 140);
+      fg.moveTo(width * 0.16, 32);
+      fg.lineTo(width * 0.15, 75);
+      fg.lineTo(width * 0.17, 105);
+      fg.stroke();
+
+      // Top-right silhouette rock outcropping
+      fg.beginPath();
+      fg.moveTo(width, 0);
+      fg.lineTo(width * 0.76, 0);
+      fg.lineTo(width * 0.82, 38);
+      fg.lineTo(width * 0.91, 26);
+      fg.lineTo(width, 75);
+      fg.closePath();
+      fg.fill();
+    }
+
+    scene.events.once('shutdown', () => {
+      fg.destroy();
+    });
+
+    return fg;
+  }
+
+  /**
+   * Volumetric Golden-Hour Rays (နေခြည်အလင်းတန်းများ) cutting through ancient stone archways
+   */
+  static createVolumetricRays(scene, originX, originY) {
+    const width = scene.scale.width;
+    const height = scene.scale.height;
+
+    const rays = scene.add.graphics().setDepth(15);
+    const ox = originX !== undefined ? originX : width * 0.35;
+    const oy = originY !== undefined ? originY : 0;
+
+    rays.fillStyle(0xfbbf24, 0.05);
+    rays.beginPath();
+    rays.moveTo(ox, oy);
+    rays.lineTo(ox - 90, height);
+    rays.lineTo(ox + 40, height);
+    rays.closePath();
+    rays.fill();
+
+    rays.beginPath();
+    rays.moveTo(ox + 50, oy);
+    rays.lineTo(ox + 60, height);
+    rays.lineTo(ox + 180, height);
+    rays.closePath();
+    rays.fill();
+
+    // Gentle opacity breathing tween
+    scene.tweens.add({
+      targets: rays,
+      alpha: { from: 0.6, to: 1 },
+      duration: 3800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.InOut'
+    });
+
+    scene.events.once('shutdown', () => {
+      rays.destroy();
+    });
+
+    return rays;
+  }
+
+  /**
+   * Natural Signifiers: Specular glints and loose-tile wobbles to guide the eye
+   * replacing explicit dashed boxes.
+   */
+  static startNaturalSignifiers(scene, glintTargets = []) {
+    const timer = scene.time.addEvent({
+      delay: 4200,
+      loop: true,
+      callback: () => {
+        if (!glintTargets || glintTargets.length === 0) return;
+        const target = glintTargets[Math.floor(Math.random() * glintTargets.length)];
+        if (!target || !target.active || !target.visible) return;
+
+        const bounds = typeof target.getBounds === 'function' ? target.getBounds() : null;
+        const gx = bounds ? bounds.centerX : target.x;
+        const gy = bounds ? bounds.centerY : target.y;
+
+        // Specular glint star
+        const glint = scene.add.text(gx, gy, '✦', {
+          fontFamily: 'sans-serif',
+          fontSize: '18px',
+          color: '#fef08a'
+        }).setOrigin(0.5).setDepth(260).setAlpha(0).setScale(0.4);
+
+        scene.tweens.add({
+          targets: glint,
+          scale: 1.2,
+          alpha: { from: 0, to: 0.9 },
+          duration: 350,
+          yoyo: true,
+          ease: 'Sine.InOut',
+          onComplete: () => glint.destroy()
+        });
+      }
+    });
+
+    scene.events.once('shutdown', () => {
+      timer.destroy();
+    });
+  }
 }

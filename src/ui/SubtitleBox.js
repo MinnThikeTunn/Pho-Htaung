@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { soundEngine } from '../utils/SoundEngine.js';
+import { audioDirector } from '../audio/AudioDirector.js';
 
 export default class SubtitleBox {
   constructor(scene) {
@@ -58,6 +59,7 @@ export default class SubtitleBox {
     this.container.setVisible(true);
     this.bodyText.setText('');
     this.isTyping = true;
+    audioDirector.setDialoguePlaying(true);
 
     let charIndex = 0;
     const chars = Array.from(text);
@@ -76,15 +78,14 @@ export default class SubtitleBox {
 
         if (charIndex >= chars.length) {
           this.isTyping = false;
-          if (this.onCompleteCallback) {
-            this.scene.time.delayedCall(1600, () => {
-              if (this.onCompleteCallback) {
-                const cb = this.onCompleteCallback;
-                this.onCompleteCallback = null;
-                cb();
-              }
-            });
-          }
+          this.scene.time.delayedCall(1600, () => {
+            audioDirector.setDialoguePlaying(false);
+            if (this.onCompleteCallback) {
+              const cb = this.onCompleteCallback;
+              this.onCompleteCallback = null;
+              cb();
+            }
+          });
         }
       }
     });
@@ -95,11 +96,14 @@ export default class SubtitleBox {
       if (this.timer) this.timer.remove();
       this.bodyText.setText(this.fullText);
       this.isTyping = false;
-      if (this.onCompleteCallback) {
-        const cb = this.onCompleteCallback;
-        this.onCompleteCallback = null;
-        cb();
-      }
+      this.scene.time.delayedCall(400, () => {
+        audioDirector.setDialoguePlaying(false);
+        if (this.onCompleteCallback) {
+          const cb = this.onCompleteCallback;
+          this.onCompleteCallback = null;
+          cb();
+        }
+      });
     } else {
       this.hide();
     }
@@ -109,10 +113,11 @@ export default class SubtitleBox {
     if (this.timer) this.timer.remove();
     this.isTyping = false;
     this.container.setVisible(false);
+    audioDirector.setDialoguePlaying(false);
   }
 
   resize(width, height) {
-    if (!this.container) return;
+    if (!this.container || !this.container.active || !this.bodyText || !this.bodyText.active) return;
     this.container.setPosition(width / 2, height - 90);
     this.bg.clear();
     this.bg.fillStyle(0x14100c, 0.94);

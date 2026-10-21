@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
-import { machinariumAudio } from '../utils/MachinariumAudio.js';
+import { soundEngine } from '../utils/SoundEngine.js';
+import { gameState } from '../utils/GameState.js';
+import { MicroInteractions } from '../utils/MicroInteractions.js';
 
 export default class VictoryScene extends Phaser.Scene {
   constructor() {
@@ -8,7 +10,11 @@ export default class VictoryScene extends Phaser.Scene {
 
   create() {
     this.setupLayout();
-    this.scale.on('resize', () => this.setupLayout(), this);
+    const resizeHandler = () => this.setupLayout();
+    this.scale.on('resize', resizeHandler);
+    this.events.once('shutdown', () => {
+      this.scale.off('resize', resizeHandler);
+    });
   }
 
   setupLayout() {
@@ -17,115 +23,146 @@ export default class VictoryScene extends Phaser.Scene {
     if (this.mainContainer) this.mainContainer.destroy();
     this.mainContainer = this.add.container(0, 0);
 
-    // Warm atmospheric background
+    // 1. Warm Bagan atmospheric background
     const bg = this.add.graphics();
     bg.fillGradientStyle(0x271e17, 0x271e17, 0x0c0a08, 0x0c0a08, 1);
     bg.fillRect(0, 0, width, height);
     this.mainContainer.add(bg);
 
-    // Glowing mechanical city light beam
+    // 2. Glowing golden temple light beams
     const beam = this.add.graphics();
-    beam.fillStyle(0xf59e0b, 0.14);
+    beam.fillStyle(0xf59e0b, 0.12);
     beam.fillTriangle(width / 2, 0, width / 2 - 380, height, width / 2 + 380, height);
     this.mainContainer.add(beam);
 
-    // Rotating celebration clockwork gears
-    this.gearL = this.add.image(width * 0.14, height / 2, 'industrial-gear').setScale(2.4).setAlpha(0.22);
-    this.gearR = this.add.image(width * 0.86, height / 2, 'industrial-gear').setScale(2.4).setAlpha(0.22);
-    this.mainContainer.add([this.gearL, this.gearR]);
+    // 3. Central Phoe Htaung Character Preview (Celebrating)
+    const ph = this.add.image(width / 2, height / 2 - 10, 'ph-idle')
+      .setScale(1.6)
+      .setDepth(20);
+    this.mainContainer.add(ph);
 
-    // Centered Josef in Full Glory
-    const josefContainer = this.add.container(width / 2, height / 2 - 30).setDepth(20);
-    const legL = this.add.image(-12, 30, 'robot-leg');
-    const legR = this.add.image(12, 30, 'robot-leg');
-    const body = this.add.image(0, 0, 'robot-torso');
-    const armL = this.add.image(-28, -12, 'robot-arm').setRotation(-0.85); // Waving arm!
-    const armR = this.add.image(28, 4, 'robot-arm');
-    const head = this.add.image(0, -42, 'robot-head');
-    const pupilL = this.add.image(-7, -42, 'robot-pupil');
-    const pupilR = this.add.image(7, -42, 'robot-pupil');
-
-    josefContainer.add([legL, legR, body, armL, armR, head, pupilL, pupilR]);
-    this.mainContainer.add(josefContainer);
-
-    // Waving animation
+    // Subtle celebratory bounce
     this.tweens.add({
-      targets: armL,
-      rotation: { from: -0.6, to: -1.3 },
-      duration: 480,
+      targets: ph,
+      y: ph.y - 12,
+      duration: 650,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut'
     });
 
-    // Victory Title
-    const title = this.add.text(width / 2, height / 2 - 160, 'CITY OF MACHINA UNLOCKED!', {
-      fontFamily: 'Plus Jakarta Sans',
-      fontSize: 'clamp(36px, 5vw, 56px)',
-      fontStyle: '900',
-      color: '#ffffff',
-      letterSpacing: '4px'
-    }).setOrigin(0.5);
-    this.mainContainer.add(title);
+    // 4. Perplexity Rounded-[32px] Victory Card Box
+    const cardW = Math.min(540, width - 40);
+    const cardH = 340;
+    const card = this.add.graphics();
+    card.fillStyle(0x14100c, 0.94);
+    card.fillRoundedRect(width / 2 - cardW / 2, height / 2 - 190, cardW, cardH, 32);
+    card.lineStyle(2, 0xd97706, 0.85);
+    card.strokeRoundedRect(width / 2 - cardW / 2, height / 2 - 190, cardW, cardH, 32);
+    this.mainContainer.add(card);
 
-    // Subtitles
-    const sub1 = this.add.text(width / 2, height / 2 + 75, 'Josef has successfully crossed the drawbridge into the gleaming mechanical metropolis.', {
-      fontFamily: 'Plus Jakarta Sans',
-      fontSize: '17px',
-      fontWeight: '700',
+    // 5. Victory Headings
+    const title = this.add.text(width / 2, height / 2 - 145, '🏆 ရွှေမြို့တော်သို့ ရောက်ရှိသွားပြီ!', {
+      fontFamily: 'Noto Sans Myanmar, Plus Jakarta Sans, sans-serif',
+      fontSize: 'clamp(20px, 3.5vw, 28px)',
+      fontStyle: '900',
+      color: '#fbbf24',
+      letterSpacing: '1px'
+    }).setOrigin(0.5);
+
+    const subEng = this.add.text(width / 2, height / 2 - 115, 'BAGAN GOLDEN CITY UNLOCKED', {
+      fontFamily: 'Plus Jakarta Sans, sans-serif',
+      fontSize: '12px',
+      fontWeight: '800',
+      color: '#a8a29e',
+      letterSpacing: '2px'
+    }).setOrigin(0.5);
+
+    const desc = this.add.text(width / 2, height / 2 - 80, 'မောင်ဖိုးထောင်တစ်ယောက် ရတနာသိုက်ကြီးကို အောင်မြင်စွာ ရှာဖွေနိုင်ခဲ့ပါပြီ!', {
+      fontFamily: 'Noto Sans Myanmar, Plus Jakarta Sans, sans-serif',
+      fontSize: '13px',
       color: '#e7e5e4'
     }).setOrigin(0.5);
 
-    const sub2 = this.add.text(width / 2, height / 2 + 105, 'All scrapheap environmental puzzles solved with distinction.', {
-      fontFamily: 'Plus Jakarta Sans',
-      fontSize: '14px',
-      fontWeight: '600',
-      color: '#a8a29e'
-    }).setOrigin(0.5);
-    this.mainContainer.add([sub1, sub2]);
-
-    // Play Again Button
-    const btnBg = this.add.graphics();
-    btnBg.fillStyle(0xb45309, 1);
-    btnBg.fillRoundedRect(-125, -28, 250, 56, 28);
-    btnBg.lineStyle(2.5, 0xf59e0b, 0.9);
-    btnBg.strokeRoundedRect(-125, -28, 250, 56, 28);
-
-    const btnText = this.add.text(0, 0, 'PLAY AGAIN', {
-      fontFamily: 'Plus Jakarta Sans',
-      fontSize: '17px',
+    const deaths = this.add.text(width / 2, height / 2 + 75, `💀 စုစုပေါင်း သေဆုံးမှု: ${gameState.getDeathCountBurmese()} ကြိမ်`, {
+      fontFamily: 'Noto Sans Myanmar, Plus Jakarta Sans, sans-serif',
+      fontSize: '15px',
       fontStyle: '900',
-      color: '#ffffff',
-      letterSpacing: '1.5px'
+      color: '#f59e0b'
     }).setOrigin(0.5);
 
-    const playAgainBtn = this.add.container(width / 2, height / 2 + 185, [btnBg, btnText]);
-    playAgainBtn.setSize(250, 56);
+    this.mainContainer.add([title, subEng, desc, deaths]);
+
+    // 6. Action Buttons Container
+    const btnW = 220;
+    const btnH = 46;
+
+    // Play Again Button (Rich Amber)
+    const playAgainBtn = this.add.container(width / 2 - 120, height / 2 + 195).setSize(btnW, btnH);
+    const pBg = this.add.graphics();
+    pBg.fillStyle(0xb45309, 1);
+    pBg.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 23);
+    pBg.lineStyle(2, 0xf59e0b, 0.95);
+    pBg.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 23);
+
+    const pText = this.add.text(0, 0, '★ အစမှ ပြန်ကစားမည်', {
+      fontFamily: 'Noto Sans Myanmar, Plus Jakarta Sans, sans-serif',
+      fontSize: '13px',
+      fontStyle: '900',
+      color: '#ffffff'
+    }).setOrigin(0.5);
+
+    playAgainBtn.add([pBg, pText]);
     playAgainBtn.setInteractive({ useHandCursor: true });
+    MicroInteractions.makeInteractiveHover(playAgainBtn, 1.05);
 
     playAgainBtn.on('pointerdown', () => {
-      machinariumAudio.playPickup();
+      soundEngine.playPickup();
+      gameState.reset();
       this.cameras.main.fade(300, 12, 10, 8);
       this.time.delayedCall(300, () => {
-        this.scene.start('MachinariumGameScene');
+        this.scene.start('Chapter1Scene');
       });
     });
-    this.mainContainer.add(playAgainBtn);
 
-    // Atmospheric Edge Vignette
+    // Main Menu Button (Lacquer Charcoal)
+    const menuBtn = this.add.container(width / 2 + 120, height / 2 + 195).setSize(btnW, btnH);
+    const mBg = this.add.graphics();
+    mBg.fillStyle(0x271e17, 1);
+    mBg.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 23);
+    mBg.lineStyle(1.8, 0xd97706, 0.85);
+    mBg.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 23);
+
+    const mText = this.add.text(0, 0, '🏠 ပင်မ မီနူး / MENU', {
+      fontFamily: 'Noto Sans Myanmar, Plus Jakarta Sans, sans-serif',
+      fontSize: '13px',
+      fontStyle: '900',
+      color: '#fef08a'
+    }).setOrigin(0.5);
+
+    menuBtn.add([mBg, mText]);
+    menuBtn.setInteractive({ useHandCursor: true });
+    MicroInteractions.makeInteractiveHover(menuBtn, 1.05);
+
+    menuBtn.on('pointerdown', () => {
+      soundEngine.playPickup();
+      this.cameras.main.fade(300, 12, 10, 8);
+      this.time.delayedCall(300, () => {
+        this.scene.start('IntroScene');
+      });
+    });
+
+    this.mainContainer.add([playAgainBtn, menuBtn]);
+
+    // 7. Atmospheric Screen Edge Vignette
     const vignette = this.add.image(width / 2, height / 2, 'screen-vignette')
       .setDisplaySize(width, height)
       .setAlpha(0.65)
       .setDepth(50);
     this.mainContainer.add(vignette);
 
-    // Keyboard ENTER / SPACE
+    // Keyboard Shortcuts
     this.input.keyboard.once('keydown-SPACE', () => playAgainBtn.emit('pointerdown'));
     this.input.keyboard.once('keydown-ENTER', () => playAgainBtn.emit('pointerdown'));
-  }
-
-  update() {
-    if (this.gearL) this.gearL.rotation += 0.005;
-    if (this.gearR) this.gearR.rotation -= 0.005;
   }
 }

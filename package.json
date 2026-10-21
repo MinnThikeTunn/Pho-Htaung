@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "convert:audio": "powershell -ExecutionPolicy Bypass -File ./scripts/convert-to-ogg.ps1"
   },
   "dependencies": {
+    "howler": "^2.2.4",
     "phaser": "^3.88.2"
   },
   "devDependencies": {

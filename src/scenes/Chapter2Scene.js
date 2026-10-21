@@ -5,6 +5,7 @@ import ThoughtBubble from '../ui/ThoughtBubble.js';
 import GameHUD from '../ui/GameHUD.js';
 import { gameState } from '../utils/GameState.js';
 import { soundEngine } from '../utils/SoundEngine.js';
+import { audioDirector } from '../audio/AudioDirector.js';
 import { MicroInteractions } from '../utils/MicroInteractions.js';
 import { AmbientAtmosphere } from '../utils/AmbientAtmosphere.js';
 
@@ -17,8 +18,13 @@ export default class Chapter2Scene extends Phaser.Scene {
     const width = this.scale.width;
     const height = this.scale.height;
 
+    this.cameras.main.fadeIn(400, 12, 10, 8);
+
     this.isDead = false;
     gameState.setCurrentScene('Chapter2Scene');
+
+    // Smoothly fade out acoustic Kalimba across the transition into Chapter 2 cavern
+    audioDirector.fadeStem('STEM_KALIMBA', 0.00, 3800);
     this.leverCovered = gameState.getFlag('ch2_lever_covered');
     this.doorOpen = gameState.getFlag('ch2_door_open');
     this.targetX = null;
@@ -56,9 +62,10 @@ export default class Chapter2Scene extends Phaser.Scene {
     this.createPipeAssembly(pipeX, pipeY, furnaceX, furnaceY);
 
     // 5. Phoe Htaung Character
+    this.playerBaseScale = 1.42;
     this.playerX = width * 0.48;
-    this.playerY = groundY - 42;
-    this.player = this.add.sprite(this.playerX, this.playerY, 'ph-idle').setDepth(20);
+    this.playerY = groundY - 58;
+    this.player = this.add.sprite(this.playerX, this.playerY, 'ph-idle').setScale(this.playerBaseScale).setDepth(20);
 
     // Point-and-click walking
     this.input.on('pointerdown', (pointer) => {
@@ -71,11 +78,17 @@ export default class Chapter2Scene extends Phaser.Scene {
     // 6. Floor Items (Pickups)
     this.createFloorItems(groundY);
 
-    // 7. Floating Dust Motes & Cavern Drips
+    // 7. Floating Dust Motes & Cavern Drips & Atmosphere Overlays
     AmbientAtmosphere.createDustMotes(this, 26);
     AmbientAtmosphere.startCavernDrips(this, groundY);
+    AmbientAtmosphere.createWeatheredOverlay(this);
+    AmbientAtmosphere.createForegroundSilhouettes(this, 'temple');
+    AmbientAtmosphere.createVolumetricRays(this, width * 0.45, 0);
 
-    // 8. HUD & Inventory Bar & Thought Bubble
+    // 8. Ambient Toys (Machinarium Juice)
+    this.createAmbientToys(groundY, width);
+
+    // 9. HUD & Auto-Hiding Inventory Bar & Thought Bubble
     this.hud = new GameHUD(this);
     this.thought = new ThoughtBubble(this);
 
@@ -84,7 +97,10 @@ export default class Chapter2Scene extends Phaser.Scene {
       this.subtitle.say('အံမယ်... ကွမ်းသီးညှပ်နဲ့ ရေဗူးစုတ်ကို ထက်ခြမ်း လှီးချလိုက်တယ်ဟေ့! ရေဗူးခြမ်းလေး ရသွားပြီ။ ပိုက်ခေါင်းမှာ သွားစွပ်ကြည့်မလား?');
     });
 
-    // 8. Subtitle Box
+    // Natural Signifiers
+    AmbientAtmosphere.startNaturalSignifiers(this, [this.spikeItem, this.chiliItem, this.twigsItem, this.leverContainer]);
+
+    // 10. Subtitle Box
     this.subtitle = new SubtitleBox(this);
 
     // Vignette overlay
@@ -350,13 +366,19 @@ export default class Chapter2Scene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     this.nozzleHitZone.on('pointerdown', () => {
-      const selected = this.inventoryBar.getSelected();
-      if (selected === 'half_bottle') {
-        this.coverNozzle();
-      } else {
-        this.thought.show(this.player.x, this.player.y, 'item-half-bottle', 'ပိုက်ခေါင်းဝ စွပ်ရန် လိုသည်');
-        this.subtitle.say('ရေနွေးငွေ့ထွက်မယ့် ခေါင်းပေါက်ကြီးပဲ... အပေါက်ကို ကာမထားရင် ရေနွေးငွေ့က ငါ့ဆီ တည့်တည့်လာမှန်လိမ့်မယ်!');
-      }
+      this.interactWithProximity(this.pipeAssembly.x + 135, () => {
+        const selected = this.inventoryBar.getSelected();
+        if (selected === 'half_bottle') {
+          this.coverNozzle();
+        } else if (selected) {
+          MicroInteractions.triggerSootPuff(this, this.player, () => {
+            this.subtitle.say('ဟားဟား! ဒီပစ္စည်းက ရေနွေးငွေ့ပိုက်ဝနဲ့ အံမဝင်ဘူးဗျ! မီးခိုးတွေ ပန်းထွက်လာပြီ!');
+          });
+        } else {
+          this.thought.show(this.player.x, this.player.y, 'item-half-bottle', 'ပိုက်ခေါင်းဝ စွပ်ရန် လိုသည်');
+          this.subtitle.say('ရေနွေးငွေ့ထွက်မယ့် ခေါင်းပေါက်ကြီးပဲ... အပေါက်ကို ကာမထားရင် ရေနွေးငွေ့က ငါ့ဆီ တည့်တည့်လာမှန်လိမ့်မယ်!');
+        }
+      });
     });
     this.pipeAssembly.add(this.nozzleHitZone);
 
@@ -374,7 +396,9 @@ export default class Chapter2Scene extends Phaser.Scene {
     this.pipeAssembly.add(this.leverContainer);
 
     this.leverContainer.on('pointerdown', () => {
-      this.pullSteamLever(furnaceX, furnaceY);
+      this.interactWithProximity(this.pipeAssembly.x + 110, () => {
+        this.pullSteamLever(furnaceX, furnaceY);
+      });
     });
   }
 
@@ -490,42 +514,75 @@ export default class Chapter2Scene extends Phaser.Scene {
     });
   }
 
+  createAmbientToys(groundY, width) {
+    // 1. Rattling steam valve pipe toy
+    const valve = this.add.image(width * 0.12, groundY - 160, 'item-cog').setScale(0.7).setTint(0xd97706).setDepth(16);
+    MicroInteractions.attachAmbientToy(this, valve, 'pot');
+
+    // 2. Ancient terracotta ash pot near furnace
+    const ashPot = this.add.image(width * 0.68, groundY - 14, 'item-stone-3').setScale(0.85).setTint(0x78350f).setDepth(14);
+    MicroInteractions.attachAmbientToy(this, ashPot, 'pot');
+  }
+
+  interactWithProximity(targetX, onReachCallback) {
+    if (this.isDead) return;
+    const distance = Math.abs(this.player.x - targetX);
+    const baseScale = this.playerBaseScale || 1.42;
+    if (distance <= 85) {
+      this.player.setScale(targetX > this.player.x ? baseScale : -baseScale, baseScale);
+      onReachCallback();
+    } else {
+      const walkToX = targetX > this.player.x ? targetX - 55 : targetX + 55;
+      this.targetX = walkToX;
+      this.pendingAction = () => {
+        this.player.setScale(targetX > this.player.x ? baseScale : -baseScale, baseScale);
+        onReachCallback();
+      };
+    }
+  }
+
   createFloorItems(groundY) {
     // 1. Rusty Spike (50 viss trap)
-    this.spikeItem = this.add.image(this.scale.width * 0.4, groundY - 20, 'item-rusty-spike')
-      .setScale(1.1);
+    this.spikeItem = this.add.image(this.scale.width * 0.4, groundY - 14, 'item-rusty-spike')
+      .setScale(0.55);
     MicroInteractions.makeInteractiveHover(this.spikeItem, 1.15);
 
     this.spikeItem.on('pointerdown', () => {
-      this.triggerRustySpikeTrap();
+      this.interactWithProximity(this.spikeItem.x, () => {
+        this.triggerRustySpikeTrap();
+      });
     });
 
     // 2. Dried Chili
     if (!gameState.hasItem('dried_chili')) {
-      this.chiliItem = this.add.image(this.scale.width * 0.58, groundY - 18, 'item-chili')
-        .setScale(1);
+      this.chiliItem = this.add.image(this.scale.width * 0.58, groundY - 14, 'item-chili')
+        .setScale(0.48);
       MicroInteractions.makeInteractiveHover(this.chiliItem, 1.15);
 
       this.chiliItem.on('pointerdown', () => {
-        MicroInteractions.pickupItemToBag(this, this.chiliItem, this.player, () => {
-          gameState.addItem('dried_chili');
-          this.inventoryBar.refresh();
-          this.subtitle.say('ငရုတ်သီးခြောက်တောင့် ကောက်ရလိုက်ပြီ။ စပ်လိုက်မယ့်ဖြစ်ခြင်း... လွယ်အိတ်ထဲ ထည့်ထားလိုက်မယ်။');
+        this.interactWithProximity(this.chiliItem.x, () => {
+          MicroInteractions.pickupItemToBag(this, this.chiliItem, this.player, () => {
+            gameState.addItem('dried_chili');
+            this.inventoryBar.refresh();
+            this.subtitle.say('ငရုတ်သီးခြောက်တောင့် ကောက်ရလိုက်ပြီ။ စပ်လိုက်မယ့်ဖြစ်ခြင်း... လွယ်အိတ်ထဲ ထည့်ထားလိုက်မယ်။');
+          });
         });
       });
     }
 
     // 3. Dry Twigs
     if (!gameState.hasItem('dry_twigs')) {
-      this.twigsItem = this.add.image(this.scale.width * 0.63, groundY - 18, 'item-twigs')
-        .setScale(1);
+      this.twigsItem = this.add.image(this.scale.width * 0.63, groundY - 14, 'item-twigs')
+        .setScale(0.52);
       MicroInteractions.makeInteractiveHover(this.twigsItem, 1.15);
 
       this.twigsItem.on('pointerdown', () => {
-        MicroInteractions.pickupItemToBag(this, this.twigsItem, this.player, () => {
-          gameState.addItem('dry_twigs');
-          this.inventoryBar.refresh();
-          this.subtitle.say('သစ်ကိုင်းခြောက်လေးတွေ ကောက်ရလိုက်ပြီ။');
+        this.interactWithProximity(this.twigsItem.x, () => {
+          MicroInteractions.pickupItemToBag(this, this.twigsItem, this.player, () => {
+            gameState.addItem('dry_twigs');
+            this.inventoryBar.refresh();
+            this.subtitle.say('သစ်ကိုင်းခြောက်လေးတွေ ကောက်ရလိုက်ပြီ။');
+          });
         });
       });
     }
@@ -575,15 +632,19 @@ export default class Chapter2Scene extends Phaser.Scene {
 
   update(time, delta) {
     if (this.isDead) return;
+    const baseScale = this.playerBaseScale || 1.42;
 
     if (this.targetX !== null) {
       const dist = this.targetX - this.player.x;
       if (Math.abs(dist) > 8) {
         this.player.x += Math.sign(dist) * 3.5;
-        this.player.setScale(Math.sign(dist), 1);
+        this.player.setScale(Math.sign(dist) * baseScale, baseScale);
         this.player.setAngle(2.5 * Math.sign(dist));
         this.playerX = this.player.x;
         this.lastMoveTime = time;
+        if (this.player.isPerformingIdle) {
+          MicroInteractions.cancelIdleAction(this, this.player);
+        }
 
         if (!this.stepTimer || time > this.stepTimer) {
           soundEngine.playFootstep();
@@ -594,21 +655,33 @@ export default class Chapter2Scene extends Phaser.Scene {
         }
       } else {
         this.targetX = null;
+        if (this.pendingAction) {
+          const act = this.pendingAction;
+          this.pendingAction = null;
+          act();
+        }
         this.player.setAngle(0);
-        if (this.player.texture.key !== 'ph-idle' && this.player.texture.key !== 'ph-boiled' && this.player.texture.key !== 'ph-flat') {
+        const isIdleSpecial = this.player.isPerformingIdle || ['ph-mad', 'ph-think', 'ph-laugh', 'ph-bag-rummage'].includes(this.player.texture.key);
+        if (!isIdleSpecial && this.player.texture.key !== 'ph-idle' && this.player.texture.key !== 'ph-boiled' && this.player.texture.key !== 'ph-flat') {
           this.player.setTexture('ph-idle');
         }
       }
     } else {
       this.player.setAngle(0);
-      if (this.player.texture.key !== 'ph-idle' && this.player.texture.key !== 'ph-boiled' && this.player.texture.key !== 'ph-flat') {
+      const isIdleSpecial = this.player.isPerformingIdle || ['ph-mad', 'ph-think', 'ph-laugh', 'ph-bag-rummage'].includes(this.player.texture.key);
+      if (!isIdleSpecial && this.player.texture.key !== 'ph-idle' && this.player.texture.key !== 'ph-boiled' && this.player.texture.key !== 'ph-flat') {
         this.player.setTexture('ph-idle');
       }
 
-      // Machinarium Idle Micro-Behaviors (Betel spitting, bag adjust, cheek twitch)
-      if (time - this.lastMoveTime > 4500 && time > this.nextIdleTime) {
+      // Continuous Organic Inhaling/Exhaling Breathing Animation
+      if (!isIdleSpecial && this.player.texture.key === 'ph-idle') {
+        MicroInteractions.applyIdleBreathing(this.player, time, 1.0);
+      }
+
+      // Machinarium Idle Micro-Behaviors (Laughing, Thinking, Mad, Betel spitting, fly swatting)
+      if (time - this.lastMoveTime > 3500 && time > this.nextIdleTime) {
         MicroInteractions.triggerIdleAction(this, this.player, this.groundY);
-        this.nextIdleTime = time + Phaser.Math.Between(4500, 7500);
+        this.nextIdleTime = time + Phaser.Math.Between(4000, 6500);
       }
     }
   }

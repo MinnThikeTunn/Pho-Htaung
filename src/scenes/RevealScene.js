@@ -14,6 +14,8 @@ export default class RevealScene extends Phaser.Scene {
     const width = this.scale.width;
     const height = this.scale.height;
 
+    this.cameras.main.fadeIn(400, 12, 10, 8);
+
     this.dodgeCount = 0;
     this.canClickButton = false;
 
@@ -25,6 +27,8 @@ export default class RevealScene extends Phaser.Scene {
     gameState.setCurrentScene('RevealScene');
     this.createCowshedScenery(width, height);
     AmbientAtmosphere.createDustMotes(this, 30);
+    AmbientAtmosphere.createWeatheredOverlay(this);
+    AmbientAtmosphere.createForegroundSilhouettes(this, 'canyon');
 
     // 2. Cardboard "Golden Palace" Props in the Center
     this.createCardboardPalaceProps(width / 2, height / 2 + 30);
@@ -38,8 +42,8 @@ export default class RevealScene extends Phaser.Scene {
 
     // Zoom-out animation revealing the cardboard cowshed
     this.time.delayedCall(400, () => {
-      this.cameras.main.zoomTo(1.0, 1800, 'Cubic.InOut');
-      this.cameras.main.pan(width / 2, height / 2, 1800, 'Cubic.InOut');
+      this.cameras.main.zoomTo(1.0, 1800, 'Cubic.easeInOut');
+      this.cameras.main.pan(width / 2, height / 2, 1800, 'Cubic.easeInOut');
 
       // 5. U Gyi enters from the right puffing his cheroot
       this.time.delayedCall(1900, () => {
