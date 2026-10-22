@@ -1,6 +1,104 @@
-node_modules
-dist
-.npm-cache
+# ==========================================
+# Credentials, Secrets & Sensitive Information
+# ==========================================
+# Environment variables and local configs
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+*.env
+.envrc
+
+# Private keys, certificates, keystores & SSH keys
+*.pem
+*.key
+*.pkcs12
+*.pfx
+*.p12
+*.crt
+*.cer
+*.der
+*.kdbx
+*.keystore
+*.jks
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+id_ecdsa
+id_ecdsa.pub
+id_dsa
+id_dsa.pub
+
+# Service accounts, tokens & credential payloads
+*credentials*.json
+*secret*.json
+client_secret*.json
+service-account*.json
+token.json
+tokens.json
+auth.json
+secrets/
+config/secrets.*
+
+# Package manager & developer authentication files
+.npmrc
+.yarnrc
+.yarnrc.yml
+.netrc
+.git-credentials
+.gh-token
+
+# Cloud CLI & platform secrets
+.aws/
+.azure/
+.gcloud/
+firebase-debug.log*
+.firebaserc
+.supabase/
+.vercel
+.netlify
+
+# Database credentials & local data dumps
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.sql
+
+# ==========================================
+# Dependencies & Build Artifacts
+# ==========================================
+node_modules/
+dist/
+dist-ssr/
+.npm-cache/
+*.local
+
+# ==========================================
+# Logs & Diagnostic Dumps
+# ==========================================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ==========================================
+# OS & Editor Artifacts
+# ==========================================
 .DS_Store
 Thumbs.db
-*.log
+ehthumbs.db
+Desktop.ini
+
+# IDEs & code editors (sensitive or local user state)
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.cursor/
+*.sublime-project
+*.sublime-workspace
