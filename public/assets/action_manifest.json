@@ -1,0 +1,54 @@
+{
+  "revision": 1,
+  "date": "2026-10-22",
+  "releaseCleared": false,
+  "assets": [
+    {
+      "id": "phoe_htaung_concept_v1",
+      "runtime": "assets/concepts/phoe_htaung_concept_v1.png",
+      "original": "art/source/characters/phoe_htaung_concept_v1.png",
+      "provenance": "Original built-in AI image generation; prompt recorded alongside source",
+      "sha256": "DEAAE93680D1C900F322B5461563A6F77AF16039356C25BDF1DEB3B60CA96A15",
+      "status": "Owner approved face, longyi and boastful attitude; three-pose prototype, NOT final animation atlas",
+      "license": "AI-generated original; not represented as a licensed third-party pack or exclusive copyright",
+      "derivative": "Runtime crop regions and pivots in src/view/WorldView.ts; unchanged source PNG retained",
+      "remaining": "Foot-anchor/mirroring review, real locomotion frames, in-game visual approval, release provenance review"
+    },
+    {
+      "id": "ch1_background_v1",
+      "runtime": "assets/chapter1/background_v1.png",
+      "original": "art/source/chapter1/background_v1.png",
+      "provenance": "Original built-in AI image generation; prompt recorded alongside source",
+      "sha256": "34374DBEB27385119EC95D580A7B012F6146A61363847780DCB10A4B11FC37C1",
+      "status": "Prototype scenery, not owner-approved final art",
+      "license": "AI-generated original; release provenance review pending",
+      "derivative": "Runtime scales to logical 1280x720 and tints safe link; no file modification",
+      "remaining": "In-game contrast/false-affordance review; no layered painting master exists"
+    },
+    {
+      "id": "world_props_and_ui",
+      "source": "src/view/WorldView.ts, src/style.css, src/main.ts",
+      "provenance": "Original project code drawing stone, wood, lift, plate, gantry, pickups, warnings and UI",
+      "status": "Procedural cartoon placeholders; not downloaded stock assets",
+      "remaining": "Browser visual QA and final art approval"
+    },
+    {
+      "id": "myanmar_font",
+      "source": "@fontsource/noto-sans-myanmar@5.3.0 (Noto font v27)",
+      "author": "The Noto Project Authors",
+      "upstream": "https://github.com/notofonts/myanmar",
+      "license": "SIL OFL 1.1",
+      "notice": "licenses/Noto-Sans-Myanmar-OFL.txt",
+      "verified": "Read installed package metadata and full LICENSE; unmodified local 400/700 font files bundled by Vite",
+      "terms": "Commercial embedding and redistribution permitted with copyright/license retained; no font-alone sale; modified-font naming restrictions apply",
+      "status": "Font license checked, rendered Burmese still needs browser/human review"
+    },
+    {
+      "id": "short_audio_cues",
+      "source": "src/services/AudioController.ts",
+      "provenance": "Original procedural oscillator cues, no third-party recording",
+      "status": "Prototype SFX only; no narrator voice or music acquired",
+      "remaining": "Audible levels and pause/mute QA; original voice performance deferred"
+    }
+  ]
+}

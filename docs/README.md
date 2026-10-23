@@ -1,0 +1,11 @@
+# Combined adventure — coding handoff
+
+Current runtime: **Chapter1 bridge puzzle → Chapter2 stone-machine action**. Owner approved this order and replacing unreadable bridge traps with readable danger on2026-10-23. The already-approved cartoon concept is the shared protagonist. See [integration spec/evidence](integration_spec.md) before changes.
+
+The original repo's furnace/scale/vault/reveal scene files remain preserved but are not registered in this two-chapter build. Do not accidentally restore their old scene chain. End after Chapter2 at the honest Chapter3-pending panel.
+
+Read the retained original action contracts under `action-baseline/`: `master_game_system_spec.md`, `chapter_1_revised_spec.md`, then `docs/technical_architecture.md`, `docs/assets_and_character_pipeline.md`, `docs/verification_plan.md`, `docs/source_review_and_decisions.md`. Those files are historical provenance: their “Chapter1” stone-machine refers to **current Chapter2**. Their CH1-only endpoint/order is superseded only by the owner's current integration request, not all of their gameplay rules.
+
+Domain constants/routes/gold rules remain unchanged for action. Preserve escape without currency gates, best-improvement-only replay, full attempt retry, truthful warnings, no possession/magic/shop/debt values. Art never changes hitboxes. One actor has one physics owner.
+
+Shared save is `phoe-htaung.adventure.v2`. Both old keys are preserved, not silently imported or reset. No public publishing or final asset licensing clearance is implied by a GitHub merge. Strict checks cover TypeScript/domain/tool code; retained legacy JS uses allowJs with checkJs=false. Browser and human acceptance must be reported separately from headless tests.
