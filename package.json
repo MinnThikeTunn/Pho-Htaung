@@ -1,19 +1,28 @@
 {
-  "name": "phaser-web-game",
+  "name": "phoe-htaung-adventure",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
+    "dev": "vite --host 127.0.0.1",
+    "build": "npm run typecheck && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
     "convert:audio": "powershell -ExecutionPolicy Bypass -File ./scripts/convert-to-ogg.ps1"
   },
   "dependencies": {
-    "howler": "^2.2.4",
-    "phaser": "^3.88.2"
+    "@fontsource/noto-sans-myanmar": "5.3.0",
+    "howler": "2.2.4",
+    "phaser": "3.90.0"
   },
   "devDependencies": {
-    "vite": "^6.0.0"
-  }
+    "@playwright/test": "1.64.1",
+    "@types/node": "24.19.2",
+    "typescript": "7.0.2",
+    "vite": "8.3.5",
+    "vitest": "5.0.5"
+  },
+  "engines": { "node": ">=24 <25" }
 }

@@ -72,6 +72,8 @@ firebase-debug.log*
 # ==========================================
 node_modules/
 dist/
+test-results/
+playwright-report/
 dist-ssr/
 .npm-cache/
 *.local

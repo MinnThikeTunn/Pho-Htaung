@@ -1,0 +1,58 @@
+import { C, COINS, POUCH } from '../content/chapter1';
+import type { Attempt, Campaign, ChapterResult, Mode } from './types';
+
+export function newCampaign(id: string): Campaign {
+  return { schemaVersion: 2, revision: 0, campaignId: id, walletCoins: 0, deathCount: 0, bridgeCompleted: false,
+    chapter2Completed: false, chapter2BestBankedCoins: 0, completedAttemptIds: [],
+    bestResultByPresetAndCoinTotal: {}, hintsSeen: [], inventory: [], ownedTools: [],
+    resumeAt: 'CHAPTER_1', lastChapter2Result: null };
+}
+export function settle(current: Campaign, a: Attempt, mode: Mode, sessionDeaths: number): { campaign: Campaign; result: ChapterResult | null; duplicate: boolean } {
+  if (a.status !== 'COMPLETE' || a.player.control !== 'EXITING') throw new Error('Cannot settle an unfinished attempt');
+  if (!Number.isInteger(a.coins) || a.coins < 0 || a.coins > C.maxCoins) throw new Error('Invalid coin total');
+  if (!a.id || !Number.isFinite(a.elapsed) || a.elapsed < 0 || !Number.isSafeInteger(sessionDeaths) || sessionDeaths < 0) throw new Error('Invalid attempt result');
+  const expected = [...COINS, POUCH];
+  if (a.pickups.length !== expected.length || !a.pickups.every(p=>expected.some(e=>e.id===p.id&&e.value===p.value))) throw new Error('Unknown pickup ledger');
+  const sum = a.pickups.filter(p => p.collected).reduce((total, p) => total + p.value, 0);
+  if (sum !== a.coins || new Set(a.pickups.map(p => p.id)).size !== a.pickups.length) throw new Error('Invalid pickup ledger');
+  if ((a.preset === 'A') !== (mode !== 'PRACTICE')) throw new Error('Invalid mode/preset');
+  if (mode === 'PRACTICE' && !current.chapter2Completed) throw new Error('Practice is locked');
+  if (current.completedAttemptIds.includes(a.id)) return { campaign: current, result: null, duplicate: true };
+  const next = structuredClone(current);
+  const credit = mode === 'PRACTICE' ? 0 : Math.max(0, a.coins - current.chapter2BestBankedCoins);
+  const result: ChapterResult = { attemptId: a.id, mode, presetId: a.preset, collectedCoins: a.coins,
+    creditedCoins: credit, activeSeconds: a.elapsed, sessionDeaths };
+  const key = `${a.preset}:${a.coins}`;
+  next.bestResultByPresetAndCoinTotal[key] = Math.min(current.bestResultByPresetAndCoinTotal[key] ?? Infinity, a.elapsed);
+  if (mode !== 'PRACTICE') {
+    next.walletCoins += credit;
+    next.chapter2BestBankedCoins = Math.max(current.chapter2BestBankedCoins, a.coins);
+    next.chapter2Completed = true; next.completedAttemptIds.push(a.id);
+    if (mode === 'CAMPAIGN') next.resumeAt = 'CH2_EXIT_LINK';
+  }
+  next.lastChapter2Result = result; next.revision++;
+  return { campaign: next, result, duplicate: false };
+}
+
+export function validateCampaign(value: unknown): value is Campaign {
+  if (!value || typeof value !== 'object') return false;
+  const c = value as Partial<Campaign>;
+  const nonnegative = (v: unknown) => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0;
+  const strings = (v: unknown): v is string[] => Array.isArray(v) && v.every(s => typeof s === 'string');
+  if (c.schemaVersion !== 2 || typeof c.bridgeCompleted !== 'boolean' || !nonnegative(c.revision) || !c.campaignId || typeof c.campaignId !== 'string' ||
+    !nonnegative(c.walletCoins) || !nonnegative(c.deathCount) || !nonnegative(c.chapter2BestBankedCoins) || c.chapter2BestBankedCoins! > 15 ||
+    typeof c.chapter2Completed !== 'boolean' || !strings(c.completedAttemptIds) || new Set(c.completedAttemptIds).size !== c.completedAttemptIds.length ||
+    !strings(c.hintsSeen) || !strings(c.inventory) || !strings(c.ownedTools) ||
+    !['CHAPTER_1', 'CHAPTER_2', 'CH2_EXIT_LINK', 'CHAPTER_3_PENDING'].includes(c.resumeAt ?? '')) return false;
+  if (!c.bestResultByPresetAndCoinTotal || typeof c.bestResultByPresetAndCoinTotal !== 'object' || Array.isArray(c.bestResultByPresetAndCoinTotal)) return false;
+  if (!Object.entries(c.bestResultByPresetAndCoinTotal).every(([k, v]) => /^[ABC]:(?:[0-9]|1[0-5])$/.test(k) && typeof v === 'number' && Number.isFinite(v) && v >= 0)) return false;
+  if (c.lastChapter2Result !== null) {
+    const r = c.lastChapter2Result;
+    if (!r || typeof r.attemptId !== 'string' || !['CAMPAIGN', 'REPLAY', 'PRACTICE'].includes(r.mode) ||
+      !['A', 'B', 'C'].includes(r.presetId) || !nonnegative(r.collectedCoins) || r.collectedCoins > 15 ||
+      !nonnegative(r.creditedCoins) || r.creditedCoins > r.collectedCoins || !Number.isFinite(r.activeSeconds) || r.activeSeconds < 0 || !nonnegative(r.sessionDeaths)) return false;
+    if ((r.presetId === 'A') !== (r.mode !== 'PRACTICE')) return false;
+    if (r.mode === 'PRACTICE' && r.creditedCoins !== 0) return false;
+  }
+  return true;
+}
