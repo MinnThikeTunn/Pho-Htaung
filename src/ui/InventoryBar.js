@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { gameState, ITEM_NAMES_MY, ITEM_TEXTURE_KEYS } from '../utils/GameState.js';
+import { gameState, ITEM_NAMES_MY, ITEM_TEXTURE_KEYS } from '../utils/AdventureState.js';
 import { soundEngine } from '../utils/SoundEngine.js';
 
 export default class InventoryBar {
@@ -23,7 +23,7 @@ export default class InventoryBar {
     const barWidth = maxSlots * slotSpacing + 64; // 688
 
     // Start tucked off-screen at y = -65 (Auto-hiding diegetic HUD, Depth: 300)
-    this.container = this.scene.add.container(width / 2, -65).setDepth(300);
+    this.container = this.scene.add.container(width / 2, 55).setDepth(300);
 
     // Rounded Floating Bar (Machinarium Lacquer & Brass Trim)
     const bg = this.scene.add.graphics();
@@ -110,9 +110,9 @@ export default class InventoryBar {
 
     // Auto-reveal on cursor moving near top edge (y < 48)
     this.scene.input.on('pointermove', (pointer) => {
-      if (pointer.y < 48 && !this.isRevealed) {
+      if (pointer.y < 115 && !this.isRevealed) {
         this.reveal();
-      } else if (pointer.y > 110 && this.isRevealed && !this.selectedItem) {
+      } else if (pointer.y > 230 && this.isRevealed && !this.selectedItem) {
         if (this.autoHideTimer) this.autoHideTimer.remove();
         this.autoHideTimer = this.scene.time.delayedCall(400, () => {
           if (this.isRevealed && !this.selectedItem) {
@@ -131,7 +131,7 @@ export default class InventoryBar {
     soundEngine.playBagRustle();
     this.scene.tweens.add({
       targets: this.container,
-      y: 42,
+      y: 140,
       duration: 260,
       ease: 'Back.Out'
     });
@@ -142,7 +142,7 @@ export default class InventoryBar {
     this.isRevealed = false;
     this.scene.tweens.add({
       targets: this.container,
-      y: -65,
+      y: 55,
       duration: 220,
       ease: 'Power2'
     });

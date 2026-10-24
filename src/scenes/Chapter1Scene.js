@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
-import SubtitleBox from '../ui/SubtitleBox.js';
+import SubtitleBox from '../ui/BridgeSubtitle.js';
 import InventoryBar from '../ui/InventoryBar.js';
 import ThoughtBubble from '../ui/ThoughtBubble.js';
-import GameHUD from '../ui/GameHUD.js';
-import { gameState, ITEM_TEXTURE_KEYS } from '../utils/GameState.js';
+import GameHUD from '../ui/BridgeHUD.js';
+import { gameState, ITEM_TEXTURE_KEYS } from '../utils/AdventureState.js';
 import { soundEngine } from '../utils/SoundEngine.js';
 import { audioDirector } from '../audio/AudioDirector.js';
 import { MicroInteractions } from '../utils/MicroInteractions.js';
@@ -489,7 +489,7 @@ export default class Chapter1Scene extends Phaser.Scene {
           onComplete: () => {
             // SLAM! Heavy impact on the right stone cliff abutment!
             try { soundEngine.playClang(); } catch (e) {}
-            this.cameras.main.shake(180, 0.010);
+            this.cameras.main.shake(150, 0.003);
 
             // Plume of stone dust & wood chips at impact point
             const impactX = this.bridgePivotX + this.bridgeLength - 10;
