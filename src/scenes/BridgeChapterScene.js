@@ -38,7 +38,29 @@ export default class BridgeChapterScene extends LegacyBridge {
   createToolPickups(groundY){
     for(const [field,id,ratio,key,scale] of [['bambooItem','bamboo_pole',.18,'item-bamboo-pole',.58],['cogItem','rusty_cog',.28,'item-cog',.52]]){
       const item=this.add.image(1280*ratio,groundY-10,key).setScale(scale).setDepth(30).setInteractive({useHandCursor:true});this[field]=item;
-      item.on('pointerdown',(_p,_x,_y,event)=>{event?.stopPropagation();this.interactWithProximity(item.x,()=>{if(!item.active)return;gameState.addItem(id);item.destroy();this.inventoryBar.refresh();soundEngine.playPickup();this.subtitle.say(id==='rusty_cog'?'ဂီယာခွေ ရပြီ။ လွယ်အိတ်က ရွေးပြီး စက်သီးမှာ တပ်ပါ။':'ဝါးလုံး ရပြီ။ လွယ်အိတ်က ရွေးပြီး လီဗာမောင်းတံအဖြစ် သုံးပါ။');});});
+      item.on('pointerdown',(_p,_x,_y,event)=>{
+        event?.stopPropagation();
+        this.interactWithProximity(item.x,()=>{
+          if(!item.active||this.isInteracting)return;
+          this.isInteracting=true;this.pickupState='PICKUP';soundEngine.playWoosh();
+          const handX=this.player.body.center.x+this.facing*18;const handY=this.groundY-20;
+          this.tweens.add({
+            targets:item,x:handX,y:handY,scale:0.35,duration:220,ease:'Quad.Out',
+            onComplete:()=>{
+              soundEngine.playPickup();this.pickupState='RUMMAGE';soundEngine.playBagRustle();
+              const bagX=this.player.body.center.x-this.facing*10;const bagY=this.groundY-45;
+              this.tweens.add({
+                targets:item,x:bagX,y:bagY,scale:0.1,alpha:0.3,duration:260,ease:'Cubic.In',
+                onComplete:()=>{
+                  gameState.addItem(id);item.destroy();this.inventoryBar.refresh();
+                  this.pickupState=null;this.isInteracting=false;
+                  this.subtitle.say(id==='rusty_cog'?'ဂီယာခွေ ရပြီ။ လွယ်အိတ်က ရွေးပြီး စက်သီးမှာ တပ်ပါ။':'ဝါးလုံး ရပြီ။ လွယ်အိတ်က ရွေးပြီး လီဗာမောင်းတံအဖြစ် သုံးပါ။');
+                }
+              });
+            }
+          });
+        });
+      });
     }
   }
   interactWithWinch(){
@@ -68,13 +90,13 @@ export default class BridgeChapterScene extends LegacyBridge {
     if(this.isInteracting)vx=0;
     if(this.player.x<24){this.player.x=24;if(vx<0)vx=0;}if(this.player.x>1262){this.player.x=1262;if(vx>0)vx=0;}
     this.player.setScale(1);this.player.setVelocityX(vx);if(vx)this.facing=Math.sign(vx);
-    if(this.heldItemSprite){this.heldItemSprite.x=this.player.body.center.x+this.facing*24;this.heldItemSprite.y=this.player.body.bottom-32;}
+    if(this.heldItemSprite){this.heldItemSprite.x=this.player.body.center.x+this.facing*26;this.heldItemSprite.y=this.player.body.bottom-34;this.heldItemSprite.setScale(this.facing>0?.42:-.42,.42);}
     if(this.jumpBuffer>0&&this.coyote>0&&!this.isInteracting){this.player.setVelocityY(C.jump);this.jumpBuffer=0;this.coyote=0;soundEngine.playJump();}
     this.pushTimer=this.player.x<=35&&left?this.pushTimer+delta:0;if(this.pushTimer>=1000&&!this.tunnelOpened)this.openSecretTunnel();
     if((this.player.x>=1280*.78)||(this.tunnelOpened&&this.player.x<=35))this.advanceToChapter2();
     this.drawPhoe();this.hud.updateDeathCount();
   }
-  drawPhoe(){const b=this.player.body;if(this.phoe)renderPhoe(this.phoe,{centerX:b.center.x,feetY:b.bottom,vx:b.velocity.x,grounded:b.blocked.down||b.touching.down,facing:this.facing,control:this.isDead?'DEAD':this.isInteracting?'TAUNTING':'FREE',pushing:false},this.activeTime);if(this.playerShadow){this.playerShadow.x=b.center.x;this.playerShadow.y=this.groundY+2;}}
+  drawPhoe(){const b=this.player.body;const ctrl=this.isDead?'DEAD':this.pickupState?this.pickupState:this.isInteracting?'TAUNTING':'FREE';if(this.phoe)renderPhoe(this.phoe,{centerX:b.center.x,feetY:b.bottom,vx:b.velocity.x,vy:b.velocity.y,grounded:b.blocked.down||b.touching.down,facing:this.facing,control:ctrl,pushing:Boolean(this.pushTimer>0),holding:Boolean(this.heldItemSprite)},this.activeTime);if(this.playerShadow){this.playerShadow.x=b.center.x;this.playerShadow.y=this.groundY+2;}}
   fallIntoPit(){if(this.isDead)return;this.isDead=true;this.player.setVelocity(0,0);this.physics.world.pause();gameState.addDeath();this.hud.updateDeathCount();this.subtitle.say('တွင်းထဲကျသွားပြီ — တံတားနဲ့ နံရံပုံကြမ်းကို ပြန်ကြည့်စမ်း။');}
   openSecretTunnel(){if(this.tunnelOpened)return;this.tunnelOpened=true;gameState.setFlag('ch1_tunnel_open');this.leftWall.setVisible(false);this.secretTunnelDoor.setVisible(true);this.targetX=25;this.subtitle.say('နံရံကြားက အောက်လမ်းပွင့်ပြီ။ မြေအောက်စက်ခန်းဆီ ဆင်းလို့ရပြီ!');}
   advanceToChapter2(){

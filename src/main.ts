@@ -47,6 +47,14 @@ class BootScene extends Phaser.Scene {
   preload() {
     this.load.image('background', '/assets/chapter1/background_v1.png');
     this.load.image('phoe', '/assets/concepts/phoe_htaung_concept_v1.png');
+    this.load.spritesheet('phoe_run', '/assets/character/phoe_run_spritesheet.png', { frameWidth: 380, frameHeight: 850 });
+    this.load.spritesheet('phoe_jump', '/assets/character/phoe_jump_spritesheet.png', { frameWidth: 380, frameHeight: 850 });
+    this.load.spritesheet('phoe_actions', '/assets/character/phoe_actions_spritesheet.png', { frameWidth: 380, frameHeight: 850 });
+    this.load.image('phoe_idle_inhale', '/assets/character/phoe_idle_inhale.png');
+    this.load.image('phoe_idle_exhale', '/assets/character/phoe_idle_exhale.png');
+    this.load.image('phoe_crouch', '/assets/character/phoe_crouch.png');
+    this.load.image('phoe_bag_rummage', '/assets/character/phoe_bag_rummage.png');
+    this.load.image('phoe_hold', '/assets/character/phoe_hold.png');
   }
   create() { this.scene.start('PreloadScene'); }
 }
