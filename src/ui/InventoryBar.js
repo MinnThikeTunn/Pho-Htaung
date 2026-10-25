@@ -2,6 +2,11 @@ import Phaser from 'phaser';
 import { gameState, ITEM_NAMES_MY, ITEM_TEXTURE_KEYS } from '../utils/AdventureState.js';
 import { soundEngine } from '../utils/SoundEngine.js';
 
+const INK = 0x182720;
+const CREAM = 0xe9dfbd;
+const GOLD = 0xe7bb55;
+const STONE = 0x22352b;
+
 export default class InventoryBar {
   constructor(scene, onCombineCallback) {
     this.scene = scene;
@@ -9,6 +14,8 @@ export default class InventoryBar {
     this.container = null;
     this.selectedItem = null;
     this.slotImages = [];
+    this.slotBoxGraphics = [];
+    this.slotXCoords = [];
     this.slotLabels = [];
     this.isRevealed = false;
     this.autoHideTimer = null;
@@ -22,31 +29,33 @@ export default class InventoryBar {
     const startX = -((maxSlots - 1) * slotSpacing) / 2; // -286
     const barWidth = maxSlots * slotSpacing + 64; // 688
 
-    // Start tucked off-screen at y = -65 (Auto-hiding diegetic HUD, Depth: 300)
+    // Start tucked off-screen at y = 55 (Auto-hiding diegetic HUD, Depth: 300)
     this.container = this.scene.add.container(width / 2, 55).setDepth(300);
 
-    // Rounded Floating Bar (Machinarium Lacquer & Brass Trim)
+    // Rounded Floating Bar (Clean Chapter 2 Minimalist Slate & Brass Trim)
     const bg = this.scene.add.graphics();
-    bg.fillStyle(0x14100c, 0.94);
+    bg.fillStyle(INK, 0.94);
     bg.fillRoundedRect(-barWidth / 2, -32, barWidth, 64, 32);
-    bg.lineStyle(2, 0xd97706, 0.7);
+    bg.lineStyle(2, GOLD, 0.7);
     bg.strokeRoundedRect(-barWidth / 2, -32, barWidth, 64, 32);
     this.container.add(bg);
 
     // Diegetic Burmese Shoulder Bag Tab (လွယ်အိတ် တံဆိပ်) protruding from bottom center
     const bagTab = this.scene.add.container(0, 36).setSize(110, 26);
     const tabBg = this.scene.add.graphics();
-    tabBg.fillStyle(0x271e17, 0.95);
+    tabBg.fillStyle(STONE, 0.95);
     tabBg.fillRoundedRect(-55, -2, 110, 24, 12);
-    tabBg.lineStyle(1.5, 0xd97706, 0.8);
+    tabBg.lineStyle(1.5, GOLD, 0.85);
     tabBg.strokeRoundedRect(-55, -2, 110, 24, 12);
 
-    const tabLabel = this.scene.add.text(0, 10, '🎒 လွယ်အိတ်', {
-      fontFamily: 'Noto Sans Myanmar, Plus Jakarta Sans',
-      fontSize: '11px',
-      fontStyle: '900',
-      color: '#fef08a'
-    }).setOrigin(0.5);
+    const tabLabel = this.scene.add
+      .text(0, 10, '🎒 လွယ်အိတ်', {
+        fontFamily: 'Noto Sans Myanmar, Plus Jakarta Sans',
+        fontSize: '11px',
+        fontStyle: '900',
+        color: '#e9dfbd'
+      })
+      .setOrigin(0.5);
 
     bagTab.add([tabBg, tabLabel]);
     bagTab.setInteractive({ useHandCursor: true });
@@ -57,28 +66,35 @@ export default class InventoryBar {
     this.container.add(bagTab);
 
     // Tooltip text
-    this.tooltipText = this.scene.add.text(0, 52, '', {
-      fontFamily: 'Noto Sans Myanmar, Plus Jakarta Sans',
-      fontSize: '13px',
-      fontStyle: '900',
-      color: '#fef08a',
-      backgroundColor: '#1c1917',
-      padding: { x: 10, y: 4 }
-    }).setOrigin(0.5).setVisible(false);
+    this.tooltipText = this.scene.add
+      .text(0, 52, '', {
+        fontFamily: 'Noto Sans Myanmar, Plus Jakarta Sans',
+        fontSize: '13px',
+        fontStyle: '900',
+        color: '#e9dfbd',
+        backgroundColor: '#182720',
+        padding: { x: 10, y: 4 }
+      })
+      .setOrigin(0.5)
+      .setVisible(false);
     this.container.add(this.tooltipText);
 
-    // 12 Slots for All Starting Tools & Puzzle Items
+    // 12 Slots for Starting Tools & Puzzle Items
     this.slotImages = [];
+    this.slotBoxGraphics = [];
+    this.slotXCoords = [];
+
     for (let i = 0; i < maxSlots; i++) {
       const sx = startX + i * slotSpacing;
-      const slotBox = this.scene.add.graphics();
-      slotBox.fillStyle(0x271e17, 1);
-      slotBox.fillRoundedRect(sx - 23, -24, 46, 48, 12);
-      slotBox.lineStyle(1.5, 0x451a03, 1);
-      slotBox.strokeRoundedRect(sx - 23, -24, 46, 48, 12);
-      this.container.add(slotBox);
+      this.slotXCoords.push(sx);
 
-      const itemImg = this.scene.add.image(sx, 0, 'item-betel-cutter')
+      const slotBox = this.scene.add.graphics();
+      this.container.add(slotBox);
+      this.slotBoxGraphics.push(slotBox);
+      this.drawSlot(i, false);
+
+      const itemImg = this.scene.add
+        .image(sx, 0, 'item-betel-cutter')
         .setVisible(false)
         .setScale(0.74)
         .setInteractive({ useHandCursor: true });
@@ -108,8 +124,8 @@ export default class InventoryBar {
       this.slotImages.push(itemImg);
     }
 
-    // Auto-reveal on cursor moving near top edge (y < 48)
-    this.scene.input.on('pointermove', (pointer) => {
+    // Auto-reveal on cursor moving near top edge (y < 115)
+    this.scene.input.on('pointermove', pointer => {
       if (pointer.y < 115 && !this.isRevealed) {
         this.reveal();
       } else if (pointer.y > 230 && this.isRevealed && !this.selectedItem) {
@@ -123,6 +139,29 @@ export default class InventoryBar {
     });
 
     this.refresh();
+  }
+
+  drawSlot(index, isSelected) {
+    const sx = this.slotXCoords[index];
+    const g = this.slotBoxGraphics[index];
+    if (!g) return;
+
+    g.clear();
+    if (isSelected) {
+      // Glowing active gold border
+      g.fillStyle(0x2d4337, 1);
+      g.fillRoundedRect(sx - 23, -24, 46, 48, 12);
+      g.fillStyle(CREAM, 0.16).fillRect(sx - 19, -20, 38, 4);
+      g.lineStyle(2.5, GOLD, 1);
+      g.strokeRoundedRect(sx - 23, -24, 46, 48, 12);
+    } else {
+      // Clean tactile slate slot matching Chapter 2 blocks
+      g.fillStyle(STONE, 1);
+      g.fillRoundedRect(sx - 23, -24, 46, 48, 12);
+      g.fillStyle(CREAM, 0.12).fillRect(sx - 19, -20, 38, 4);
+      g.lineStyle(1.5, INK, 1);
+      g.strokeRoundedRect(sx - 23, -24, 46, 48, 12);
+    }
   }
 
   reveal() {
@@ -162,8 +201,10 @@ export default class InventoryBar {
 
     // Check inventory combination
     if (this.selectedItem && this.selectedItem !== itemKey) {
-      if ((this.selectedItem === 'betel_cutter' && itemKey === 'torn_bottle') ||
-          (this.selectedItem === 'torn_bottle' && itemKey === 'betel_cutter')) {
+      if (
+        (this.selectedItem === 'betel_cutter' && itemKey === 'torn_bottle') ||
+        (this.selectedItem === 'torn_bottle' && itemKey === 'betel_cutter')
+      ) {
         gameState.removeItem('torn_bottle');
         gameState.addItem('half_bottle');
         gameState.setFlag('ch2_bottle_cut', true);
@@ -193,9 +234,14 @@ export default class InventoryBar {
       this.scene.showHeldItem(itemKey);
     }
 
-    if (itemKey === 'engineer_note' && typeof this.scene.showBlueprintOverlay === 'function') {
+    if (
+      itemKey === 'engineer_note' &&
+      typeof this.scene.showBlueprintOverlay === 'function'
+    ) {
       this.scene.showBlueprintOverlay();
     }
+
+    this.refresh();
   }
 
   getSelected() {
@@ -208,6 +254,7 @@ export default class InventoryBar {
     if (typeof this.scene.hideHeldItem === 'function') {
       this.scene.hideHeldItem();
     }
+    this.refresh();
     if (this.isRevealed) {
       if (this.autoHideTimer) this.autoHideTimer.remove();
       this.autoHideTimer = this.scene.time.delayedCall(800, () => {
@@ -219,9 +266,31 @@ export default class InventoryBar {
   refresh() {
     for (let i = 0; i < this.slotImages.length; i++) {
       const itemKey = gameState.state.inventory[i];
+      const isSelected = Boolean(this.selectedItem && this.selectedItem === itemKey);
+      this.drawSlot(i, isSelected);
+
       if (itemKey) {
-        const tex = ITEM_TEXTURE_KEYS[itemKey] || 'item-betel-cutter';
-        this.slotImages[i].setTexture(tex).setVisible(true);
+        // Use clean procedural vector textures
+        if (itemKey === 'rusty_cog') {
+          this.slotImages[i]
+            .setTexture('ch1_vector_cog')
+            .setScale(0.75)
+            .setAngle(0)
+            .setVisible(true);
+        } else if (itemKey === 'bamboo_pole') {
+          this.slotImages[i]
+            .setTexture('ch1_vector_bamboo_icon')
+            .setScale(0.85)
+            .setAngle(0)
+            .setVisible(true);
+        } else {
+          const tex = ITEM_TEXTURE_KEYS[itemKey] || 'item-betel-cutter';
+          this.slotImages[i]
+            .setTexture(tex)
+            .setScale(0.74)
+            .setAngle(0)
+            .setVisible(true);
+        }
       } else {
         this.slotImages[i].setVisible(false);
       }

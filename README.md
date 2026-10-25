@@ -1,21 +1,17 @@
 # ဖိုးထောင် — ပုဂံရွှေမြို့တော် စွန့်စားခန်း
 
-<<<<<<< HEAD
 [![Phaser 3](https://img.shields.io/badge/Engine-Phaser%203.88.2-orange.svg)](https://phaser.io/)
 [![Vite](https://img.shields.io/badge/Bundler-Vite%206-646CFF.svg)](https://vitejs.dev/)
 [![Howler](https://img.shields.io/badge/Audio-Howler.js%202.2.4-blue.svg)](https://howlerjs.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](#license)
 
 An atmospheric 2D Point-and-Click / Troll Puzzle Adventure inspired by **Machinarium** and **Die Again**, set in the subterranean ruins of ancient Bagan, Myanmar. Featuring authentic Upper-Burmese comedic satire, hand-inked watercolor art style (Adolf Lachman aesthetic), and a phase-locked vertical stem audio director.
-=======
 Two-chapter desktop cartoon prototype: **Chapter1 bridge puzzle → Chapter2 stone-machine action**. One Phaser game, shared approved character concept, controls, Myanmar typography, settings, campaign save, deaths and gold.
 
 ## Run
->>>>>>> b549b0e158c0fcf36d046384689a352cbf196d2e
 
 Node24 + npm:
 
-<<<<<<< HEAD
 ## 📖 Table of Contents
 
 - [Overview & Story](#-overview--story)
@@ -112,7 +108,6 @@ Convert audio stems and foley files to optimized OGG format:
 ```bash
 npm run convert:audio
 ```
-=======
 ```powershell
 npm.cmd ci
 npm.cmd run dev
@@ -139,11 +134,9 @@ npm.cmd run test:e2e
 ```
 
 Current headless evidence: **61 unit/integration tests pass**, including all four original action routes with active machine and new bridge/campaign rule tests. Production build passes. Browser/human acceptance is not verified; browser tool access was blocked in the prior task and no bypass is used. Authored browser tests require an authorized environment/Playwright browser installation; listing them is not execution.
->>>>>>> b549b0e158c0fcf36d046384689a352cbf196d2e
 
 Character currently uses the same three-pose approved concept in both chapters, **not finished walking/jumping animation**. Friend's inherited scenery/audio rights and final visual consistency still need review. [Integration decisions and limitations](docs/integration_spec.md), [coding handoff](docs/README.md), [action asset provenance](public/assets/action_manifest.json), [action credits](public/ACTION_CREDITS.md).
 
-<<<<<<< HEAD
 ## 🎮 Game Controls
 
 | Action | Controls | Description |
@@ -339,6 +332,4 @@ All visual and audio assets follow a custom optimization pipeline:
   - *Die Again* & classic troll platformers
 - **Iconography:** Vector icons adapted from [Game-Icons.net](https://game-icons.net/) under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
 - **License:** Distributed under the MIT License. See `LICENSE` for details.
-=======
 Original furnace, scale, vault and reveal source/assets remain preserved but are **not registered** in this two-chapter runtime. Original project README is retained at [legacy-repo-readme.md](docs/legacy-repo-readme.md). Do not confuse retained source with newly tested playable chapters.
->>>>>>> b549b0e158c0fcf36d046384689a352cbf196d2e

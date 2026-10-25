@@ -263,6 +263,7 @@ const game = new Phaser.Game({ type: Phaser.AUTO, parent: 'game', width: C.width
   physics:{default:'arcade',arcade:{gravity:{x:0,y:0},fixedStep:true,fps:60}},
   render: { antialias: true, pixelArt: false }, scene: [BootScene,SharedPreloadScene,MenuScene,BridgeChapterScene,BridgeLinkScene,ActionChapterScene,ExitLinkScene] });
 
+if (import.meta.env.DEV) (window as any).__PHOE_GAME__ = game;
 declare global { interface Window { __PHOE_TEST__?: { snapshot(): unknown } } }
 if (import.meta.env.DEV) window.__PHOE_TEST__ = { snapshot: () => ({ mode: currentMode, attempt: liveSession ? structuredClone(liveSession.attempt) : null,
   generation: liveSession?.generation, paused: liveSession?.paused, campaign: structuredClone(store.campaign), activeScenes: game.scene.getScenes(true).map(s => s.scene.key) }) };

@@ -27,6 +27,8 @@ export const ITEM_NAMES_MY = {
   red_gem: 'ကျောက်မျက်နီ',
   bamboo_pole: 'ဝါးလုံးတုတ်',
   rusty_cog: 'သံချေးတက် ဂီယာခွေ',
+  beeswax: 'တောပျားဖယောင်း',
+  ancient_brick: 'ရှေးဟောင်း အုတ်ခဲ',
   chalk: 'ကျောက်ဖြူတုံး',
   engineer_note: 'လျှို့ဝှက်ပုံကြမ်း စာရွက်'
 };
@@ -43,6 +45,8 @@ export const ITEM_TEXTURE_KEYS = {
   red_gem: 'item-red-gem',
   bamboo_pole: 'item-bamboo-pole',
   rusty_cog: 'item-cog',
+  beeswax: 'ch1_vector_beeswax',
+  ancient_brick: 'ch1_vector_brick',
   chalk: 'item-chalk',
   engineer_note: 'item-engineer-note'
 };

@@ -566,6 +566,10 @@ class SoundEngine {
     osc.stop(now + 0.1);
   }
 
+  playFootstepStone() {
+    return this.playFootstep('stone');
+  }
+
   // Synchronized Footsteps: Alternating dry stone clicks, sand scuffs, and flip-flop slaps
   playFootstep(surface = 'stone') {
     if (this.muted) return;

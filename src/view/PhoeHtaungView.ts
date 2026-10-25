@@ -8,11 +8,13 @@ export interface PhoeActorState {
   vy?: number;
   grounded: boolean;
   facing: -1 | 1;
-  control?: 'FREE' | 'TAUNTING' | 'DEAD' | 'EXITING' | 'PICKUP' | 'RUMMAGE';
+  control?: 'FREE' | 'TAUNTING' | 'LOCKED' | 'DEAD' | 'EXITING' | 'PICKUP' | 'RUMMAGE' | 'LAYING';
   pushing?: boolean;
   holding?: boolean;
   poseOverride?: string;
 }
+
+export type PhoeHtaungState = PhoeActorState;
 
 /**
  * Phoe Htaung Dynamic Character View
@@ -85,13 +87,27 @@ export function renderPhoe(
     if ('stop' in actor && typeof actor.stop === 'function') actor.stop();
   };
 
-  if (isDead) {
+  if (p.control === 'LAYING' || p.poseOverride === 'ph-lay') {
     stopAnim();
-    actor.setTexture('phoe', 'neutral');
-    angle = -75 * p.facing;
-    multY = 0.65;
-    multX = 1.15;
-    alpha = 0.6;
+    if (hasTexture('phoe_crouch')) {
+      actor.setTexture('phoe_crouch');
+    } else if (hasTexture('ph-crouch')) {
+      actor.setTexture('ph-crouch');
+    } else {
+      actor.setTexture('phoe', 'neutral');
+    }
+
+    if (p.vx !== 0) {
+      angle = Math.sin(clock * 16) * 2.5 * p.facing;
+      multY = 0.50 + Math.sin(clock * 16) * 0.04;
+      multX = 1.32 - Math.abs(Math.sin(clock * 16)) * 0.03;
+    } else {
+      const layBreath = Math.sin(clock * 3.5);
+      multY = 0.50 + layBreath * 0.03;
+      multX = 1.28 - layBreath * 0.02;
+      angle = 0;
+    }
+    offsetY = 12;
     baseH = 850;
   } else if (p.poseOverride) {
     stopAnim();
@@ -100,6 +116,23 @@ export function renderPhoe(
     } else {
       actor.setTexture('phoe', 'neutral');
     }
+    if (p.poseOverride === 'ph-flat') {
+      multY = 0.35;
+      multX = 1.35;
+      alpha = 0.9;
+    } else if (p.poseOverride === 'ph-shock') {
+      angle = -180 * p.facing;
+      multY = 0.9;
+      multX = 0.9;
+    }
+    baseH = 850;
+  } else if (isDead) {
+    stopAnim();
+    actor.setTexture('phoe', 'neutral');
+    angle = -75 * p.facing;
+    multY = 0.65;
+    multX = 1.15;
+    alpha = 0.6;
     baseH = 850;
   } else if (p.control === 'PICKUP' || p.control === 'RUMMAGE') {
     stopAnim();
