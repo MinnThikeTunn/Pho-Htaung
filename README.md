@@ -1,5 +1,7 @@
 # ဖိုးထောင် — ပုဂံရွှေမြို့တော် စွန့်စားခန်း
 
+> **Current branch `codex/chapter-3-scale-puzzle`:** bridge puzzle → stone-machine action → new scale/treasure puzzle → Chapter4 pending. See [Chapter3 spec](docs/chapter3_spec.md) and [verification report](docs/chapter3_implementation_report.md). Legacy chapter descriptions below are retained reference, not the current runtime. Chapter3 reward is recorded as an optional recovered relic; its wallet value remains undecided. No fighting is implemented yet. Run locally with `npm run dev` (Node24); `build`, `typecheck`, `test`, `test:e2e` remain available.
+
 [![Phaser 3](https://img.shields.io/badge/Engine-Phaser%203.88.2-orange.svg)](https://phaser.io/)
 [![Vite](https://img.shields.io/badge/Bundler-Vite%206-646CFF.svg)](https://vitejs.dev/)
 [![Howler](https://img.shields.io/badge/Audio-Howler.js%202.2.4-blue.svg)](https://howlerjs.com/)

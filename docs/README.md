@@ -1,5 +1,9 @@
 # Combined adventure — coding handoff
 
+## Current extension — 2026-10-27
+
+Owner authorized a separate branch implementing Chapter3 as an item puzzle, with fighting starting in Chapter4. Current branch adds `CHAPTER_3` (scale/treasure puzzle) and ends at honest `CHAPTER_4_PENDING`. Read [Chapter3 spec](chapter3_spec.md) and [actual evidence](chapter3_implementation_report.md) first for this extension. The two-chapter description below is historical baseline, not a command to remove authorized Chapter3 work. Chapter1/2 gameplay rules remain in place; their source caveats and known failures are not silently fixed by this extension.
+
 Current runtime: **Chapter1 bridge puzzle → Chapter2 stone-machine action**. Owner approved this order and replacing unreadable bridge traps with readable danger on2026-10-23. The already-approved cartoon concept is the shared protagonist. See [integration spec/evidence](integration_spec.md) before changes.
 
 The original repo's furnace/scale/vault/reveal scene files remain preserved but are not registered in this two-chapter build. Do not accidentally restore their old scene chain. End after Chapter2 at the honest Chapter3-pending panel.

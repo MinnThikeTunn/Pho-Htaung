@@ -35,6 +35,10 @@ export interface Campaign {
   deathCount: number; chapter2Completed: boolean; chapter2BestBankedCoins: number;
   completedAttemptIds: string[]; bestResultByPresetAndCoinTotal: Record<string, number>;
   hintsSeen: string[]; inventory: string[]; ownedTools: string[];
-  resumeAt: 'CHAPTER_1' | 'CHAPTER_2' | 'CH2_EXIT_LINK' | 'CHAPTER_3_PENDING';
+  resumeAt: 'CHAPTER_1' | 'CHAPTER_2' | 'CH2_EXIT_LINK' | 'CHAPTER_3_PENDING' | 'CHAPTER_3' | 'CHAPTER_4_PENDING';
   lastChapter2Result: ChapterResult | null;
+  // Optional additive fields let existing schema-2 adventures load losslessly.
+  chapter3Completed?: boolean;
+  chapter3TreasureRecovered?: boolean;
+  lastChapter3Result?: import('./scale').ScaleResult | null;
 }

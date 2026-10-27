@@ -5,7 +5,8 @@ export function newCampaign(id: string): Campaign {
   return { schemaVersion: 2, revision: 0, campaignId: id, walletCoins: 0, deathCount: 0, bridgeCompleted: false,
     chapter2Completed: false, chapter2BestBankedCoins: 0, completedAttemptIds: [],
     bestResultByPresetAndCoinTotal: {}, hintsSeen: [], inventory: [], ownedTools: [],
-    resumeAt: 'CHAPTER_1', lastChapter2Result: null };
+    resumeAt: 'CHAPTER_1', lastChapter2Result: null, chapter3Completed: false,
+    chapter3TreasureRecovered: false, lastChapter3Result: null };
 }
 export function settle(current: Campaign, a: Attempt, mode: Mode, sessionDeaths: number): { campaign: Campaign; result: ChapterResult | null; duplicate: boolean } {
   if (a.status !== 'COMPLETE' || a.player.control !== 'EXITING') throw new Error('Cannot settle an unfinished attempt');
@@ -43,7 +44,17 @@ export function validateCampaign(value: unknown): value is Campaign {
     !nonnegative(c.walletCoins) || !nonnegative(c.deathCount) || !nonnegative(c.chapter2BestBankedCoins) || c.chapter2BestBankedCoins! > 15 ||
     typeof c.chapter2Completed !== 'boolean' || !strings(c.completedAttemptIds) || new Set(c.completedAttemptIds).size !== c.completedAttemptIds.length ||
     !strings(c.hintsSeen) || !strings(c.inventory) || !strings(c.ownedTools) ||
-    !['CHAPTER_1', 'CHAPTER_2', 'CH2_EXIT_LINK', 'CHAPTER_3_PENDING'].includes(c.resumeAt ?? '')) return false;
+    !['CHAPTER_1', 'CHAPTER_2', 'CH2_EXIT_LINK', 'CHAPTER_3_PENDING', 'CHAPTER_3', 'CHAPTER_4_PENDING'].includes(c.resumeAt ?? '')) return false;
+  if (c.chapter3Completed !== undefined && typeof c.chapter3Completed !== 'boolean') return false;
+  if (c.chapter3TreasureRecovered !== undefined && typeof c.chapter3TreasureRecovered !== 'boolean') return false;
+  if (c.chapter3Completed && !c.chapter2Completed) return false;
+  if (['CHAPTER_3', 'CHAPTER_4_PENDING'].includes(c.resumeAt!) && !c.chapter2Completed) return false;
+  if (c.resumeAt === 'CHAPTER_4_PENDING' && !c.chapter3Completed) return false;
+  if (c.lastChapter3Result != null) {
+    const r = c.lastChapter3Result;
+    if (!r.attemptId || typeof r.attemptId !== 'string' || !Number.isFinite(r.activeSeconds) || r.activeSeconds < 0 ||
+      typeof r.treasureRecovered !== 'boolean' || !['WEIGHTS', 'BRACE', 'TIMING'].includes(r.method)) return false;
+  }
   if (!c.bestResultByPresetAndCoinTotal || typeof c.bestResultByPresetAndCoinTotal !== 'object' || Array.isArray(c.bestResultByPresetAndCoinTotal)) return false;
   if (!Object.entries(c.bestResultByPresetAndCoinTotal).every(([k, v]) => /^[ABC]:(?:[0-9]|1[0-5])$/.test(k) && typeof v === 'number' && Number.isFinite(v) && v >= 0)) return false;
   if (c.lastChapter2Result !== null) {
