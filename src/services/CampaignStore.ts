@@ -2,6 +2,8 @@ import { newCampaign, settle, validateCampaign } from '../domain/settlement';
 import type { Attempt, Campaign, ChapterResult, Mode } from '../domain/types';
 import { settleBridge } from '../domain/bridge';
 import type { BridgeExit } from '../domain/bridge';
+import { settleScale } from '../domain/scale';
+import type { ScaleAttempt } from '../domain/scale';
 
 export const SAVE_KEY = 'phoe-htaung.adventure.v2';
 export const SETTINGS_KEY = 'phoe-htaung.settings.v1';
@@ -61,4 +63,17 @@ export class CampaignStore {
     this.campaign = outcome.campaign; this.save(); return outcome.result;
   }
   completeBridge(id:string,exit:BridgeExit){const next=settleBridge(this.campaign,id,exit);if(next!==this.campaign){this.campaign=next;this.save();}return !this.unsaved;}
+  startScale() {
+    if (!this.campaign.chapter2Completed) return false;
+    if (!this.campaign.chapter3Completed && this.campaign.resumeAt !== 'CHAPTER_3') {
+      this.campaign.resumeAt = 'CHAPTER_3'; this.campaign.revision++; this.save();
+    }
+    return true;
+  }
+  completeScale(a: ScaleAttempt) {
+    const next = settleScale(this.campaign, a);
+    if (next === this.campaign) return null;
+    this.campaign = next; this.save();
+    return this.campaign.lastChapter3Result ?? null;
+  }
 }

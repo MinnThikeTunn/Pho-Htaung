@@ -12,6 +12,7 @@ import { WorldView } from './view/WorldView';
 import { store } from './services/adventure';
 import PreloadScene from './scenes/PreloadScene.js';
 import BridgeChapterScene from './scenes/BridgeChapterScene.js';
+import ScaleChapterScene from './scenes/ScaleChapterScene';
 
 const uid = () => crypto.randomUUID();
 
@@ -20,7 +21,7 @@ const ui = document.querySelector<HTMLDivElement>('#interface')!;
 let shade = true, showHints = true, debug = false;
 try { const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}'); audio.muted = Boolean(s.muted); shade = s.shake !== false; showHints = s.hints !== false; } catch { /* Readable defaults when settings are unavailable. */ }
 function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ muted: audio.muted, shake: shade, hints: showHints })); } catch { /* Campaign warnings remain independent. */ } }
-document.body.insertAdjacentHTML('afterbegin', `<header class="page-header"><a class="wordmark" href="/" aria-label="ဖိုးထောင် home"><span class="mark">ဖ</span><span>ဖိုးထောင်<small>THE GOLDEN CITY</small></span></a><span class="build-label"><i></i> TWO CHAPTER ADVENTURE</span></header>`);
+document.body.insertAdjacentHTML('afterbegin', `<header class="page-header"><a class="wordmark" href="/" aria-label="ဖိုးထောင် home"><span class="mark">ဖ</span><span>ဖိုးထောင်<small>THE GOLDEN CITY</small></span></a><span class="build-label"><i></i> THREE CHAPTER ADVENTURE</span></header>`);
 document.body.insertAdjacentHTML('beforeend', `<footer class="page-footer"><span>ကိုယ့်ကိုပစ်တဲ့တုံးနဲ့ ကိုယ့်လမ်းကိုဖွင့်။</span><span>DESKTOP / KEYBOARD <b>·</b> မူကြမ်းပုံနှင့်အသံများ</span></footer>`);
 const buttons = (html: string) => `<div class="actions">${html}</div>`;
 const button = (id: string, text: string, primary = false) => `<button type="button" id="${id}" class="${primary ? 'primary' : 'secondary'}">${text}</button>`;
@@ -37,9 +38,10 @@ function choices(scene: Phaser.Scene) {
   bind('practice-b', () => enter(scene, 'B', 'PRACTICE'));
   bind('practice-c', () => enter(scene, 'C', 'PRACTICE'));
   bind('menu', () => scene.scene.start('MENU'));
+  bind('chapter-three', () => { if(store.campaign.chapter2Completed)scene.scene.start('CHAPTER_3'); });
 }
 function replayButtons() {
-  return button('replay', 'ပြန်စမ်းမယ်', true) + (store.campaign.chapter2Completed ? button('practice-b', 'လေ့ကျင့်ခန်း B') + button('practice-c', 'လေ့ကျင့်ခန်း C') : '') + button('menu', 'ပင်မစာမျက်နှာ');
+  return button('replay', 'ပြန်စမ်းမယ်', true) + (store.campaign.chapter2Completed ? button('chapter-three','အခန်း ၃ ဆီ') + button('practice-b', 'လေ့ကျင့်ခန်း B') + button('practice-c', 'လေ့ကျင့်ခန်း C') : '') + button('menu', 'ပင်မစာမျက်နှာ');
 }
 
 class BootScene extends Phaser.Scene {
@@ -67,9 +69,10 @@ class MenuScene extends Phaser.Scene {
     liveSession=null;audio.attach(this);
     new WorldView(this).render(createAttempt('A','menu'));
     const c=store.campaign;
-    ui.innerHTML=`<div class="menu-scrim"></div><section class="title-panel"><span class="eyebrow">ပုဂံရွှေမြို့တော် စွန့်စားခန်း</span><h1 id="game-title">ဖိုးထောင်။</h1><p class="chapter-name">တံတားပဟေဠိ → ကျောက်တုံးချစက်</p><p class="intro">အကြွေးဆပ်ဖို့ ရွှေမြို့တော်ရှာရင်း ဦးကြီးနောက်လိုက်လာတယ်။<br>တံတားဖြတ်ပြီး မြေအောက်စက်ခန်းထဲ ဘာတွေစောင့်နေမလဲ။</p>${buttons(button('start',c.bridgeCompleted?'ဆက်ကစားမယ်':'စကစားမယ်',true)+(c.bridgeCompleted?button('bridge-replay','အခန်း ၁ ပြန်စမ်း'):'')+(c.chapter2Completed?button('action-replay','အခန်း ၂ ပြန်စမ်း'):''))}<div class="key-guide"><span><kbd>A</kbd><kbd>D</kbd> ရွေ့</span><span><kbd>SPACE</kbd> ခုန်</span><span>အခန်း ၁ · click puzzle / အခန်း ၂ · <kbd>E</kbd> ဆွ</span></div><small class="prototype-note">တူညီသော character concept · animation အချောသတ်မဟုတ်သေးပါ။<br>ပေါင်းစည်းထားသော save သီးခြားသုံးပြီး ယခင် save နှစ်ခုကို မဖျက်၊ အလိုအလျောက် မပေါင်းထားပါ။</small>${c.chapter2Completed?buttons(button('practice-b','အခန်း ၂ လေ့ကျင့် B')+button('practice-c','အခန်း ၂ လေ့ကျင့် C')):''}${buttons(button('new-game','Campaign အသစ်စမယ်'))}<p class="warning" id="load-error" hidden></p></section><div class="corner-label">01 / 02 <span>PUZZLE → ACTION</span></div>`;
-    const start=()=>{if(!c.bridgeCompleted)this.scene.start('Chapter1Scene');else if(c.resumeAt==='CHAPTER_3_PENDING'||c.resumeAt==='CH2_EXIT_LINK')this.scene.start('CH2_EXIT_LINK',{mode:'CAMPAIGN',resumePending:c.resumeAt==='CHAPTER_3_PENDING'});else enter(this,'A',c.chapter2Completed?'REPLAY':'CAMPAIGN');};
+    ui.innerHTML=`<div class="menu-scrim"></div><section class="title-panel adventure-menu"><span class="eyebrow">ပုဂံရွှေမြို့တော် စွန့်စားခန်း</span><h1 id="game-title">ဖိုးထောင်။</h1><p class="chapter-name">တံတား → ကျောက်တုံးချစက် → ချိန်ခွင်ခန်း</p><p class="intro">အကြွေးဆပ်ဖို့ ရွှေမြို့တော်ရှာရင်း ဦးကြီးနောက်လိုက်လာတယ်။<br>ဒီတစ်ခါ ရွှေရုပ်ပါ ယူထွက်နိုင်မလား။</p>${buttons(button('start',c.bridgeCompleted?'ဆက်ကစားမယ်':'စကစားမယ်',true)+(c.bridgeCompleted?button('bridge-replay','အခန်း ၁ ပြန်စမ်း'):'')+(c.chapter2Completed?button('action-replay','အခန်း ၂ ပြန်စမ်း'):'')+(c.chapter3Completed?button('scale-replay','အခန်း ၃ ပြန်စမ်း'):''))}<div class="key-guide"><span><kbd>A</kbd><kbd>D</kbd> ရွေ့</span><span><kbd>SPACE</kbd> ခုန်</span><span>အခန်း ၁ / ၃ · နှိပ်ပြီး ကောက် / သုံး</span></div><small class="prototype-note">တူညီသော character · ယာယီ scenery နှင့်အသံများ။<br>အခန်း ၄ တိုက်ခိုက်ရေးကို မတည်ဆောက်ရသေးပါ။</small>${c.chapter2Completed?buttons(button('practice-b','အခန်း ၂ လေ့ကျင့် B')+button('practice-c','အခန်း ၂ လေ့ကျင့် C')):''}${buttons(button('new-game','Campaign အသစ်စမယ်'))}<p class="warning" id="load-error" hidden></p></section><div class="corner-label">01 / 03 <span>PUZZLE → ACTION → PUZZLE</span></div>`;
+    const start=()=>{if(!c.bridgeCompleted)this.scene.start('Chapter1Scene');else if(c.chapter3Completed)this.scene.start('CHAPTER_4_PENDING');else if(c.resumeAt==='CH2_EXIT_LINK')this.scene.start('CH2_EXIT_LINK',{mode:'CAMPAIGN'});else if(c.chapter2Completed)this.scene.start('CHAPTER_3');else enter(this,'A','CAMPAIGN');};
     bind('start',start);bind('bridge-replay',()=>this.scene.start('Chapter1Scene',{replay:true}));bind('action-replay',()=>enter(this,'A','REPLAY'));bind('practice-b',()=>enter(this,'B','PRACTICE'));bind('practice-c',()=>enter(this,'C','PRACTICE'));
+    bind('scale-replay',()=>this.scene.start('CHAPTER_3',{replay:true}));
     bind('new-game',()=>{if(confirm('လက်ရှိ combined campaign နှင့် သိမ်းပြီးရွှေကို အသစ်စမယ်။ သေချာလား?')){store.reset(uid());this.scene.restart();}});
     if(store.loadError){const warning=ui.querySelector<HTMLElement>('#load-error')!;warning.hidden=false;warning.textContent=store.loadError+' Start ကိုနှိပ်လျှင် မသိမ်းဘဲ ယာယီစမ်းနိုင်သည်။';}
   }
@@ -246,10 +249,12 @@ class ExitLinkScene extends Phaser.Scene {
     bind('continue', () => this.showPending()); choices(this);
   }
   private showPending() {
-    if (this.pending && ui.querySelector('#pending-title')) return;
     this.pending = true;
-    if (this.mode === 'CAMPAIGN'&&store.campaign.resumeAt!=='CHAPTER_3_PENDING') { store.campaign.resumeAt = 'CHAPTER_3_PENDING'; store.campaign.revision++; store.save(); }
-    ui.innerHTML = `<section class="result-panel"><span class="eyebrow">TWO CHAPTER PROTOTYPE COMPLETE</span><h1 id="pending-title">နောက်အခန်းမှာ ဆုံမယ်။</h1><p class="intro">အခန်း ၃ ကို မတည်ဆောက်ရသေးပါ။<br>အခန်း ၁ နဲ့ ၂ ကို နည်းလမ်းအသစ်နဲ့ ပြန်စမ်းလို့ရတယ်။</p>${buttons(replayButtons())}<p class="prototype-note">ဂိမ်းတစ်ခုလုံးရဲ့ ဇာတ်သိမ်းမဟုတ်သေးပါ။</p></section>`; choices(this);
+    if (store.unsaved) {
+      ui.innerHTML=`<section class="result-panel"><h1>ချိန်ခွင်ခန်းဆီ။</h1><p class="warning">Save မသိမ်းရသေးပါ။ Reload လုပ်ပါက ယာယီ progress ပျောက်နိုင်သည်။</p>${buttons(button('retry-save','ထပ်သိမ်းမယ်',true)+button('temporary-scale','ယာယီအတိုင်း အခန်း ၃ ဆက်မယ်')+button('menu','ပင်မစာမျက်နှာ'))}</section>`;
+      bind('retry-save',()=>{if(store.save())this.scene.start('CHAPTER_3');});bind('temporary-scale',()=>this.scene.start('CHAPTER_3'));bind('menu',()=>this.scene.start('MENU'));return;
+    }
+    this.scene.start('CHAPTER_3');
   }
   update(_t: number, ms: number) {
     if (document.hidden || !document.hasFocus()) return;
@@ -258,12 +263,24 @@ class ExitLinkScene extends Phaser.Scene {
   }
 }
 
+class ChapterFourPendingScene extends Phaser.Scene {
+  constructor(){super('CHAPTER_4_PENDING');}
+  create(){
+    liveSession=null;
+    if(!store.campaign.chapter3Completed){this.scene.start('MENU');return;}
+    this.add.rectangle(640,360,1280,720,0x182d23);
+    ui.innerHTML=`<section class="result-panel"><span class="eyebrow">အခန်း ၄ / FIGHTING — မတည်ဆောက်ရသေး</span><h1>“အဲဒီမှာ ဘယ်သူလဲ!”</h1><p class="intro">တံခါးစက်သံကိုကြားပြီး အတွင်းဘက်ကလူတွေ လှမ်းအော်လိုက်သည်။<br>နောက်အခန်းမှာ တိုက်ခိုက်ရေး စတင်မယ်။</p><p class="result-note">အခန်း ၃ ပြီးထားသည်။ ရွှေရုပ် ${store.campaign.chapter3TreasureRecovered?'ယူထွက်နိုင်ခဲ့ပြီ':'ယူမထွက်ရသေး'}။ သိမ်းပြီးရွှေ ${store.campaign.walletCoins}။${store.unsaved?' ယာယီ progress ဖြစ်ပြီး save မသိမ်းရသေးပါ။':''}</p>${buttons(button('chapter-three','အခန်း ၃ ပြန်စမ်း',true)+button('menu','ပင်မစာမျက်နှာ'))}<p class="prototype-note">အခန်း ၄ ကို မရေးရသေးပါ။ ဂိမ်းတစ်ခုလုံး၏ ဇာတ်သိမ်းမဟုတ်ပါ။</p></section>`;
+    choices(this);
+  }
+}
+
 const game = new Phaser.Game({ type: Phaser.AUTO, parent: 'game', width: C.width, height: C.height, backgroundColor: '#22382c',
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   physics:{default:'arcade',arcade:{gravity:{x:0,y:0},fixedStep:true,fps:60}},
-  render: { antialias: true, pixelArt: false }, scene: [BootScene,SharedPreloadScene,MenuScene,BridgeChapterScene,BridgeLinkScene,ActionChapterScene,ExitLinkScene] });
+  render: { antialias: true, pixelArt: false }, scene: [BootScene,SharedPreloadScene,MenuScene,BridgeChapterScene,BridgeLinkScene,ActionChapterScene,ExitLinkScene,ScaleChapterScene,ChapterFourPendingScene] });
 
 if (import.meta.env.DEV) (window as any).__PHOE_GAME__ = game;
 declare global { interface Window { __PHOE_TEST__?: { snapshot(): unknown } } }
 if (import.meta.env.DEV) window.__PHOE_TEST__ = { snapshot: () => ({ mode: currentMode, attempt: liveSession ? structuredClone(liveSession.attempt) : null,
-  generation: liveSession?.generation, paused: liveSession?.paused, campaign: structuredClone(store.campaign), activeScenes: game.scene.getScenes(true).map(s => s.scene.key) }) };
+  generation: liveSession?.generation, paused: liveSession?.paused, campaign: structuredClone(store.campaign), activeScenes: game.scene.getScenes(true).map(s => s.scene.key),
+  scale: game.scene.isActive('CHAPTER_3') ? (game.scene.getScene('CHAPTER_3') as ScaleChapterScene).snapshot() : null }) };
