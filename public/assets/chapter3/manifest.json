@@ -1,0 +1,35 @@
+{
+  "revision": 1,
+  "date": "2026-10-27",
+  "releaseCleared": false,
+  "promptAndProvenance": "art/source/chapter3/README.md",
+  "assets": [
+    {
+      "id": "scale_chamber_v1",
+      "runtime": "assets/chapter3/scale_chamber_v1.png",
+      "source": "art/source/chapter3/scale_chamber_v1.png",
+      "sha256": "E720E543D00A729EB23483C2A2C015EBE840ACD543073B9C51DC9264383207CF",
+      "dimensions": [1672, 941],
+      "bytes": 2441545,
+      "provenance": "Built-in image_gen edit of existing project AI-generated chapter1/background_v1.png",
+      "status": "Integrated art candidate; owner in-game review pending",
+      "terms": "AI-generated original derivative; no third-party stock license or exclusive copyright claimed",
+      "modifications": "Original bytes copied without pixel editing; runtime scales to1280x720"
+    },
+    {
+      "id": "scale_props_v1",
+      "runtime": "assets/chapter3/scale_props_v1.png",
+      "source": "art/source/chapter3/scale_props_v1.png",
+      "sha256": "8288F90E00919900E8CC7549B7F0807ACF133A22A220579EE1D825C24F4DF71D",
+      "dimensions": [1536, 1024],
+      "bytes": 2585898,
+      "provenance": "Built-in image_gen, new six-prop transparent atlas",
+      "status": "Integrated art candidate; owner in-game review pending",
+      "terms": "AI-generated original; no third-party stock license or exclusive copyright claimed",
+      "alpha": "RGBA,0..254 measured; transparent padding retained",
+      "frames": "src/content/chapter3Art.ts; tight alpha>=8 bounds, source pixels unchanged",
+      "modifications": "Phaser frame import, display sizing and visual gate crop; no domain geometry changes"
+    }
+  ],
+  "remaining": ["Owner visual approval", "Full asset and release provenance review", "No layered painting master available"]
+}

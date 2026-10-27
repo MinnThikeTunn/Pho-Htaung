@@ -1,5 +1,7 @@
 # Chapter 3 implementation evidence — 2026-10-27
 
+Subsequent owner-requested art correction: [ancient-city visual revision](chapter3_art_review.md). The procedural environment described in this original implementation report is historical; current Chapter3 uses painted local environment/props with the same domain rules.
+
 Branch `codex/chapter-3-scale-puzzle`; base `912003a`. Separate branch requested by owner. This report covers the new scale puzzle, not a full-game completion or final artwork review. [Rules and limits](chapter3_spec.md).
 
 ## Implemented files

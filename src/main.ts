@@ -13,6 +13,7 @@ import { store } from './services/adventure';
 import PreloadScene from './scenes/PreloadScene.js';
 import BridgeChapterScene from './scenes/BridgeChapterScene.js';
 import ScaleChapterScene from './scenes/ScaleChapterScene';
+import { SCALE_ART } from './content/chapter3Art';
 
 const uid = () => crypto.randomUUID();
 
@@ -47,6 +48,8 @@ function replayButtons() {
 class BootScene extends Phaser.Scene {
   constructor() { super('BOOT'); }
   preload() {
+    this.load.image(SCALE_ART.background.key, SCALE_ART.background.path);
+    this.load.image(SCALE_ART.props.key, SCALE_ART.props.path);
     this.load.image('background', '/assets/chapter1/background_v1.png');
     this.load.image('phoe', '/assets/concepts/phoe_htaung_concept_v1.png');
     this.load.spritesheet('phoe_run', '/assets/character/phoe_run_spritesheet.png', { frameWidth: 380, frameHeight: 850 });
