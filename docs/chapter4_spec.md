@@ -2,6 +2,8 @@
 
 Owner-authorized implementation, 2026-10-28. Latest remote `main` was fetched and local `main` fast-forwarded to `1aecccb` before implementation. Work is on `codex/chapter-4-ape-arena`. This extends the existing three-chapter campaign; earlier CH1-only and CH4-pending endpoints are historical scope.
 
+Current balance revision follows the owner's instruction to fix the [observed stationary-shot exploit](../reports/chapter4-experience/README.md). See [new verification and remaining limits](chapter4_balance_review.md). Earlier implementation evidence records the pre-revision tuning.
+
 ## Story and scope
 
 After the scale chamber, Phoe Htaung reaches a roof-broken courtyard guarding the inner ancient city. Two giant apes block progress: a brown melee guard and a silver stone thrower. Defeat both and walk through the right exit. Chapter5 remains an explicitly unfinished continuation, not the game ending.
@@ -16,7 +18,7 @@ Keep the same human cartoon protagonist, longyi, Burmese text and warm, weathere
 |---|---|
 | A/D or arrows | Move at shared220px/s; half speed while drawing the sling |
 | Space | Shared jump; no double jump |
-| J press | Punch one nearest enemy in front, within86px;1 damage,0.35s cooldown |
+| J press | Punch one nearest enemy in front, within86px;1 damage,0.75s cooldown; an idle/recovering enemy is shoved80px and stunned0.75s |
 | Hold/release K | Draw up to0.55s, release to fire; minimum0.12s, maximum30 damage,0.48s cooldown |
 | L press | Dodge toward held movement, otherwise backward;0.22s at420px/s, first0.15s invulnerable,0.85s cooldown |
 | Hold R | Whole-attempt retry after0.5s; release/repress required |
@@ -26,15 +28,17 @@ Player starts at x160/feet640 with100HP. Each ape has150HP. Three labelled healt
 
 K fixes facing when drawing starts. On release the shot aims at the nearest living ape in that direction; no target means a straight shot. Actual swept projectiles hit the first body along their path. Full charge can defeat each ape in five hits. Minimum-charge taps do less damage. Shots travel at920px/s. Holding K alone does not repeatedly fire.
 
-J briefly stuns/knocks back an idle or recovering ape, but cannot cancel an attack already winding up. Bare fists cannot beat300 combinedHP within75s: even the generous ideal bound `(ceil(75/0.35)+1)*1 =216` is below300. This is a visible time-pressure rule, not invisible enemy healing or an arbitrary forced death. Actual difficulty/fun requires owner playtesting; damage values are prototype tuning.
+J creates enough space/stun to draw a full sling shot against an idle or recovering ape, but cannot cancel an attack already winding up or repeatedly restun an already stunned ape. Bare fists cannot beat300 combinedHP within75s: even the generous ideal bound `(ceil(75/0.75)+1)*1 =101` is below300. This is a visible time-pressure rule, not invisible enemy healing or an arbitrary forced death. Actual difficulty/fun requires owner playtesting; damage values are prototype tuning.
+
+A real hit cancels the current sling charge and prevents redrawing for0.3s. An unfired stone is not consumed, and movement, jump and dodge remain available during that draw interruption. Clear flash/message feedback explains the interruption; no hidden charge loss or forced lockout of escape controls.
 
 ## Enemies and truthful warnings
 
-Brown starts at820 and approaches at130px/s. Its0.65s windup locks facing and draws the actual low strike area. A hit deals18; its recovery is0.85s. Jump or dodge out of the marked reach.
+Brown starts at720 and approaches at180px/s. Its0.65s windup locks facing and draws the actual low strike area. A hit deals24; its recovery is0.85s. Jump or dodge out of the marked reach.
 
-Silver starts at1100, retreats when close and throws a stone toward the player's position locked at windup start. The0.85s warning draws that locked line/target. The projectile travels at430px/s, deals14 and can be avoided after the throw. Throw recovery is1.1s and cooldown2.4s.
+Silver starts at1100, retreats when close and throws a stone toward the player's position locked at windup start. The0.85s warning draws that locked line/target. The projectile travels at430px/s, deals20 and can be avoided after the throw. Throw recovery is1.1s and cooldown1.4s, with initial cooldown0.25s.
 
-The attack coordinator starts at most one windup/strike at a time, with1.05s spacing and1.8s initial grace. An older flying stone can coexist with a later melee warning; the coordinator does not promise to remove projectiles. Hurt grace0.8s prevents immediate overlapping hits. Apes have no passive contact damage.
+The attack coordinator starts at most one windup/strike at a time, with1.05s spacing and1.2s initial grace. An older flying stone can coexist with a later melee warning; the coordinator does not promise to remove projectiles. Hurt grace0.8s prevents immediate overlapping hits. Apes have no passive contact damage. Player/enemy health and warning duration were not inflated/shortened in this revision.
 
 ## Supplies, loss, retry and exit
 
@@ -62,6 +66,7 @@ Existing schema2 saves remain readable. Additive fields are `chapter4Completed` 
 - `public/assets/chapter4/arena_apes_v1.png`:1774×887 transparent candidate atlas, brown/silver × idle/windup/strike/recover. Measured individual rectangles and torso/feet anchors; not equal grid cells.
 - Byte-identical originals, full generation/edit prompts and registration notes: [art source](../art/source/chapter4/README.md). Dimensions, hashes and review status: [manifest](../public/assets/chapter4/manifest.json).
 - Same existing character renderer/atlas, with procedural sling, cords, stones, shadows, strike/aim warnings and exit arrow. Punch/dodge reuse existing poses; dedicated combat animation is unfinished. Apes switch four poses and slide during movement; no finished walk cycle is claimed.
+- Enemy hit flash lasts0.18s with foreground impact rays; projectiles have a contrasting outline. Player hit feedback identifies charge interruption. Compact warning/charge panels and speech that hides after3.5 active seconds reduce persistent obstruction; completion instructions remain visible. Pause freezes these lifetimes too. Red enemy health fill is preserved.
 - Assets load on arena entry. A readable procedural fallback remains when optional imagery is missing. No new narrated recording, cloned voice, downloaded music or stock media was acquired. Combat-specific sound work remains outstanding.
 
 The AI-generated art is an integrated candidate; final owner approval and release provenance review remain pending. No layered painting master exists. Neither automated checks nor a successful route proves originality, fun, final animation quality or release readiness.

@@ -7,15 +7,15 @@ import type { Campaign, Player } from './types';
 export interface ArenaInput { left: boolean; right: boolean; jump: boolean; punch: boolean; sling: boolean; dodge: boolean }
 export const ARENA_IDLE: Readonly<ArenaInput> = { left: false, right: false, jump: false, punch: false, sling: false, dodge: false };
 export type ApePhase = 'IDLE' | 'WINDUP' | 'STRIKE' | 'RECOVER' | 'STUN' | 'DOWN';
-export interface Ape { id: string; type: 'MELEE' | 'THROWER'; x: number; hp: number; phase: ApePhase; phaseLeft: number; cooldown: number; facing: -1 | 1; targetX: number; targetY: number; hit: boolean }
+export interface Ape { id: string; type: 'MELEE' | 'THROWER'; x: number; hp: number; phase: ApePhase; phaseLeft: number; cooldown: number; facing: -1 | 1; targetX: number; targetY: number; hit: boolean; hitLeft: number }
 export interface ArenaShot { id: number; owner: 'PHOE' | 'APE'; x: number; y: number; vx: number; vy: number; damage: number; age: number }
-export type ArenaEvent = 'punch' | 'shot' | 'empty' | 'hit' | 'hurt' | 'down' | 'refill' | 'dodge' | 'won' | 'failed' | 'complete';
+export type ArenaEvent = 'punch' | 'shove' | 'shot' | 'empty' | 'hit' | 'hurt' | 'down' | 'refill' | 'dodge' | 'won' | 'failed' | 'complete';
 export interface ArenaAttempt {
   id: string; status: 'WAITING' | 'ACTIVE' | 'FAILED' | 'COMPLETE'; failure: 'HEALTH' | 'TIME' | null;
   player: Player; hp: number; hasSling: boolean; ammo: number; elapsed: number; combatSeconds: number;
   apes: Ape[]; shots: ArenaShot[]; nextShot: number; shotsFired: number; charge: number; aimFacing: -1 | 1; wasSling: boolean;
   punchLeft: number; slingLeft: number; dodgeLeft: number; dodgeCooldown: number; dodgeDirection: -1 | 1;
-  hurtLeft: number; refill: number; attackGap: number; combatWon: boolean; events: ArenaEvent[];
+  hurtLeft: number; staggerLeft: number; refill: number; attackGap: number; combatWon: boolean; events: ArenaEvent[];
 }
 export interface ArenaResult { attemptId: string; activeSeconds: number; remainingHealth: number; shotsFired: number }
 export function createArena(id: string, hasSling = true): ArenaAttempt {
@@ -23,10 +23,10 @@ export function createArena(id: string, hasSling = true): ArenaAttempt {
     player: { centerX: A4.spawnX, feetY: C.floor, vx: 0, vy: 0, grounded: true, support: 'arena_floor', coyote: C.coyote, jumpBuffer: 0,
       control: 'FREE', tauntLeft: 0, facing: 1, pushing: false },
     apes: [
-      { id: 'brown', type: 'MELEE', x: 820, hp: A4.apeHealth, phase: 'IDLE', phaseLeft: 0, cooldown: 0, facing: -1, targetX: 0, targetY: 0, hit: false },
-      { id: 'silver', type: 'THROWER', x: 1100, hp: A4.apeHealth, phase: 'IDLE', phaseLeft: 0, cooldown: 1.1, facing: -1, targetX: 0, targetY: 0, hit: false },
+      { id: 'brown', type: 'MELEE', x: A4.meleeSpawn, hp: A4.apeHealth, phase: 'IDLE', phaseLeft: 0, cooldown: 0, facing: -1, targetX: 0, targetY: 0, hit: false, hitLeft: 0 },
+      { id: 'silver', type: 'THROWER', x: 1100, hp: A4.apeHealth, phase: 'IDLE', phaseLeft: 0, cooldown: A4.throwFirstCooldown, facing: -1, targetX: 0, targetY: 0, hit: false, hitLeft: 0 },
     ], shots: [], nextShot: 0, shotsFired: 0, charge: 0, aimFacing: 1, wasSling: false, punchLeft: 0, slingLeft: 0,
-    dodgeLeft: 0, dodgeCooldown: 0, dodgeDirection: -1, hurtLeft: 0, refill: 0, attackGap: A4.firstAttack, combatWon: false, events: [] };
+    dodgeLeft: 0, dodgeCooldown: 0, dodgeDirection: -1, hurtLeft: 0, staggerLeft: 0, refill: 0, attackGap: A4.firstAttack, combatWon: false, events: [] };
 }
 function playerBody(a: ArenaAttempt): Body {
   return { id: 'phoe', x: a.player.centerX - C.playerW / 2, y: a.player.feetY - C.playerH, w: C.playerW, h: C.playerH, vx: 0, vy: 0, kind: 'player' };
@@ -34,15 +34,18 @@ function playerBody(a: ArenaAttempt): Body {
 function apeBody(e: Ape): Body { return { id: e.id, x: e.x - 42, y: C.floor - 124, w: 84, h: 124, vx: 0, vy: 0, kind: 'solid' }; }
 function hurt(a: ArenaAttempt, damage: number) {
   if (a.hurtLeft > 0 || a.dodgeLeft > A4.dodgeTime - A4.dodgeInvulnerable || a.combatWon) return;
-  a.hp = Math.max(0, a.hp - damage); a.hurtLeft = A4.hurtGrace; a.events.push('hurt');
+  a.hp = Math.max(0, a.hp - damage); a.hurtLeft = A4.hurtGrace; a.staggerLeft = A4.hurtStagger;
+  // A visible hit breaks a draw, without consuming an unfired stone or trapping movement.
+  a.charge = 0; a.events.push('hurt');
 }
 function damage(a: ArenaAttempt, e: Ape, amount: number, punch = false) {
   if (e.hp <= 0) return;
-  e.hp = Math.max(0, e.hp - amount); a.events.push('hit');
+  e.hp = Math.max(0, e.hp - amount); e.hitLeft = A4.hitFlash; a.events.push('hit');
   if (e.hp === 0) { e.phase = 'DOWN'; a.events.push('down'); }
   else if (punch && (e.phase === 'IDLE' || e.phase === 'RECOVER')) {
     e.phase = 'STUN'; e.phaseLeft = A4.punchStun;
-    e.x = Math.max(A4.minX + 42, Math.min(A4.maxX - 42, e.x + a.player.facing * 22));
+    e.x = Math.max(A4.minX + 42, Math.min(A4.maxX - 42, e.x + a.player.facing * A4.punchPush));
+    a.events.push('shove');
   }
 }
 function fire(a: ArenaAttempt) {
@@ -61,7 +64,8 @@ export function stepArena(a: ArenaAttempt, input: ArenaInput) {
   if (a.status === 'WAITING' && !Object.values(input).some(Boolean)) return;
   a.status = 'ACTIVE'; a.elapsed += C.dt;
   if (!a.combatWon) a.combatSeconds += C.dt;
-  for (const key of ['punchLeft', 'slingLeft', 'dodgeLeft', 'dodgeCooldown', 'hurtLeft', 'attackGap'] as const) a[key] = Math.max(0, a[key] - C.dt);
+  for (const key of ['punchLeft', 'slingLeft', 'dodgeLeft', 'dodgeCooldown', 'hurtLeft', 'staggerLeft', 'attackGap'] as const) a[key] = Math.max(0, a[key] - C.dt);
+  for (const e of a.apes) e.hitLeft = Math.max(0, e.hitLeft - C.dt);
   const p = a.player, dx = Number(input.right) - Number(input.left);
   if (dx && !a.charge) p.facing = dx > 0 ? 1 : -1;
   if (input.dodge && !a.combatWon && a.dodgeCooldown <= 0) {
@@ -70,7 +74,7 @@ export function stepArena(a: ArenaAttempt, input: ArenaInput) {
   }
   const dodging = a.dodgeLeft > 0;
   if (!dodging && !a.combatWon) {
-    if (input.sling && a.slingLeft <= 0 && a.hasSling) {
+    if (input.sling && a.slingLeft <= 0 && a.hasSling && a.staggerLeft <= 0) {
       if (!a.charge) a.aimFacing = p.facing;
       a.charge = Math.min(A4.chargeTime, a.charge + C.dt);
     }

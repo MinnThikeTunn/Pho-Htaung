@@ -6,13 +6,14 @@ import { createPhoe, renderPhoe } from './PhoeHtaungView';
 
 export class ArenaView {
   private g: Phaser.GameObjects.Graphics;
+  private fx: Phaser.GameObjects.Graphics;
   private actor: ReturnType<typeof createPhoe>;
   private apes = new Map<string, Phaser.GameObjects.Image>();
   constructor(scene: Phaser.Scene) {
     const key = scene.textures.exists(ARENA_ART.background.key) ? ARENA_ART.background.key : 'scale_chamber_v1';
     if (scene.textures.exists(key)) scene.add.image(640, 360, key).setDisplaySize(C.width, C.height);
     else scene.add.rectangle(640, 360, C.width, C.height, 0x29392e);
-    this.g = scene.add.graphics().setDepth(12); this.actor = createPhoe(scene, 20);
+    this.g = scene.add.graphics().setDepth(12); this.fx = scene.add.graphics().setDepth(30); this.actor = createPhoe(scene, 20);
     if (scene.textures.exists(ARENA_ART.apes.key)) {
       const texture = scene.textures.get(ARENA_ART.apes.key);
       for (const [id, rect] of Object.entries(APE_FRAMES)) if (!texture.has(id)) texture.add(id, 0, rect.x, rect.y, rect.w, rect.h);
@@ -28,6 +29,7 @@ export class ArenaView {
       const offset = (.5 - frame.anchor) * frame.w * .4 * (e.facing < 0 ? 1 : -1);
       actor.setTexture(ARENA_ART.apes.key, `${e.id}_${pose}`).setPosition(e.x + offset, C.floor);
       actor.setScale(.4, e.hp > 0 ? .4 : .16).setFlipX(e.facing > 0).setAlpha(e.hp > 0 ? 1 : .55);
+      if (e.hitLeft > 0) actor.setTintFill(0xffe4a3); else actor.clearTint();
     } else {
       g.fillStyle(e.id === 'brown' ? 0x68503b : 0x899185, e.hp > 0 ? 1 : .4).fillEllipse(e.x, C.floor - 65, 100, e.hp > 0 ? 130 : 45);
     }
@@ -46,9 +48,18 @@ export class ArenaView {
     }
     if (e.phase === 'STRIKE' && e.type === 'MELEE') g.lineStyle(7, 0xe2b971, .7).strokeEllipse(e.x + e.facing * 54, C.floor - 25, 150, 38);
     if (a.combatWon) actor?.setAlpha(.45);
+    if (e.hitLeft > 0) {
+      const radius = 22 + (1 - e.hitLeft / A4.hitFlash) * 26;
+      this.fx.lineStyle(3, 0xffe1a0, e.hitLeft / A4.hitFlash);
+      for (let i = 0; i < 6; i++) {
+        const angle = i * Math.PI / 3;
+        this.fx.lineBetween(e.x + Math.cos(angle) * radius, C.floor - 65 + Math.sin(angle) * radius,
+          e.x + Math.cos(angle) * (radius + 12), C.floor - 65 + Math.sin(angle) * (radius + 12));
+      }
+    }
   }
   render(a: ArenaAttempt) {
-    const g = this.g; g.clear();
+    const g = this.g; g.clear(); this.fx.clear();
     g.lineStyle(2, 0xcfb37b, .6).lineBetween(0, C.floor, C.width, C.floor);
     for (const x of A4.refillX) {
       g.fillStyle(0x302b20, .5).fillEllipse(x, C.floor + 2, 82, 13);
@@ -60,9 +71,10 @@ export class ArenaView {
     for (const e of a.apes) this.enemy(a, e);
     const p = a.player, direction = a.charge > 0 ? a.aimFacing : p.facing;
     g.fillStyle(0x10190e, .5).fillEllipse(p.centerX, p.feetY + 1, 34, 8);
+    g.lineStyle(2, 0xe5c58a, .6).strokeEllipse(p.centerX, p.feetY + 1, 40, 10);
     if (this.actor) {
       renderPhoe(this.actor, { ...p, facing: direction, holding: a.hasSling, control: a.dodgeLeft > 0 ? 'LAYING' : p.control, pushing: a.punchLeft > A4.punchCooldown - .12 }, a.elapsed);
-      if (a.hurtLeft > .5) this.actor.setTint(0xefbe8a); else this.actor.clearTint();
+      if (a.staggerLeft > 0) this.actor.setTintFill(0xffb9a3); else this.actor.clearTint();
     }
     if (a.hasSling && a.dodgeLeft <= 0) {
       const x = p.centerX + direction * 25, y = p.feetY - 47, pull = a.charge / A4.chargeTime * 22;
@@ -75,6 +87,7 @@ export class ArenaView {
       g.lineStyle(2, shot.owner === 'PHOE' ? 0xe7ca83 : 0xd9975d, .5).lineBetween(shot.x, shot.y, shot.x - shot.vx * .025, shot.y - shot.vy * .025);
       g.fillStyle(0x24271c).fillCircle(shot.x, shot.y, shot.owner === 'PHOE' ? 5 : 6);
       g.fillStyle(shot.owner === 'PHOE' ? 0xc7c1a2 : 0x938e77).fillCircle(shot.x - 1, shot.y - 1, shot.owner === 'PHOE' ? 3 : 4);
+      this.fx.lineStyle(2, shot.owner === 'PHOE' ? 0xffe0a0 : 0xf3ac80, .95).strokeCircle(shot.x, shot.y, 6);
     }
     if (a.combatWon) {
       g.fillStyle(0xd8b362, .15).fillRect(1206, 430, 74, 210);

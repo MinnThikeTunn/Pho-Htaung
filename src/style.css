@@ -31,3 +31,6 @@
 .arena-enemies progress::-webkit-progress-bar{background:#162c21;border-radius:2px}
 .arena-enemies progress::-webkit-progress-value{background:#df4343;border-radius:2px}
 .arena-enemies progress::-moz-progress-bar{background:#df4343;border-radius:2px}
+.arena-enemies{top:14%;gap:2%}.arena-enemies>div{width:49%;padding:.3cqw .7cqw}.arena-enemies progress{height:10px}.arena-enemies small{height:1.65em}
+.arena-speech{top:25%;max-width:49%;padding:.35cqw .65cqw;font-size:clamp(10px,1cqw,15px);line-height:1.8;background:#182a20d9}
+.arena-charge{top:25%;width:24%;padding:.35cqw .65cqw;background:#182a20d9;font-size:clamp(9px,.95cqw,14px)}.arena-charge progress{height:9px;margin:.25cqw 0}.arena-charge small{display:block;font-size:.85em;line-height:1.7}

@@ -17,7 +17,9 @@ function tick(a: ArenaAttempt, input: ArenaInput = ARENA_IDLE, count = 1) {
 function clearRoute(id: string) {
   const a = createArena(id); let attacks = 0;
   for (let i = 0; i < 4500 && !a.combatWon && a.status !== 'FAILED'; i++) {
-    tick(a, { ...ARENA_IDLE, sling: i % 66 < 34 });
+    const danger = a.apes.some(e => e.phase === 'WINDUP' && e.type === 'MELEE') ||
+      a.shots.some(s => s.owner === 'APE' && (a.player.centerX - s.x) * s.vx > 0 && Math.abs(s.x - a.player.centerX) < 190);
+    tick(a, { ...ARENA_IDLE, sling: i % 66 < 34, jump: danger && a.player.grounded });
     if (a.apes.some(e => e.phase === 'WINDUP')) attacks++;
   }
   expect(a.combatWon, `true-spawn route failed hp=${a.hp}, enemyHP=${a.apes.map(e => e.hp)}, time=${a.combatSeconds}`).toBe(true);
@@ -31,8 +33,13 @@ function campaign() { const c = newCampaign('c'); c.bridgeCompleted = true; c.ch
 it('clears both apes from real spawn using charged shots and the actual exit, with attacks active', () => {
   const a = clearRoute('real'); expect(a.shotsFired).toBeGreaterThanOrEqual(10); expect(a.hp).toBeGreaterThan(0); expect(a.apes.every(e => e.hp === 0)).toBe(true);
 });
+it.each([[9,30], [33,30], [34,32], [37,31], [120,32]])('stationary charge %i/release %i frames fails without defence', (hold, release) => {
+  const a = createArena('stationary');
+  for (let i = 0; i < 4500 && a.status !== 'FAILED' && !a.combatWon; i++) tick(a, { ...ARENA_IDLE, sling: i % (hold + release) < hold });
+  expect(a.status, `hp=${a.hp}; enemies=${a.apes.map(e=>e.hp)}`).toBe('FAILED'); expect(a.combatWon).toBe(false);
+});
 it('does not start time or AI until player input; shared movement/jump remain intact', () => {
-  const a = createArena('wait'); tick(a, ARENA_IDLE, 120); expect(a.elapsed).toBe(0); expect(a.apes[0]!.x).toBe(820);
+  const a = createArena('wait'); tick(a, ARENA_IDLE, 120); expect(a.elapsed).toBe(0); expect(a.apes[0]!.x).toBe(A4.meleeSpawn);
   tick(a, { ...ARENA_IDLE, right: true, jump: true }); expect(a.player.centerX).toBeCloseTo(A4.spawnX + C.speed * C.dt); expect(a.player.feetY).toBeLessThan(C.floor);
 });
 it('fires only on release, consumes one stone, and charge strength affects damage', () => {
@@ -49,11 +56,28 @@ it('fists are mathematically insufficient within the visible deadline even with 
   expect((Math.ceil(A4.timeLimit / A4.punchCooldown) + 1) * A4.punchDamage).toBeLessThan(2 * A4.apeHealth);
 });
 it('punch fixture damages only one enemy once per edge and cooldown; windup cannot be stun-locked', () => {
-  const a = createArena('punch'); a.player.centerX = 770;
+  const a = createArena('punch'); a.player.centerX = A4.meleeSpawn - 50;
   tick(a, { ...ARENA_IDLE, punch: true }); expect(a.apes[0]!.hp).toBe(149); expect(a.apes[1]!.hp).toBe(150);
   tick(a, { ...ARENA_IDLE, punch: true }, 5); expect(a.apes[0]!.hp).toBe(149);
-  a.apes[0]!.phase = 'WINDUP'; a.apes[0]!.phaseLeft = .6; a.punchLeft = 0;
-  tick(a, { ...ARENA_IDLE, punch: true }); expect(a.apes[0]!.phase).toBe('WINDUP');
+  a.apes[0]!.x = a.player.centerX + 50; a.apes[0]!.phase = 'WINDUP'; a.apes[0]!.phaseLeft = .6; a.punchLeft = 0;
+  tick(a, { ...ARENA_IDLE, punch: true }); expect(a.apes[0]!.hp).toBe(148); expect(a.apes[0]!.phase).toBe('WINDUP');
+});
+it('a well-timed shove creates enough room and stun for a full sling draw and hit', () => {
+  const a = createArena('shove'); a.player.centerX = A4.meleeSpawn - 50;
+  const enemy = a.apes[0]!, before = enemy.x;
+  tick(a, { ...ARENA_IDLE, punch: true }); expect(a.events).toContain('shove');
+  expect(enemy.x).toBe(before + A4.punchPush); expect(enemy.phase).toBe('STUN');
+  tick(a, { ...ARENA_IDLE, sling: true }, 34); tick(a); tick(a, ARENA_IDLE, 8);
+  expect(a.shotsFired).toBe(1); expect(enemy.hp).toBe(A4.apeHealth - A4.punchDamage - A4.shotDamage);
+  expect(a.hp).toBe(A4.health); expect(enemy.hitLeft).toBeGreaterThan(0);
+});
+it('an actual hit cancels draw without spending a stone; movement/dodge remain available', () => {
+  const a = createArena('interruption'); a.player.centerX = A4.meleeSpawn - 70;
+  a.charge = .5; a.wasSling = true; a.apes[0]!.phase = 'STRIKE'; a.apes[0]!.phaseLeft = .12;
+  tick(a, { ...ARENA_IDLE, sling: true }); expect(a.charge).toBe(0); expect(a.staggerLeft).toBe(A4.hurtStagger);
+  expect(a.hp).toBe(A4.health - A4.meleeDamage); expect(a.ammo).toBe(A4.ammo);
+  tick(a, { ...ARENA_IDLE, left: true, dodge: true }); expect(a.dodgeLeft).toBeGreaterThan(0);
+  tick(a); expect(a.shotsFired).toBe(0); expect(a.ammo).toBe(A4.ammo);
 });
 it('both apes never begin an overlapping windup/strike, and locked throw aim stays fixed', () => {
   const a = createArena('telegraphs'); let target: [number, number] | null = null;
@@ -66,7 +90,7 @@ it('both apes never begin an overlapping windup/strike, and locked throw aim sta
   }
 });
 it('isolated dodge avoids a live melee strike, consumes its cooldown, then ends', () => {
-  const a = createArena('dodge'); a.player.centerX = 750; a.apes[0]!.phase = 'STRIKE'; a.apes[0]!.phaseLeft = .12; a.apes[0]!.facing = -1;
+  const a = createArena('dodge'); a.player.centerX = A4.meleeSpawn - 70; a.apes[0]!.phase = 'STRIKE'; a.apes[0]!.phaseLeft = .12; a.apes[0]!.facing = -1;
   tick(a, { ...ARENA_IDLE, dodge: true }); expect(a.hp).toBe(A4.health); expect(a.dodgeCooldown).toBeGreaterThan(0);
   tick(a, ARENA_IDLE, 20); expect(a.dodgeLeft).toBe(0); const cooldown = a.dodgeCooldown; tick(a, { ...ARENA_IDLE, dodge: true }); expect(a.dodgeCooldown).toBeLessThan(cooldown);
 });

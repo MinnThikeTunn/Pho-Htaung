@@ -12,7 +12,7 @@ const button = (id: string, text: string, primary = false) => `<button type="but
 export default class ArenaChapterScene extends Phaser.Scene {
   private session!: ArenaSession; private view!: ArenaView;
   private held = new Set<string>(); private edges = { jump: false, punch: false, dodge: false };
-  private finished = false; private failureShown = false; private lastMessage = '';
+  private finished = false; private failureShown = false; private messageUntil = 0;
   constructor() { super('CHAPTER_4'); }
   preload() {
     this.load.image(ARENA_ART.background.key, ARENA_ART.background.path);
@@ -24,18 +24,21 @@ export default class ArenaChapterScene extends Phaser.Scene {
     // Owner explicitly assumes another developer supplies the previous-chapter pickup.
     // This entry adapter accepts its payload; it never invents a Chapter3 pickup or writes inventory.
     this.session = new ArenaSession(() => crypto.randomUUID(), data.equipment?.slingshot ?? true);
-    this.finished = false; this.failureShown = false; this.lastMessage = ''; this.held.clear(); this.edges = { jump: false, punch: false, dodge: false };
+    this.finished = false; this.failureShown = false; this.messageUntil = 0; this.held.clear(); this.edges = { jump: false, punch: false, dodge: false };
     store.startArena();
   }
   private bind(id: string, fn: () => void) { ui().querySelector(`#${id}`)?.addEventListener('click', fn); }
   private focusGame() { this.game.canvas.tabIndex = 0; this.game.canvas.focus({ preventScroll: true }); }
   private clear() { this.held.clear(); this.edges = { jump: false, punch: false, dodge: false }; this.session.clearInput(); }
-  private speak(text: string) { this.lastMessage = text; const el = ui().querySelector('#arena-message'); if (el) el.textContent = text; }
+  private speak(text: string, seconds = 3.5) {
+    this.messageUntil = this.session.attempt.elapsed + seconds;
+    const el = ui().querySelector<HTMLElement>('#arena-message'); if (el) { el.textContent = text; el.hidden = false; }
+  }
   create() {
     this.view = new ArenaView(this);
     ui().innerHTML = `<div class="hud"><div class="stage-title"><span class="eyebrow">အခန်း ၄ / ACTION</span><strong>လူဝံအစောင့်နှစ်ကောင်</strong></div><div class="arena-player-health"><span>ဖိုးထောင် <b id="arena-hp-label">100 / 100</b></span><progress id="arena-hp" max="100" value="100" aria-label="ဖိုးထောင် သွေးတန်း"></progress></div><div class="ledger"><div><span>တံခါးမပိတ်မီ</span><b id="arena-time">75<small>s</small></b></div><div><span>ကျောက်ခဲ</span><b id="arena-ammo">12</b></div></div><button id="arena-pause" class="icon-button" aria-label="Pause">Ⅱ</button></div>
       <div class="arena-enemies">${['brown', 'silver'].map((id, i) => `<div><span>${i ? 'မီးခိုးလူဝံ · ကျောက်ခဲပစ်' : 'အညိုလူဝံ · လက်သီးထိုး'} <b id="${id}-hp-label">150 / 150</b></span><progress id="${id}-hp" max="150" value="150" aria-label="${id} သွေးတန်း"></progress><small id="${id}-state"></small></div>`).join('')}</div>
-      <div class="arena-speech" id="arena-message" aria-live="polite"></div><div class="arena-charge"><span id="arena-charge-label">K ဖိပြီး ဆွဲ → လွှတ်ပြီးပစ်</span><progress id="arena-charge" max="1" value="0" aria-label="လောက်လေးခွ ဆွဲအား"></progress><small id="arena-dodge"></small></div>
+      <div class="arena-speech" id="arena-message" aria-live="polite"></div><div class="arena-charge"><span id="arena-charge-label">K ဖိပြီး ဆွဲ → လွှတ်ပြီးပစ်</span><progress id="arena-charge" max="1" value="0" aria-label="လောက်လေးခွ ဆွဲအား"></progress><small id="arena-dodge"></small><small id="arena-punch"></small></div>
       <div class="arena-refill left">ကျောက်ပုံ · ခဏရပ်၍ပြန်ဖြည့်</div><div class="arena-refill right">ကျောက်ပုံ · ခဏရပ်၍ပြန်ဖြည့်</div>
       <div class="arena-controls"><kbd>A</kbd><kbd>D</kbd> ရွေ့ <kbd>SPACE</kbd> ခုန် <kbd>J</kbd> လက်သီး <kbd>K</kbd> ဖိဆွဲ / လွှတ်ပစ် <kbd>L</kbd> ရှောင် <kbd>R</kbd> ဖိပြန်စ <kbd>ESC</kbd> နား</div>
       <div id="arena-unsaved" class="unsaved-status" hidden>ယာယီ session · save မသိမ်းရသေးပါ</div><div id="arena-modal" class="modal" hidden></div>`;
@@ -74,7 +77,7 @@ export default class ArenaChapterScene extends Phaser.Scene {
     this.session.setPause(value); this.clear(); const el = ui().querySelector<HTMLDivElement>('#arena-modal'); if (!el) return;
     el.hidden = !value;
     if (!value) { el.innerHTML = ''; this.focusGame(); return; }
-    el.innerHTML = `<section class="dialog"><h2>ခဏနားမယ်</h2><p>K ဆွဲနေချိန် ရွေ့နှုန်းနှေးသည်။ L နဲ့ရှောင်ပြီး ပစ်ခွင့်ယူပါ။ ကျောက်ခဲကုန်လျှင် ဘေးကျောက်ပုံနား ခဏရပ်ပြီး ဖြည့်ပါ။</p><div class="actions">${button('arena-resume','ဆက်ကစားမယ်',true)}${button('arena-menu','ပင်မစာမျက်နှာ')}</div></section>`;
+    el.innerHTML = `<section class="dialog"><h2>ခဏနားမယ်</h2><p>ဒဏ်ထိလျှင် K ဆွဲအားပျက်သည်။ နားနေတဲ့လူဝံကို J နဲ့ ခွာထုတ်ပြီး ပစ်ခွင့်ယူပါ။ လက်မြှောက်ပြီးသားကို J နဲ့မတားနိုင်ပါ။ သတိပေးချက်ပေါ်လျှင် ခုန် / L နဲ့ရှောင်ပါ။ ကျောက်ခဲကုန်လျှင် ဘေးကျောက်ပုံနား ခဏရပ်ပြီး ဖြည့်ပါ။</p><div class="actions">${button('arena-resume','ဆက်ကစားမယ်',true)}${button('arena-menu','ပင်မစာမျက်နှာ')}</div></section>`;
     this.bind('arena-resume',()=>this.pause(false)); this.bind('arena-menu',()=>this.scene.start('MENU'));
   }
   private restart() {
@@ -85,8 +88,10 @@ export default class ArenaChapterScene extends Phaser.Scene {
   }
   private event(kind: ArenaEvent) {
     if (kind === 'empty') this.speak(ARENA_LINES.empty);
+    if (kind === 'hurt') this.speak('ဒဏ်ထိလို့ ဆွဲအားပျက်ပြီ — ရှောင်ပြီး ပြန်ဆွဲပစ်ပါ။', 2);
+    if (kind === 'shove') this.speak('ခွာထုတ်လိုက်ပြီ — K ဆွဲပစ်ဖို့ အချိန်ရပြီ။', 1.6);
     if (kind === 'refill') this.speak('ကျောက်ခဲ ပြန်ဖြည့်ပြီးပြီ။');
-    if (kind === 'won') this.speak(ARENA_LINES.won);
+    if (kind === 'won') this.speak(ARENA_LINES.won, Infinity);
     if (kind === 'failed') {
       if (this.session.attempt.failure === 'HEALTH') store.death(`arena:${this.session.attempt.id}`);
       this.failureShown = true; this.clear(); const el = ui().querySelector<HTMLDivElement>('#arena-modal')!; el.hidden = false;
@@ -107,12 +112,14 @@ export default class ArenaChapterScene extends Phaser.Scene {
     (ui().querySelector('#arena-hp') as HTMLProgressElement).value = a.hp; text('arena-hp-label',`${a.hp} / ${A4.health}`);
     for (const e of a.apes) {
       (ui().querySelector(`#${e.id}-hp`) as HTMLProgressElement).value = e.hp; text(`${e.id}-hp-label`,`${e.hp} / ${A4.apeHealth}`);
-      text(`${e.id}-state`, e.phase === 'DOWN' ? 'လဲပြီ' : e.phase === 'WINDUP' ? e.type === 'MELEE' ? 'လက်မြှောက်ပြီ — ရှောင်!' : 'ကျောက်ပစ်တော့မည် — ရှောင်!' : e.phase === 'RECOVER' ? 'ပစ်ခွင့်ရပြီ' : '');
+      text(`${e.id}-state`, e.phase === 'DOWN' ? 'လဲပြီ' : e.phase === 'WINDUP' ? e.type === 'MELEE' ? 'လက်မြှောက်ပြီ — ရှောင်!' : 'ကျောက်ပစ်တော့မည် — ရှောင်!' : e.phase === 'RECOVER' || e.phase === 'STUN' ? 'ပစ်ခွင့်ရပြီ' : '');
     }
     text('arena-time', a.combatWon ? 'လွတ်ပြီ' : `${Math.max(0, Math.ceil(A4.timeLimit - a.combatSeconds))} s`);
     text('arena-ammo',String(a.ammo)); (ui().querySelector('#arena-charge') as HTMLProgressElement).value = a.charge / A4.chargeTime;
-    text('arena-charge-label', a.charge >= A4.chargeTime ? 'အားပြည့်ပြီ — K လွှတ်ပြီးပစ်!' : a.charge > 0 ? `${a.aimFacing === 1 ? '→' : '←'} ဆွဲနေသည်` : 'K ဖိပြီး ဆွဲ → လွှတ်ပြီးပစ်');
+    text('arena-charge-label', a.staggerLeft > 0 ? 'ဒဏ်ထိ၍ ဆွဲအားပျက်ပြီ' : a.charge >= A4.chargeTime ? 'အားပြည့်ပြီ — K လွှတ်ပြီးပစ်!' : a.charge > 0 ? `${a.aimFacing === 1 ? '→' : '←'} ဆွဲနေသည်` : 'K ဖိပြီး ဆွဲ → လွှတ်ပြီးပစ်');
     text('arena-dodge', a.dodgeCooldown > 0 ? `L ပြန်အဆင်သင့် ${a.dodgeCooldown.toFixed(1)} s` : 'L · ရှောင်နိုင်ပြီ');
+    text('arena-punch', a.punchLeft > 0 ? `J ပြန်အဆင်သင့် ${a.punchLeft.toFixed(1)} s` : 'J · ခွာထုတ်နိုင်ပြီ');
+    ui().querySelector<HTMLElement>('#arena-message')!.hidden = a.elapsed >= this.messageUntil;
     ui().querySelector<HTMLElement>('#arena-unsaved')!.hidden = !store.unsaved; this.view.render(a);
   }
   update(_time: number, ms: number) {
