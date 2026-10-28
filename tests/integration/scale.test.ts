@@ -36,6 +36,13 @@ function basic(a: ScaleAttempt) { pick(a, 'stone'); pick(a, 'treasure'); place(a
 function campaign() { const c = newCampaign('campaign'); c.bridgeCompleted = true; c.chapter2Completed = true; c.walletCoins = 5; c.deathCount = 3; return c; }
 
 describe('Chapter 3 true-spawn routes, production inputs only', () => {
+  it('replaying Chapter3 preserves completed Chapter4 and its Chapter5 handoff', () => {
+    const a = createScaleAttempt('post-arena-replay'); basic(a); exit(a);
+    const c = campaign(); c.chapter3Completed = true; c.chapter4Completed = true; c.resumeAt = 'CHAPTER_5_PENDING';
+    const result = settleScale(c, a);
+    expect(result.chapter4Completed).toBe(true); expect(result.resumeAt).toBe('CHAPTER_5_PENDING');
+    expect(result.walletCoins).toBe(c.walletCoins); expect(validateCampaign(result)).toBe(true);
+  });
   it('allows escape while leaving the treasure on the pan', () => {
     const a = createScaleAttempt('leave'); basic(a); exit(a);
     expect(a.locations.treasure).toBe('PAN');

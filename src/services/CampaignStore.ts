@@ -4,6 +4,8 @@ import { settleBridge } from '../domain/bridge';
 import type { BridgeExit } from '../domain/bridge';
 import { settleScale } from '../domain/scale';
 import type { ScaleAttempt } from '../domain/scale';
+import { settleArena } from '../domain/arena';
+import type { ArenaAttempt } from '../domain/arena';
 
 export const SAVE_KEY = 'phoe-htaung.adventure.v2';
 export const SETTINGS_KEY = 'phoe-htaung.settings.v1';
@@ -75,5 +77,16 @@ export class CampaignStore {
     if (next === this.campaign) return null;
     this.campaign = next; this.save();
     return this.campaign.lastChapter3Result ?? null;
+  }
+  startArena() {
+    if (!this.campaign.chapter3Completed) return false;
+    if (!this.campaign.chapter4Completed && this.campaign.resumeAt !== 'CHAPTER_4') {
+      this.campaign.resumeAt = 'CHAPTER_4'; this.campaign.revision++; this.save();
+    }
+    return true;
+  }
+  completeArena(a: ArenaAttempt) {
+    const next = settleArena(this.campaign, a); if (next === this.campaign) return null;
+    this.campaign = next; this.save(); return next.lastChapter4Result ?? null;
   }
 }
