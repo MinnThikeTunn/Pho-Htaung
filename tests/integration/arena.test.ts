@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { A4 } from '../../src/content/chapter4';
 import { C } from '../../src/content/chapter1';
-import { ARENA_IDLE, createArena, settleArena, stepArena } from '../../src/domain/arena';
+import { ARENA_IDLE, arenaHasSlingshot, createArena, equipArenaWeapon, settleArena, stepArena } from '../../src/domain/arena';
 import type { ArenaAttempt, ArenaInput } from '../../src/domain/arena';
 import { newCampaign, validateCampaign } from '../../src/domain/settlement';
 import { ArenaSession } from '../../src/services/ArenaSession';
@@ -14,8 +14,11 @@ function tick(a: ArenaAttempt, input: ArenaInput = ARENA_IDLE, count = 1) {
     expect(a.ammo).toBeGreaterThanOrEqual(0); expect(a.apes.every(e => e.hp >= 0 && e.hp <= A4.apeHealth)).toBe(true);
   }
 }
+function armed(id: string) {
+  const a = createArena(id, true); expect(equipArenaWeapon(a, 'SLING')).toBe(true); return a;
+}
 function clearRoute(id: string) {
-  const a = createArena(id); let attacks = 0;
+  const a = armed(id); let attacks = 0;
   for (let i = 0; i < 4500 && !a.combatWon && a.status !== 'FAILED'; i++) {
     const danger = a.apes.some(e => e.phase === 'WINDUP' && e.type === 'MELEE') ||
       a.shots.some(s => s.owner === 'APE' && (a.player.centerX - s.x) * s.vx > 0 && Math.abs(s.x - a.player.centerX) < 190);
@@ -30,11 +33,37 @@ function clearRoute(id: string) {
 }
 function campaign() { const c = newCampaign('c'); c.bridgeCompleted = true; c.chapter2Completed = true; c.chapter3Completed = true; c.walletCoins = 5; c.deathCount = 3; return c; }
 
+it.each([false, true])('starts with fists even when sling ownership is %s; K cannot auto-equip or fire', hasSling => {
+  const a = createArena('hands-first', hasSling); expect(a.weapon).toBe('FISTS');
+  tick(a, {...ARENA_IDLE,sling:true},40); tick(a);
+  expect(a.charge).toBe(0); expect(a.shotsFired).toBe(0); expect(a.weapon).toBe('FISTS'); expect(a.status).toBe('WAITING');
+});
+it('resolves actual saved ownership or an explicit pickup payload without granting inventory', () => {
+  const c = campaign(), before = structuredClone(c);
+  expect(arenaHasSlingshot(c)).toBe(false); expect(arenaHasSlingshot(c,{slingshot:true})).toBe(true); expect(c).toEqual(before);
+  c.ownedTools=['slingshot']; expect(arenaHasSlingshot(c)).toBe(true); expect(arenaHasSlingshot(c,{slingshot:false})).toBe(false);
+  c.ownedTools=[]; c.inventory=['slingshot']; expect(arenaHasSlingshot(c)).toBe(true);
+});
+it('a player without a sling can punch normally, cannot equip it, and cannot obtain ammo at a pile', () => {
+  const a = createArena('empty-bag'); expect(equipArenaWeapon(a,'SLING')).toBe(false);
+  a.player.centerX=A4.meleeSpawn-50; tick(a,{...ARENA_IDLE,punch:true}); expect(a.apes[0]!.hp).toBe(149);
+  a.player.centerX=A4.refillX[0]!; tick(a,ARENA_IDLE,49); expect(a.ammo).toBe(0); expect(a.weapon).toBe('FISTS');
+});
+it('bag selection cancels a held draw without a phantom shot or any combat-state reset', () => {
+  const s = new ArenaSession(()=>'switch',true); s.equipWeapon('SLING'); s.tick(.1,{...ARENA_IDLE,sling:true});
+  expect(s.attempt.charge).toBeGreaterThan(0); s.setPause(true);
+  const before = structuredClone(s.attempt); expect(s.equipWeapon('FISTS')).toBe(true);
+  s.tick(10,{...ARENA_IDLE,right:true}); expect(s.attempt.player).toEqual(before.player); expect(s.attempt.apes).toEqual(before.apes);
+  expect(s.attempt.elapsed).toBe(before.elapsed); expect(s.attempt.ammo).toBe(before.ammo);
+  s.setPause(false); s.tick(C.dt,ARENA_IDLE); expect(s.attempt.shotsFired).toBe(0);
+  expect(s.equipWeapon('SLING')).toBe(true); s.tick(.1,ARENA_IDLE); expect(s.attempt.charge).toBe(0); expect(s.attempt.shotsFired).toBe(0);
+});
+
 it('clears both apes from real spawn using charged shots and the actual exit, with attacks active', () => {
   const a = clearRoute('real'); expect(a.shotsFired).toBeGreaterThanOrEqual(10); expect(a.hp).toBeGreaterThan(0); expect(a.apes.every(e => e.hp === 0)).toBe(true);
 });
 it.each([[9,30], [33,30], [34,32], [37,31], [120,32]])('stationary charge %i/release %i frames fails without defence', (hold, release) => {
-  const a = createArena('stationary');
+  const a = armed('stationary');
   for (let i = 0; i < 4500 && a.status !== 'FAILED' && !a.combatWon; i++) tick(a, { ...ARENA_IDLE, sling: i % (hold + release) < hold });
   expect(a.status, `hp=${a.hp}; enemies=${a.apes.map(e=>e.hp)}`).toBe('FAILED'); expect(a.combatWon).toBe(false);
 });
@@ -43,14 +72,14 @@ it('does not start time or AI until player input; shared movement/jump remain in
   tick(a, { ...ARENA_IDLE, right: true, jump: true }); expect(a.player.centerX).toBeCloseTo(A4.spawnX + C.speed * C.dt); expect(a.player.feetY).toBeLessThan(C.floor);
 });
 it('fires only on release, consumes one stone, and charge strength affects damage', () => {
-  const a = createArena('charge'); tick(a, { ...ARENA_IDLE, sling: true }, 34);
+  const a = armed('charge'); tick(a, { ...ARENA_IDLE, sling: true }, 34);
   expect(a.shotsFired).toBe(0); expect(a.charge).toBe(A4.chargeTime); tick(a);
   expect(a.shotsFired).toBe(1); expect(a.ammo).toBe(A4.ammo - 1); expect(a.shots.find(s => s.owner === 'PHOE')!.damage).toBe(A4.shotDamage);
-  const b = createArena('short'); tick(b, { ...ARENA_IDLE, sling: true }, 9); tick(b); expect(b.shots[0]!.damage).toBeLessThan(A4.shotDamage);
+  const b = armed('short'); tick(b, { ...ARENA_IDLE, sling: true }, 9); tick(b); expect(b.shots[0]!.damage).toBeLessThan(A4.shotDamage);
 });
 it('a missing slingshot cannot shoot and cannot settle; no earlier-chapter inventory is invented', () => {
   const a = createArena('missing', false); tick(a, { ...ARENA_IDLE, sling: true }, 40); tick(a);
-  expect(a.shotsFired).toBe(0); expect(a.ammo).toBe(A4.ammo); expect(() => settleArena(campaign(), a)).toThrow();
+  expect(a.shotsFired).toBe(0); expect(a.ammo).toBe(0); expect(() => settleArena(campaign(), a)).toThrow();
 });
 it('fists are mathematically insufficient within the visible deadline even with perfect uptime', () => {
   expect((Math.ceil(A4.timeLimit / A4.punchCooldown) + 1) * A4.punchDamage).toBeLessThan(2 * A4.apeHealth);
@@ -63,7 +92,7 @@ it('punch fixture damages only one enemy once per edge and cooldown; windup cann
   tick(a, { ...ARENA_IDLE, punch: true }); expect(a.apes[0]!.hp).toBe(148); expect(a.apes[0]!.phase).toBe('WINDUP');
 });
 it('a well-timed shove creates enough room and stun for a full sling draw and hit', () => {
-  const a = createArena('shove'); a.player.centerX = A4.meleeSpawn - 50;
+  const a = armed('shove'); a.player.centerX = A4.meleeSpawn - 50;
   const enemy = a.apes[0]!, before = enemy.x;
   tick(a, { ...ARENA_IDLE, punch: true }); expect(a.events).toContain('shove');
   expect(enemy.x).toBe(before + A4.punchPush); expect(enemy.phase).toBe('STUN');
@@ -72,7 +101,7 @@ it('a well-timed shove creates enough room and stun for a full sling draw and hi
   expect(a.hp).toBe(A4.health); expect(enemy.hitLeft).toBeGreaterThan(0);
 });
 it('an actual hit cancels draw without spending a stone; movement/dodge remain available', () => {
-  const a = createArena('interruption'); a.player.centerX = A4.meleeSpawn - 70;
+  const a = armed('interruption'); a.player.centerX = A4.meleeSpawn - 70;
   a.charge = .5; a.wasSling = true; a.apes[0]!.phase = 'STRIKE'; a.apes[0]!.phaseLeft = .12;
   tick(a, { ...ARENA_IDLE, sling: true }); expect(a.charge).toBe(0); expect(a.staggerLeft).toBe(A4.hurtStagger);
   expect(a.hp).toBe(A4.health - A4.meleeDamage); expect(a.ammo).toBe(A4.ammo);
@@ -95,7 +124,7 @@ it('isolated dodge avoids a live melee strike, consumes its cooldown, then ends'
   tick(a, ARENA_IDLE, 20); expect(a.dodgeLeft).toBe(0); const cooldown = a.dodgeCooldown; tick(a, { ...ARENA_IDLE, dodge: true }); expect(a.dodgeCooldown).toBeLessThan(cooldown);
 });
 it('ammo can be replenished at either pile without currency or a consumable source', () => {
-  for (const x of A4.refillX) { const a = createArena(`pile-${x}`); a.player.centerX = x; a.ammo = 0; a.status = 'ACTIVE'; tick(a, ARENA_IDLE, 49); expect(a.ammo).toBe(A4.ammo); }
+  for (const x of A4.refillX) { const a = createArena(`pile-${x}`, true); a.player.centerX = x; a.ammo = 0; a.status = 'ACTIVE'; tick(a, ARENA_IDLE, 49); expect(a.ammo).toBe(A4.ammo); }
 });
 it('isolated timer expiry fails visibly, freezes world and cannot award progress', () => {
   const a = createArena('time'); a.status = 'ACTIVE'; a.combatSeconds = A4.timeLimit - C.dt;
@@ -103,17 +132,17 @@ it('isolated timer expiry fails visibly, freezes world and cannot award progress
   expect(a.player).toEqual(frozen.player); expect(a.combatSeconds).toBe(frozen.combatSeconds); expect(() => settleArena(campaign(), a)).toThrow();
 });
 it('pause cancels held charge and buffered jump, freezes all clocks, and does not fire on resume', () => {
-  const s = new ArenaSession(() => 'pause'); s.tick(.1, { ...ARENA_IDLE, sling: true }); s.setPause(true);
+  const s = new ArenaSession(() => 'pause', true); s.equipWeapon('SLING'); s.tick(.1, { ...ARENA_IDLE, sling: true }); s.setPause(true);
   const before = structuredClone(s.attempt); s.tick(10, { ...ARENA_IDLE, right: true }, true); expect(s.attempt).toEqual(before);
   s.setPause(false); s.tick(C.dt, ARENA_IDLE); expect(s.attempt.shotsFired).toBe(0); expect(s.accumulator).toBeCloseTo(0);
 });
 it('retry restores player/enemy HP, ammo, AI, projectiles and unique attempt, without a reset loop', () => {
-  let id = 0; const s = new ArenaSession(() => String(++id)); s.tick(.1, { ...ARENA_IDLE, sling: true });
+  let id = 0; const s = new ArenaSession(() => String(++id), true); s.equipWeapon('SLING'); s.tick(.1, { ...ARENA_IDLE, sling: true });
   for (let i = 0; i < 90; i++) s.tick(C.dt, ARENA_IDLE, true);
-  expect(s.generation).toBe(1); expect(s.attempt.hp).toBe(100); expect(s.attempt.apes.map(e => e.hp)).toEqual([150,150]); expect(s.attempt.shots).toEqual([]); expect(s.attempt.ammo).toBe(12); expect(s.attempt.elapsed).toBe(0);
+  expect(s.generation).toBe(1); expect(s.attempt.hp).toBe(100); expect(s.attempt.apes.map(e => e.hp)).toEqual([150,150]); expect(s.attempt.shots).toEqual([]); expect(s.attempt.ammo).toBe(12); expect(s.attempt.elapsed).toBe(0); expect(s.attempt.weapon).toBe('FISTS'); expect(s.attempt.hasSling).toBe(true);
 });
 it('same held-input trace agrees at 30/60/144Hz and long stalls are capped', () => {
-  const states = [30,60,144].map(hz => { const s = new ArenaSession(() => 'same'); for(let i=0;i<hz*2;i++)s.tick(1/hz,{...ARENA_IDLE,sling:true});return s.attempt; });
+  const states = [30,60,144].map(hz => { const s = new ArenaSession(() => 'same', true); s.equipWeapon('SLING'); for(let i=0;i<hz*2;i++)s.tick(1/hz,{...ARENA_IDLE,sling:true});return s.attempt; });
   expect(states[1]).toEqual(states[0]); expect(states[2]).toEqual(states[0]);
   const s = new ArenaSession(()=>'stall');s.tick(20,{...ARENA_IDLE,right:true});expect(s.attempt.elapsed).toBeCloseTo(C.dt*C.maxSteps);expect(s.droppedBacklog).toBeGreaterThan(19);
 });

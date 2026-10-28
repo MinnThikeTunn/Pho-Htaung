@@ -1,5 +1,7 @@
 import { C } from './chapter1';
 
+export const SLING_TOOL_ID = 'slingshot';
+
 export const A4 = Object.freeze({
   floor: C.floor, spawnX: 160, minX: 32, maxX: 1248, exitX: 1220,
   health: 100, apeHealth: 150, timeLimit: 75,
@@ -26,7 +28,7 @@ export const APE_FRAMES: Record<string, { x: number; y: number; w: number; h: nu
   silver_recover: { x: 1435, y: 473, w: 276, h: 360, anchor: .5072 },
 };
 export const ARENA_LINES = {
-  entry: 'နားနေတဲ့လူဝံကို J နဲ့ခွာထုတ် → K ဆွဲပစ်။ လက်မြှောက် / ပစ်မှတ်ပြလျှင် ခုန် သို့မဟုတ် L နဲ့ရှောင်။',
+  entry: 'စစချင်း လက်ချည်းပဲ။ J နဲ့ချ၊ L နဲ့ရှောင်။ လောက်လေးခွပါလာလျှင် B အိတ်ဖွင့်ပြီး ထုတ်သုံးပါ။',
   empty: 'ကျောက်ခဲကုန်ပြီ။ ဘေးက ကျောက်ပုံနားမှာ ခဏရပ်ပြီး ပြန်ဖြည့်နိုင်သည်။',
   won: 'လူဝံနှစ်ကောင်လုံး လဲပြီ! အချိန်ရပ်ထားပြီ — ညာဘက်ထွက်ပေါက်ဆီ သွားပါ။',
   health: 'ဖိုးထောင် ဒဏ်ရာများသွားပြီ။ အချိန်မှန်ရှောင်ပြီး အကွာအဝေးကနေ ပစ်ပါ။',

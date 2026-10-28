@@ -1,25 +1,29 @@
 import { C } from '../content/chapter1';
-import { A4 } from '../content/chapter4';
+import { A4, SLING_TOOL_ID } from '../content/chapter4';
 import { overlaps, sweep } from './collision';
 import type { Body } from './collision';
 import type { Campaign, Player } from './types';
 
 export interface ArenaInput { left: boolean; right: boolean; jump: boolean; punch: boolean; sling: boolean; dodge: boolean }
 export const ARENA_IDLE: Readonly<ArenaInput> = { left: false, right: false, jump: false, punch: false, sling: false, dodge: false };
+export type ArenaWeapon = 'FISTS' | 'SLING';
+export function arenaHasSlingshot(c: Pick<Campaign, 'ownedTools' | 'inventory'>, equipment?: { slingshot: boolean }): boolean {
+  return equipment?.slingshot ?? (c.ownedTools.includes(SLING_TOOL_ID) || c.inventory.includes(SLING_TOOL_ID));
+}
 export type ApePhase = 'IDLE' | 'WINDUP' | 'STRIKE' | 'RECOVER' | 'STUN' | 'DOWN';
 export interface Ape { id: string; type: 'MELEE' | 'THROWER'; x: number; hp: number; phase: ApePhase; phaseLeft: number; cooldown: number; facing: -1 | 1; targetX: number; targetY: number; hit: boolean; hitLeft: number }
 export interface ArenaShot { id: number; owner: 'PHOE' | 'APE'; x: number; y: number; vx: number; vy: number; damage: number; age: number }
 export type ArenaEvent = 'punch' | 'shove' | 'shot' | 'empty' | 'hit' | 'hurt' | 'down' | 'refill' | 'dodge' | 'won' | 'failed' | 'complete';
 export interface ArenaAttempt {
   id: string; status: 'WAITING' | 'ACTIVE' | 'FAILED' | 'COMPLETE'; failure: 'HEALTH' | 'TIME' | null;
-  player: Player; hp: number; hasSling: boolean; ammo: number; elapsed: number; combatSeconds: number;
+  player: Player; hp: number; hasSling: boolean; weapon: ArenaWeapon; ammo: number; elapsed: number; combatSeconds: number;
   apes: Ape[]; shots: ArenaShot[]; nextShot: number; shotsFired: number; charge: number; aimFacing: -1 | 1; wasSling: boolean;
   punchLeft: number; slingLeft: number; dodgeLeft: number; dodgeCooldown: number; dodgeDirection: -1 | 1;
   hurtLeft: number; staggerLeft: number; refill: number; attackGap: number; combatWon: boolean; events: ArenaEvent[];
 }
 export interface ArenaResult { attemptId: string; activeSeconds: number; remainingHealth: number; shotsFired: number }
-export function createArena(id: string, hasSling = true): ArenaAttempt {
-  return { id, status: 'WAITING', failure: null, hp: A4.health, hasSling, ammo: A4.ammo, elapsed: 0, combatSeconds: 0,
+export function createArena(id: string, hasSling = false): ArenaAttempt {
+  return { id, status: 'WAITING', failure: null, hp: A4.health, hasSling, weapon: 'FISTS', ammo: hasSling ? A4.ammo : 0, elapsed: 0, combatSeconds: 0,
     player: { centerX: A4.spawnX, feetY: C.floor, vx: 0, vy: 0, grounded: true, support: 'arena_floor', coyote: C.coyote, jumpBuffer: 0,
       control: 'FREE', tauntLeft: 0, facing: 1, pushing: false },
     apes: [
@@ -27,6 +31,11 @@ export function createArena(id: string, hasSling = true): ArenaAttempt {
       { id: 'silver', type: 'THROWER', x: 1100, hp: A4.apeHealth, phase: 'IDLE', phaseLeft: 0, cooldown: A4.throwFirstCooldown, facing: -1, targetX: 0, targetY: 0, hit: false, hitLeft: 0 },
     ], shots: [], nextShot: 0, shotsFired: 0, charge: 0, aimFacing: 1, wasSling: false, punchLeft: 0, slingLeft: 0,
     dodgeLeft: 0, dodgeCooldown: 0, dodgeDirection: -1, hurtLeft: 0, staggerLeft: 0, refill: 0, attackGap: A4.firstAttack, combatWon: false, events: [] };
+}
+export function equipArenaWeapon(a: ArenaAttempt, weapon: ArenaWeapon): boolean {
+  if (a.status === 'FAILED' || a.status === 'COMPLETE' || (weapon === 'SLING' && !a.hasSling)) return false;
+  a.weapon = weapon; a.charge = 0; a.wasSling = false;
+  return true;
 }
 function playerBody(a: ArenaAttempt): Body {
   return { id: 'phoe', x: a.player.centerX - C.playerW / 2, y: a.player.feetY - C.playerH, w: C.playerW, h: C.playerH, vx: 0, vy: 0, kind: 'player' };
@@ -49,7 +58,7 @@ function damage(a: ArenaAttempt, e: Ape, amount: number, punch = false) {
   }
 }
 function fire(a: ArenaAttempt) {
-  if (!a.hasSling || a.ammo <= 0) { a.events.push('empty'); return; }
+  if (!a.hasSling || a.weapon !== 'SLING' || a.ammo <= 0) { a.events.push('empty'); return; }
   const p = a.player, dir = a.aimFacing;
   const target = a.apes.filter(e => e.hp > 0 && (e.x - p.centerX) * dir > 0).sort((x, y) => Math.abs(x.x - p.centerX) - Math.abs(y.x - p.centerX))[0];
   const x = p.centerX + dir * 20, y = p.feetY - 42;
@@ -61,7 +70,7 @@ function fire(a: ArenaAttempt) {
 export function stepArena(a: ArenaAttempt, input: ArenaInput) {
   a.events = [];
   if (a.status === 'COMPLETE' || a.status === 'FAILED') return;
-  if (a.status === 'WAITING' && !Object.values(input).some(Boolean)) return;
+  if (a.status === 'WAITING' && !(input.left || input.right || input.jump || input.punch || input.dodge || (input.sling && a.hasSling && a.weapon === 'SLING'))) return;
   a.status = 'ACTIVE'; a.elapsed += C.dt;
   if (!a.combatWon) a.combatSeconds += C.dt;
   for (const key of ['punchLeft', 'slingLeft', 'dodgeLeft', 'dodgeCooldown', 'hurtLeft', 'staggerLeft', 'attackGap'] as const) a[key] = Math.max(0, a[key] - C.dt);
@@ -74,7 +83,7 @@ export function stepArena(a: ArenaAttempt, input: ArenaInput) {
   }
   const dodging = a.dodgeLeft > 0;
   if (!dodging && !a.combatWon) {
-    if (input.sling && a.slingLeft <= 0 && a.hasSling && a.staggerLeft <= 0) {
+    if (input.sling && a.slingLeft <= 0 && a.hasSling && a.weapon === 'SLING' && a.staggerLeft <= 0) {
       if (!a.charge) a.aimFacing = p.facing;
       a.charge = Math.min(A4.chargeTime, a.charge + C.dt);
     }
@@ -89,7 +98,7 @@ export function stepArena(a: ArenaAttempt, input: ArenaInput) {
       if (enemy) damage(a, enemy, A4.punchDamage, true);
     }
   }
-  a.wasSling = input.sling;
+  a.wasSling = input.sling && a.weapon === 'SLING';
   p.coyote = p.grounded ? C.coyote : Math.max(0, p.coyote - C.dt);
   p.jumpBuffer = input.jump ? C.buffer : Math.max(0, p.jumpBuffer - C.dt);
   if (p.coyote > 0 && p.jumpBuffer > 0 && !dodging) { p.vy = C.jump; p.coyote = 0; p.jumpBuffer = 0; }
@@ -97,7 +106,7 @@ export function stepArena(a: ArenaAttempt, input: ArenaInput) {
   p.centerX = Math.max(A4.minX, Math.min(A4.maxX, p.centerX + p.vx * C.dt));
   p.vy = Math.min(C.terminal, p.vy + C.gravity * C.dt); p.feetY = Math.min(C.floor, p.feetY + p.vy * C.dt);
   p.grounded = p.feetY >= C.floor; p.support = p.grounded ? 'arena_floor' : null; if (p.grounded) p.vy = 0;
-  if (p.grounded && !p.vx && !input.sling && a.ammo < A4.ammo && A4.refillX.some(x => Math.abs(x - p.centerX) <= A4.refillReach)) {
+  if (a.hasSling && p.grounded && !p.vx && !(input.sling && a.weapon === 'SLING') && a.ammo < A4.ammo && A4.refillX.some(x => Math.abs(x - p.centerX) <= A4.refillReach)) {
     a.refill += C.dt;
     if (a.refill + 1e-9 >= A4.refillTime) { a.ammo = A4.ammo; a.refill = 0; a.events.push('refill'); }
   } else a.refill = 0;

@@ -58,7 +58,7 @@ export class ArenaView {
       }
     }
   }
-  render(a: ArenaAttempt) {
+  render(a: ArenaAttempt, bagOpen = false) {
     const g = this.g; g.clear(); this.fx.clear();
     g.lineStyle(2, 0xcfb37b, .6).lineBetween(0, C.floor, C.width, C.floor);
     for (const x of A4.refillX) {
@@ -73,10 +73,10 @@ export class ArenaView {
     g.fillStyle(0x10190e, .5).fillEllipse(p.centerX, p.feetY + 1, 34, 8);
     g.lineStyle(2, 0xe5c58a, .6).strokeEllipse(p.centerX, p.feetY + 1, 40, 10);
     if (this.actor) {
-      renderPhoe(this.actor, { ...p, facing: direction, holding: a.hasSling, control: a.dodgeLeft > 0 ? 'LAYING' : p.control, pushing: a.punchLeft > A4.punchCooldown - .12 }, a.elapsed);
+      renderPhoe(this.actor, { ...p, facing: direction, holding: a.weapon === 'SLING', control: bagOpen ? 'RUMMAGE' : a.dodgeLeft > 0 ? 'LAYING' : p.control, pushing: a.punchLeft > A4.punchCooldown - .12 }, a.elapsed);
       if (a.staggerLeft > 0) this.actor.setTintFill(0xffb9a3); else this.actor.clearTint();
     }
-    if (a.hasSling && a.dodgeLeft <= 0) {
+    if (a.weapon === 'SLING' && a.hasSling && a.dodgeLeft <= 0 && !bagOpen) {
       const x = p.centerX + direction * 25, y = p.feetY - 47, pull = a.charge / A4.chargeTime * 22;
       g.lineStyle(6, 0x292114).lineBetween(x, y + 15, x, y - 3).lineBetween(x, y - 3, x - 9, y - 16).lineBetween(x, y - 3, x + 9, y - 16);
       g.lineStyle(3, 0xaa7643).lineBetween(x, y + 15, x, y - 3).lineBetween(x, y - 3, x - 9, y - 16).lineBetween(x, y - 3, x + 9, y - 16);

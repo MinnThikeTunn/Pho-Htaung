@@ -1,5 +1,7 @@
 # ဖိုးထောင် — ပုဂံရွှေမြို့တော် စွန့်စားခန်း
 
+Chapter4 now starts with fists. Press B/open the bag and select a carried sling before K can shoot; missing sling permits immediate fists-only play. [Equipment contract and verified behaviour](docs/chapter4_equipment_revision.md).
+
 > **Current branch `codex/chapter-4-ape-arena`**, based on latest `main` `1aecccb`: bridge puzzle → stone-machine action → scale/treasure puzzle → two-ape fight → Chapter5 pending. See [Chapter4 rules/assets](docs/chapter4_spec.md) and [actual verification](docs/chapter4_implementation_report.md). J punches, hold/release K fires the sling, L dodges; threeHP bars and a75s deadline. Prior slingshot pickup is assumed to be handled by another developer. Art/combat animation and gameplay balance still need owner review. Legacy descriptions below are historical reference. Run locally with `npm run dev` (Node24); `build`, `typecheck`, `test`, `test:e2e` remain available.
 
 [![Phaser 3](https://img.shields.io/badge/Engine-Phaser%203.88.2-orange.svg)](https://phaser.io/)

@@ -1,11 +1,15 @@
 import { C } from '../content/chapter1';
-import { createArena, stepArena } from '../domain/arena';
-import type { ArenaAttempt, ArenaEvent, ArenaInput } from '../domain/arena';
+import { createArena, equipArenaWeapon, stepArena } from '../domain/arena';
+import type { ArenaAttempt, ArenaEvent, ArenaInput, ArenaWeapon } from '../domain/arena';
 
 export class ArenaSession {
   attempt: ArenaAttempt; paused = false; accumulator = 0; generation = 0;
   restartTime = 0; restartArmed = true; droppedBacklog = 0;
-  constructor(private id: () => string, readonly hasSling = true) { this.attempt = createArena(id(), hasSling); }
+  constructor(private id: () => string, readonly hasSling = false) { this.attempt = createArena(id(), hasSling); }
+  equipWeapon(weapon: ArenaWeapon): boolean {
+    if (!equipArenaWeapon(this.attempt, weapon)) return false;
+    this.clearInput(); return true;
+  }
   clearInput() { this.accumulator = 0; this.restartTime = 0; this.attempt.charge = 0; this.attempt.wasSling = false; this.attempt.player.jumpBuffer = 0; }
   setPause(value: boolean) { this.paused = value; this.clearInput(); }
   restart() { this.attempt = createArena(this.id(), this.hasSling); this.generation++; this.clearInput(); }

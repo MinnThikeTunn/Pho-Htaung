@@ -11,18 +11,19 @@ await mkdir(directory, { recursive: true });
 const runs = []; const errors = [];
 const selected = process.argv[2];
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
-async function start(name) {
+async function start(name, equip = true) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const page = await context.newPage(); page.on('pageerror', e => errors.push({ run: name, message: e.message }));
   await page.addInitScript(() => localStorage.setItem('phoe-htaung.adventure.v2', JSON.stringify({
     schemaVersion: 2, revision: 0, campaignId: 'experience-isolated-boundary', walletCoins: 5,
     deathCount: 3, bridgeCompleted: true, chapter2Completed: true, chapter2BestBankedCoins: 0,
-    completedAttemptIds: [], bestResultByPresetAndCoinTotal: {}, hintsSeen: [], inventory: [], ownedTools: [],
+    completedAttemptIds: [], bestResultByPresetAndCoinTotal: {}, hintsSeen: [], inventory: [], ownedTools: ['slingshot'],
     resumeAt: 'CHAPTER_4_PENDING', lastChapter2Result: null, chapter3Completed: true,
     chapter3TreasureRecovered: false, lastChapter3Result: null, chapter4Completed: false, lastChapter4Result: null,
   })));
   await page.goto('http://127.0.0.1:3000/'); await page.locator('#start').click();
   await page.locator('#arena-hp').waitFor();
+  if (equip) { await page.locator('#arena-bag').click(); await page.locator('#arena-bag-sling').click(); }
   return { name, page, context };
 }
 async function state(page) {
@@ -61,7 +62,7 @@ try {
   }
   // Bare-fist intent: approach once, then repeated distinct J presses. No sling.
   if (!selected || selected === 'fists-only') {
-    const { page, context } = await start('fists-only'); await press(page, 'd', 1800);
+    const { page, context } = await start('fists-only', false); await press(page, 'd', 1800);
     const samples = []; let punches = 0;
     for (; punches < 200; punches++) {
       await page.keyboard.press('j'); await pause(360);
