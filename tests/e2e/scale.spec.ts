@@ -29,11 +29,11 @@ async function walkOut(page: Page) {
   await page.locator('canvas').focus(); await page.keyboard.down('d');
   await expect(page.locator('#scale-next')).toBeVisible(); await page.keyboard.up('d');
 }
-test('Chapter 3 no-treasure clear → Chapter 4 pending → reload keeps progress', async ({ page }) => {
+test('Chapter 3 no-treasure clear → Chapter 4 arena → reload keeps progress', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await open(page); await walkOut(page); await expect(page.locator('.result-stats')).toContainText('ထားခဲ့သည်');
-  await page.locator('#scale-next').click(); await expect(page.locator('.result-panel')).toContainText('အခန်း ၄');
-  await page.reload(); await page.locator('#start').click(); await expect(page.locator('#chapter-three')).toBeVisible();
+  await page.locator('#scale-next').click(); await expect(page.locator('#arena-hp')).toBeVisible();
+  await page.reload(); await page.locator('#start').click(); await expect(page.locator('#arena-hp')).toBeVisible();
   expect(errors).toEqual([]);
 });
 test('pin route recovers treasure and does not mint wallet currency', async ({ page }) => {

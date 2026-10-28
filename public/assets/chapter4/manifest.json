@@ -1,0 +1,11 @@
+{
+  "date": "2026-10-28",
+  "releaseCleared": false,
+  "prompts": "art/source/chapter4/README.md",
+  "assets": [
+    { "id": "arena_chamber_v1", "runtime": "assets/chapter4/arena_chamber_v1.png", "source": "art/source/chapter4/arena_chamber_v1.png", "sha256": "A6EE2CBDE019942E66306341E80EDF6A9B1F23241396B1F87CE3A2AD66D59A2E", "dimensions": [1672,941], "bytes": 2795857, "provenance": "Built-in image_gen edit using the existing project Chapter3 chamber as visual reference", "status": "Integrated candidate; final owner visual approval pending" },
+    { "id": "arena_apes_v1", "runtime": "assets/chapter4/arena_apes_v1.png", "source": "art/source/chapter4/arena_apes_v1.png", "sha256": "67F8DEFFC48798FD4A4C517852B1A5FC3CF62574528C666D05B5B987EF38F6FD", "dimensions": [1774,887], "bytes": 1478490, "alpha": "RGBA,0..255 measured", "frames": "src/content/chapter4.ts", "provenance": "Built-in image_gen, eight original ape poses; one layout-only corrective edit", "status": "Integrated candidate; animation and final owner review pending" }
+  ],
+  "terms": "AI-generated original imagery; no downloaded stock pack or exclusive copyright claim. Source PNG bytes retained unchanged. Frame/feet/torso registration is runtime metadata, not pixel editing or collision changes.",
+  "remaining": ["Final owner art and animation review", "Full release provenance review", "No layered painting master exists" ]
+}

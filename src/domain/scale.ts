@@ -133,7 +133,7 @@ export function settleScale(current: Campaign, a: ScaleAttempt): Campaign {
   next.chapter3TreasureRecovered = Boolean(current.chapter3TreasureRecovered) || a.locations.treasure === 'BAG';
   next.lastChapter3Result = { attemptId: a.id, activeSeconds: a.elapsed, treasureRecovered: a.locations.treasure === 'BAG',
     method: a.braced ? 'BRACE' : panWeight(a) === S3.targetWeight ? 'WEIGHTS' : 'TIMING' };
-  next.resumeAt = 'CHAPTER_4_PENDING'; next.revision++;
+  if (!current.chapter4Completed) next.resumeAt = 'CHAPTER_4_PENDING'; next.revision++;
   // Reward amount is not owner-defined. Record the relic, never silently mint wallet coins.
   return next;
 }
