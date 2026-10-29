@@ -1,5 +1,13 @@
 # Combined adventure — coding handoff
 
+## Current extension — 2026-10-28
+
+Latest owner correction: Chapter4 starts with fists and requires B/bag selection to equip a carried sling; missing sling permits immediate fists-only play. [Current equipment contract and checks](chapter4_equipment_revision.md) supersede the earlier default-owned entry assumption. Earlier pickup implementation remains another developer's responsibility.
+
+Current Chapter4 tuning includes the owner-requested [combat revision](chapter4_balance_review.md): damage interrupts sling draw, stronger readable attack pressure, usable J shove, clearer hit feedback and compact UI. Read that revision alongside the current spec; the original implementation report retains pre-revision evidence.
+
+Owner authorized Chapter4 action after Chapter3: two ape guards, health bars, slingshot/punch/dodge, renewable stones and a visible deadline. Latest `main` was fetched and fast-forwarded to `1aecccb` first; implementation branch is `codex/chapter-4-ape-arena`. Read [Chapter4 spec](chapter4_spec.md) and [actual checks/limits](chapter4_implementation_report.md). Current flow is bridge → stone machine → scale puzzle → ape fight → honest Chapter5-pending panel. Prior chapter endpoints below are historical. The previous-chapter slingshot pickup is another developer's assumed responsibility; this branch supplies the receiver contract, not that pickup.
+
 ## Current extension — 2026-10-27
 
 Owner authorized a separate branch implementing Chapter3 as an item puzzle, with fighting starting in Chapter4. Current branch adds `CHAPTER_3` (scale/treasure puzzle) and ends at honest `CHAPTER_4_PENDING`. Read [Chapter3 spec](chapter3_spec.md) and [actual evidence](chapter3_implementation_report.md) first for this extension. The two-chapter description below is historical baseline, not a command to remove authorized Chapter3 work. Chapter1/2 gameplay rules remain in place; their source caveats and known failures are not silently fixed by this extension.

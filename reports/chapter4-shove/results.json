@@ -1,0 +1,40 @@
+{
+  "fixture": "Isolated Chapter4 entry; prior progression seeded in disposable browser contexts only.",
+  "runs": [
+    {
+      "name": "shove-opening",
+      "controls": "Read melee warning → Space → wait recovery → D140ms step into punch reach → J → full K",
+      "opening": {
+        "hp": 100,
+        "brown": 149,
+        "silver": 150,
+        "time": "72 s",
+        "ammo": "12",
+        "message": "ခွာထုတ်လိုက်ပြီ — K ဆွဲပစ်ဖို့ အချိန်ရပြီ။",
+        "charge": 0,
+        "dodge": "L · ရှောင်နိုင်ပြီ",
+        "modal": null,
+        "result": null,
+        "brownState": "ပစ်ခွင့်ရပြီ",
+        "silverState": "",
+        "messageHidden": false
+      },
+      "end": {
+        "hp": 80,
+        "brown": 119,
+        "silver": 150,
+        "time": "71 s",
+        "ammo": "11",
+        "message": "ဒဏ်ထိလို့ ဆွဲအားပျက်ပြီ — ရှောင်ပြီး ပြန်ဆွဲပစ်ပါ။",
+        "charge": 0,
+        "dodge": "L · ရှောင်နိုင်ပြီ",
+        "modal": "ခဏနားမယ်ဒဏ်ထိလျှင် K ဆွဲအားပျက်သည်။ နားနေတဲ့လူဝံကို J နဲ့ ခွာထုတ်ပြီး ပစ်ခွင့်ယူပါ။ လက်မြှောက်ပြီးသားကို J နဲ့မတားနိုင်ပါ။ သတိပေးချက်ပေါ်လျှင် ခုန် / L နဲ့ရှောင်ပါ။ ကျောက်ခဲကုန်လျှင် ဘေးကျောက်ပုံနား ခဏရပ်ပြီး ဖြည့်ပါ။ဆက်ကစားမယ်ပင်မစာမျက်နှာ",
+        "result": null,
+        "brownState": "လက်မြှောက်ပြီ — ရှောင်!",
+        "silverState": "ပစ်ခွင့်ရပြီ",
+        "messageHidden": false
+      }
+    }
+  ],
+  "errors": []
+}
