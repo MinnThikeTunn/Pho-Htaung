@@ -1,5 +1,9 @@
 # Chapter5 experience review — 2026-10-29
 
+## Navbar follow-up — owner requested consistency
+
+Restored the existing Chapter3-style top bar: shared `.hud`, chapter title, banked gold, deaths, play time, journal and Pause. Removed Chapter5-specific narrow top-bar overrides. Combat HP remains visible in a panel beside the boss bar; ammo and the same B/bag button move into the equipment card. Both health panels hide during the outdoor ending. No combat/save/economy changes. `npm.cmd run build` passed; the existing opening/equipment, no-sling and narrow-layout browser cases passed3/3. Desktop1440×1000 and narrow615×604 captures were visually checked under `reports/chapter5-navbar/`; its `browser.json` records this scoped run. Full combat routes were not repeated for this presentation-only follow-up.
+
 Owner asked for a gamer-style play/review and necessary fixes. This follow-up to `751fbc2` changes feedback and layout; it preserves the boss's health, damage, attack selection/timings, collision rules, valid shortcuts, equipment, story and10-gold settlement.
 
 ## Actual observation
