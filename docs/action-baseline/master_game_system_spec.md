@@ -1,5 +1,7 @@
 # Phoe Htaung — Master Game System Specification
 
+> **Owner decision update,2026-10-29:** the owner explicitly selected **10 gold** to repay debt for the better final ending. This resolves the undecided debt amount below for the integrated five-chapter build. Escape still wins without enough gold. Repay10 once, retain remaining gold and prevent a second debit on replay. See [current Chapter5 contract](../chapter5_spec.md). Other historical draft proposals below do not become approved through this update.
+
 Revision: 0.4 — Cartoon direction နှင့် CH1-first technical handoff ချိတ်ဆက်ထားသော working draft
 Date: 2026-10-17
 Status: D01–D05 အတည်ပြုပြီး။ ပထမ implementation scope သည် အခန်း ၁ prototype ဖြစ်သည်။ Economy အသေးစိတ်နှင့် နောက်အခန်း concepts မပြီးသေး။ ဤ documentation ပြုစုခြင်းက game code စရေးရန်အမိန့်မဟုတ်။

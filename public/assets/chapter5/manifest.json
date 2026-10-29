@@ -1,0 +1,98 @@
+{
+  "date": "2026-10-29",
+  "releaseCleared": false,
+  "mode": "built-in image_gen; no CLI fallback",
+  "prompts": "art/source/chapter5/README.md",
+  "assets": [
+    {
+      "id": "final_hall_v1",
+      "runtime": "assets/chapter5/final_hall_v1.png",
+      "source": "art/source/chapter5/final_hall_v1.png",
+      "dimensions": [
+        1672,
+        941
+      ],
+      "mode": "RGB",
+      "bytes": 2961376,
+      "sha256": "31BAA938DD6BB908A1C1072BFCFFE1B24CA91BA842A4041E7A5218D3DD4BC27E",
+      "provenance": "Built-in image_gen edit of project Chapter4 chamber, same original painted ancient-city direction",
+      "sourceBytesMatch": true,
+      "status": "Integrated candidate; owner visual/animation approval and full release provenance review pending"
+    },
+    {
+      "id": "ugyi_boss_v1",
+      "runtime": "assets/chapter5/ugyi_boss_v1.png",
+      "source": "art/source/chapter5/ugyi_boss_v1.png",
+      "dimensions": [
+        1774,
+        887
+      ],
+      "mode": "RGBA",
+      "bytes": 1502387,
+      "sha256": "F411E6C4F30AD83DFF2A1FDA8D613747F7B65721D1713304F16B0B5780D4F757",
+      "alpha": [
+        0,
+        255
+      ],
+      "alpha64Bounds": [
+        33,
+        4,
+        1759,
+        850
+      ],
+      "frames": "src/content/chapter5Art.ts UGYI_FRAMES",
+      "provenance": "Built-in image_gen original eight-pose atlas plus one layout/transparency corrective edit; legacy procedural U Gyi description supplies headwrap/moustache/cheroot identity",
+      "sourceBytesMatch": true,
+      "status": "Integrated candidate; owner visual/animation approval and full release provenance review pending"
+    },
+    {
+      "id": "treasure_cart_v1",
+      "runtime": "assets/chapter5/treasure_cart_v1.png",
+      "source": "art/source/chapter5/treasure_cart_v1.png",
+      "dimensions": [
+        1536,
+        1024
+      ],
+      "mode": "RGBA",
+      "bytes": 2288886,
+      "sha256": "E2902B02FF18648514A15D3943E4FC1BE68F445D0DD38259D95D114D8131D451",
+      "alpha": [
+        0,
+        254
+      ],
+      "alpha64Bounds": [
+        36,
+        107,
+        1502,
+        918
+      ],
+      "frame": "src/content/chapter5Art.ts CART_FRAME",
+      "provenance": "Built-in image_gen original cart plus two background/halo cleanup edits; final candidate retains faint low-alpha edge pixels",
+      "sourceBytesMatch": true,
+      "status": "Integrated candidate; owner visual/animation approval and full release provenance review pending"
+    },
+    {
+      "id": "final_escape_v1",
+      "runtime": "assets/chapter5/final_escape_v1.png",
+      "source": "art/source/chapter5/final_escape_v1.png",
+      "dimensions": [
+        1672,
+        941
+      ],
+      "mode": "RGB",
+      "bytes": 3099660,
+      "sha256": "D72045E681ACDE7EB1872834E862BBE23CF192E5F7D61EF2D279973E63398B9F",
+      "provenance": "Built-in image_gen ending scenery using final hall as project-owned style reference",
+      "sourceBytesMatch": true,
+      "status": "Integrated candidate; owner visual/animation approval and full release provenance review pending"
+    }
+  ],
+  "terms": "AI-generated project imagery, no acquired stock, copied named artist style, voice clone or exclusive copyright claim. Byte-identical source PNGs retained. Frame selection/registration is renderer metadata; no image pixel editing outside image_gen.",
+  "remaining": [
+    "Owner visual review in the actual game",
+    "Dedicated final animation polish",
+    "Minor low-alpha edge fringe/halo review",
+    "Full release provenance review",
+    "No layered painting master exists"
+  ]
+}

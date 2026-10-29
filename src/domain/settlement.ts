@@ -1,13 +1,15 @@
 import { C, COINS, POUCH } from '../content/chapter1';
 import type { Attempt, Campaign, ChapterResult, Mode } from './types';
 import { A4 } from '../content/chapter4';
+import { F5 } from '../content/chapter5';
 
 export function newCampaign(id: string): Campaign {
   return { schemaVersion: 2, revision: 0, campaignId: id, walletCoins: 0, deathCount: 0, bridgeCompleted: false,
     chapter2Completed: false, chapter2BestBankedCoins: 0, completedAttemptIds: [],
     bestResultByPresetAndCoinTotal: {}, hintsSeen: [], inventory: [], ownedTools: [],
     resumeAt: 'CHAPTER_1', lastChapter2Result: null, chapter3Completed: false,
-    chapter3TreasureRecovered: false, lastChapter3Result: null, chapter4Completed: false, lastChapter4Result: null };
+    chapter3TreasureRecovered: false, lastChapter3Result: null, chapter4Completed: false, lastChapter4Result: null,
+    chapter5Completed:false,debtRepaidGold:0,lastChapter5Result:null };
 }
 export function settle(current: Campaign, a: Attempt, mode: Mode, sessionDeaths: number): { campaign: Campaign; result: ChapterResult | null; duplicate: boolean } {
   if (a.status !== 'COMPLETE' || a.player.control !== 'EXITING') throw new Error('Cannot settle an unfinished attempt');
@@ -45,7 +47,18 @@ export function validateCampaign(value: unknown): value is Campaign {
     !nonnegative(c.walletCoins) || !nonnegative(c.deathCount) || !nonnegative(c.chapter2BestBankedCoins) || c.chapter2BestBankedCoins! > 15 ||
     typeof c.chapter2Completed !== 'boolean' || !strings(c.completedAttemptIds) || new Set(c.completedAttemptIds).size !== c.completedAttemptIds.length ||
     !strings(c.hintsSeen) || !strings(c.inventory) || !strings(c.ownedTools) ||
-    !['CHAPTER_1', 'CHAPTER_2', 'CH2_EXIT_LINK', 'CHAPTER_3_PENDING', 'CHAPTER_3', 'CHAPTER_4_PENDING', 'CHAPTER_4', 'CHAPTER_5_PENDING'].includes(c.resumeAt ?? '')) return false;
+    !['CHAPTER_1', 'CHAPTER_2', 'CH2_EXIT_LINK', 'CHAPTER_3_PENDING', 'CHAPTER_3', 'CHAPTER_4_PENDING', 'CHAPTER_4', 'CHAPTER_5_PENDING','CHAPTER_5','CAMPAIGN_COMPLETE'].includes(c.resumeAt ?? '')) return false;
+  if(c.chapter5Completed!==undefined&&typeof c.chapter5Completed!=='boolean')return false;
+  if(c.chapter5Completed&&!c.chapter4Completed)return false;
+  if(['CHAPTER_5','CAMPAIGN_COMPLETE'].includes(c.resumeAt!)&&!c.chapter4Completed)return false;
+  if(c.resumeAt==='CAMPAIGN_COMPLETE'&&!c.chapter5Completed)return false;
+  if(c.debtRepaidGold!==undefined&&(!nonnegative(c.debtRepaidGold)||![0,F5.debtTarget].includes(c.debtRepaidGold)))return false;
+  if((c.debtRepaidGold??0)>0&&!c.chapter5Completed)return false;
+  if(c.lastChapter5Result!=null){const r=c.lastChapter5Result;
+    if(!c.chapter5Completed||!r.attemptId||typeof r.attemptId!=='string'||!Number.isFinite(r.activeSeconds)||r.activeSeconds<0||!nonnegative(r.remainingHealth)||r.remainingHealth<1||r.remainingHealth>F5.health||
+      ![r.shotsFired,r.punchesHit,r.cartStops,r.goldAtExit,r.debtPaidNow].every(nonnegative)||![0,F5.debtTarget].includes(r.debtPaidNow)||!['ESCAPED','DEBT_FREE'].includes(r.ending))return false;
+    if((r.ending==='DEBT_FREE')!==((c.debtRepaidGold??0)>=F5.debtTarget)||r.debtPaidNow>r.goldAtExit)return false;
+  }
   if (c.chapter4Completed !== undefined && typeof c.chapter4Completed !== 'boolean') return false;
   if (c.chapter4Completed && !c.chapter3Completed) return false;
   if (['CHAPTER_4', 'CHAPTER_5_PENDING'].includes(c.resumeAt!) && !c.chapter3Completed) return false;

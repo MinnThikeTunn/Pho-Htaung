@@ -6,6 +6,8 @@ import { settleScale } from '../domain/scale';
 import type { ScaleAttempt } from '../domain/scale';
 import { settleArena } from '../domain/arena';
 import type { ArenaAttempt } from '../domain/arena';
+import { settleFinal } from '../domain/finalBoss';
+import type { FinalAttempt } from '../domain/finalBoss';
 
 export const SAVE_KEY = 'phoe-htaung.adventure.v2';
 export const SETTINGS_KEY = 'phoe-htaung.settings.v1';
@@ -89,4 +91,6 @@ export class CampaignStore {
     const next = settleArena(this.campaign, a); if (next === this.campaign) return null;
     this.campaign = next; this.save(); return next.lastChapter4Result ?? null;
   }
+  startFinal(){if(!this.campaign.chapter4Completed)return false;if(!this.campaign.chapter5Completed&&this.campaign.resumeAt!=='CHAPTER_5'){this.campaign.resumeAt='CHAPTER_5';this.campaign.revision++;this.save();}return true;}
+  completeFinal(a:FinalAttempt){const next=settleFinal(this.campaign,a);if(next===this.campaign)return null;this.campaign=next;this.save();return next.lastChapter5Result??null;}
 }
