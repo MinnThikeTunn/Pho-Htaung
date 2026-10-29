@@ -2,6 +2,8 @@
 
 Current implementation contract, 2026-10-29. Owner requested implementation of the detailed U Gyi fighting proposal, including its spoken lines as **in-game story text**. Owner separately approved **10 gold** to repay debt. This chapter supersedes the Chapter5-pending endpoint; historical Chapter1-only/two-chapter milestones do not limit this authorized extension.
 
+Owner-requested experience review: [observations, feedback/layout corrections and actual checks](chapter5_experience_review.md). Hits now show actual lost HP, hurt messages identify their cause, shield/cart blocks are distinct, J cooldown is visible and narrow layouts stay registered to the canvas. Combat values and economy remain unchanged.
+
 ## Flow and story
 
 Chapter4 result → Chapter5 treasure hall → eight manually advanced opening lines → boss fight → four surrender lines → safe physical exit → outdoor dialogue → persistent campaign result. Continue after completion opens the result. Chapter5 replay is available after Chapter4 completion; old `CHAPTER_5_PENDING` saves enter the real chapter.

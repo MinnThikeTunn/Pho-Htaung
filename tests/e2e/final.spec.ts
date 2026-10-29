@@ -15,7 +15,7 @@ async function snapshot(page:Page){return page.evaluate(()=> (window.__PHOE_TEST
 
 test('all opening dialogue, gold reveal, frozen journal, initial hands and actual bag equipment',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await enter(page);
-  await page.screenshot({path:'reports/chapter5/intro.png'});
+  await page.screenshot({path:'reports/chapter5-review/intro.png'});
   await page.keyboard.press('d');expect((await snapshot(page)).attempt.elapsed).toBe(0);
   for(let i=0;i<3;i++)await page.locator('#final-next').click();await expect(page.locator('#final-reveal')).toBeVisible();
   await expect(page.locator('#final-dialogue')).toContainText('အခွံကွာ');
@@ -26,13 +26,30 @@ test('all opening dialogue, gold reveal, frozen journal, initial hands and actua
   await page.keyboard.down('k');await expect.poll(async()=> (await snapshot(page)).attempt.charge).toBeGreaterThan(.2);
   await page.keyboard.press('b');await page.keyboard.up('k');const before=(await snapshot(page)).attempt.elapsed;
   await page.waitForTimeout(300);expect((await snapshot(page)).attempt.elapsed).toBe(before);await page.locator('#final-close-bag').click();
-  expect((await snapshot(page)).attempt.shotsFired).toBe(0);await page.screenshot({path:'reports/chapter5/arena.png'});expect(errors).toEqual([]);
+  expect((await snapshot(page)).attempt.shotsFired).toBe(0);await page.screenshot({path:'reports/chapter5-review/arena.png'});expect(errors).toEqual([]);
 });
 
 test('no sling: honest bag and direct fists, no invented equipment',async({page})=>{
   await enter(page,false,0);await page.locator('#final-skip').click();await page.keyboard.press('b');
   await expect(page.locator('#final-empty-bag')).toBeVisible();await expect(page.locator('#final-sling')).toHaveCount(0);
   await page.locator('#final-fists').click();await page.keyboard.press('j');await expect.poll(async()=>(await snapshot(page)).attempt.status).toBe('ACTIVE');
+});
+
+test('narrow browser keeps the interface registered to the actual canvas',async({page})=>{
+  await page.setViewportSize({width:615,height:604});await enter(page,false,0);
+  const bounds=await page.evaluate(()=>({canvas:document.querySelector('canvas')!.getBoundingClientRect().toJSON(),ui:document.querySelector('#interface')!.getBoundingClientRect().toJSON()}));
+  expect(Math.abs(bounds.canvas.height-bounds.ui.height)).toBeLessThan(3);expect(Math.abs(bounds.canvas.y-bounds.ui.y)).toBeLessThan(3);
+  await expect(page.locator('#final-bag')).toBeDisabled();await page.screenshot({path:'reports/chapter5-review/narrow-story.png'});
+  await page.locator('#final-skip').click();await expect(page.locator('#final-bag')).toBeEnabled();await expect(page.locator('#final-punch')).toContainText('J');
+  await page.screenshot({path:'reports/chapter5-review/narrow-game.png'});
+});
+
+test('a real rush hit keeps its damage explanation when the boss then crashes into the cart',async({page})=>{
+  await enter(page,false,0);await page.locator('#final-skip').click();await page.keyboard.down('d');await page.waitForTimeout(1800);await page.keyboard.press('Space');
+  await expect.poll(async()=>(await snapshot(page)).attempt.hp,{timeout:3000,intervals:[20]}).toBeLessThan(100);await page.keyboard.up('d');
+  await expect.poll(async()=>(await snapshot(page)).attempt.cartStops,{timeout:1000,intervals:[20]}).toBeGreaterThan(0);
+  await expect(page.locator('#final-message')).toContainText('ဒိုင်းတိုးချက်');await expect(page.locator('#final-message')).toContainText('−20');
+  await page.screenshot({path:'reports/chapter5-review/rush-feedback.png'});await page.keyboard.press('Escape');
 });
 
 for(const sling of [false,true])test(`live input route to surrender, exit, ending and reload; sling=${sling}`,async({page},info)=>{
@@ -51,17 +68,17 @@ for(const sling of [false,true])test(`live input route to surrender, exit, endin
   }
   for(const key of held)await page.keyboard.up(key);
   expect((await snapshot(page)).stage).toBe('DEFEAT');expect(phase2).toBe(true);expect(cartStops).toBeGreaterThan(0);
-  const fight=(await snapshot(page)).attempt;await page.screenshot({path:`reports/chapter5/defeated-${sling}.png`});
+  const fight=(await snapshot(page)).attempt;await page.screenshot({path:`reports/chapter5-review/defeated-${sling}.png`});
   const frozen=fight.elapsed;await page.waitForTimeout(200);expect((await snapshot(page)).attempt.elapsed).toBe(frozen);
   for(let i=0;i<4;i++)await page.locator('#final-next').click();expect((await snapshot(page)).stage).toBe('EXIT');
   await page.keyboard.down('d');const exitUntil=Date.now()+12000;
   while(Date.now()<exitUntil){const s=await snapshot(page);if(s.stage==='OUTRO')break;const a=s.attempt;if(a.player.grounded&&a.player.centerX<a.cart.x&&a.cart.x-a.player.centerX<135)await page.keyboard.press('Space');await page.waitForTimeout(30);}
-  await page.keyboard.up('d');expect((await snapshot(page)).stage).toBe('OUTRO');await page.screenshot({path:`reports/chapter5/outside-${sling}.png`});
+  await page.keyboard.up('d');expect((await snapshot(page)).stage).toBe('OUTRO');await page.screenshot({path:`reports/chapter5-review/outside-${sling}.png`});
   await page.locator('#final-skip').click();await expect(page.locator('.final-ending')).toBeVisible();
   await expect(page.locator('.final-ending h1')).toHaveText(sling?'အကြွေးကျေပြီ။':'လွတ်မြောက်လာပြီ။');
   const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('phoe-htaung.adventure.v2')!));
   expect(saved.walletCoins).toBe(sling?5:0);expect(saved.debtRepaidGold).toBe(sling?10:0);expect(saved.resumeAt).toBe('CAMPAIGN_COMPLETE');
-  await page.screenshot({path:`reports/chapter5/ending-${sling}.png`});await page.reload();await page.locator('#start').click();await expect(page.locator('.final-ending')).toBeVisible();
+  await page.screenshot({path:`reports/chapter5-review/ending-${sling}.png`});await page.reload();await page.locator('#start').click();await expect(page.locator('.final-ending')).toBeVisible();
   const reload=await page.evaluate(()=>JSON.parse(localStorage.getItem('phoe-htaung.adventure.v2')!));expect(reload.walletCoins).toBe(saved.walletCoins);expect(errors).toEqual([]);
   await info.attach('route-result',{body:JSON.stringify({sling,hp:fight.hp,seconds:fight.combatSeconds,shots:fight.shotsFired,punches:fight.punchesHit,cartStops:fight.cartStops,wallet:saved.walletCoins}),contentType:'application/json'});
 });

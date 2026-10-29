@@ -13,8 +13,9 @@ export const F5 = Object.freeze({
   chargeTime:.55, minimumCharge:.12, slingCooldown:.48, shotDamage:30, shotSpeed:920, shotSize:12,
   ammo:12, refillTime:.8, refillReach:58, refillX:[100,1170] as readonly number[],
   dodgeTime:.22, dodgeInvulnerable:.15, dodgeCooldown:.85, dodgeSpeed:420,
-  hurtGrace:.8, hurtStagger:.3, hitFlash:.18,
+  hurtGrace:.8, hurtStagger:.3, hitFlash:.18, feedbackTime:.7, punchVisualTime:.2,
 });
+export const FINAL_DAMAGE_LABELS = {SLAM:'တုတ်ရိုက်ချက်',RUSH:'ဒိုင်းတိုးချက်',CART:'လှိမ့်လာသောလှည်း'} as const;
 export interface FinalLine { speaker:'ဦးကြီး'|'ဖိုးထောင်'|'အကြွေးရှင်'; text:string; reveal?:boolean }
 export const FINAL_INTRO:readonly FinalLine[] = [
   {speaker:'ဦးကြီး',text:'ဖိုးထောင်ရေ… လူဝံနှစ်ကောင်ကိုပါ ကျော်လာနိုင်တယ်ဆိုတော့ မင်း မဆိုးဘူးကွ။'},

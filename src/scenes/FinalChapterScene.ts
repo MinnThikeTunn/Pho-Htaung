@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { C } from '../content/chapter1';
-import { F5, FINAL_PHASE_LINE } from '../content/chapter5';
+import { F5, FINAL_PHASE_LINE, FINAL_DAMAGE_LABELS } from '../content/chapter5';
 import { FINAL_ART } from '../content/chapter5Art';
 import { arenaHasSlingshot } from '../domain/arena';
 import type { ArenaWeapon } from '../domain/arena';
@@ -30,13 +30,13 @@ export default class FinalChapterScene extends Phaser.Scene {
   private bind(id:string,fn:()=>void){ui().querySelector(`#${id}`)?.addEventListener('click',()=>{this.audio.unlock();fn();});}
   private focusGame(){this.game.canvas.tabIndex=0;this.game.canvas.focus({preventScroll:true});}
   private clear(){this.held.clear();this.edges={jump:false,punch:false,dodge:false};this.session.clearInput();}
-  private speak(text:string,seconds=3.5){const el=ui().querySelector<HTMLElement>('#final-message');if(el){el.textContent=text;el.hidden=false;}this.messageUntil=this.session.attempt.elapsed+seconds;}
+  private speak(text:string,seconds=3.5,priority=0){const a=this.session.attempt;if(priority<2&&a.lastHurt&&a.elapsed-a.lastHurt.at<1.2)return;const el=ui().querySelector<HTMLElement>('#final-message');if(el){el.textContent=text;el.hidden=false;}this.messageUntil=a.elapsed+seconds;}
   create(){
-    ui().classList.remove('final-outro');
+    ui().classList.remove('final-outro');ui().classList.add('final-chapter');
     this.view=new FinalView(this);this.audio.attach(this);try{this.audio.muted=Boolean(JSON.parse(localStorage.getItem(SETTINGS_KEY)??'{}').muted);}catch{/* Existing setting defaults. */}
     ui().innerHTML=`<div class="hud"><div class="stage-title"><span class="eyebrow">အခန်း ၅ / FINAL BOSS</span><strong>ဦးကြီးရဲ့ နောက်ဆုံးအကွက်</strong></div><div class="arena-player-health"><span>ဖိုးထောင် <b id="final-hp-label">100 / 100</b></span><progress id="final-hp" max="${F5.health}" value="${F5.health}" aria-label="ဖိုးထောင် သွေးတန်း"></progress></div><div class="ledger"><div><span>တိုက်ပွဲချိန်</span><b id="final-time">0.00 s</b></div><div><span>ကျောက်ခဲ</span><b id="final-ammo">—</b></div></div><button id="final-bag" class="icon-button" aria-label="အိတ်ဖွင့် (B)">အိတ်</button><button id="final-journal" class="icon-button" aria-label="စကားပြောမှတ်တမ်း">စာ</button><button id="final-pause" class="icon-button" aria-label="Pause">Ⅱ</button></div>
       <div class="final-enemy"><span>ဦးကြီး <b id="final-boss-hp-label">180 / 180</b></span><progress id="final-boss-hp" max="${F5.bossHealth}" value="${F5.bossHealth}" aria-label="ဦးကြီး သွေးတန်း"></progress><small id="final-boss-state"></small></div>
-      <p class="final-message" id="final-message" aria-live="polite" hidden></p><div class="final-weapon"><span id="final-weapon-label"></span><progress id="final-charge" max="1" value="0" aria-label="လောက်လေးခွ ဆွဲအား" hidden></progress><small id="final-dodge"></small></div>
+      <p class="final-message" id="final-message" aria-live="polite" hidden></p><div class="final-weapon"><span id="final-weapon-label"></span><progress id="final-charge" max="1" value="0" aria-label="လောက်လေးခွ ဆွဲအား" hidden></progress><small id="final-punch"></small><small id="final-dodge"></small></div>
       <div class="final-cart-label">လှည်း · A / D နဲ့ကပ်တွန်း၊ ခုန်တက်နိုင်သည်</div><div class="final-controls"><kbd>A</kbd><kbd>D</kbd> ရွေ့ / တွန်း <kbd>SPACE</kbd> ခုန် <kbd>J</kbd> ချ <kbd>B</kbd> အိတ် <kbd>K</kbd> လေးခွဆွဲပစ် <kbd>L</kbd> ရှောင် <kbd>R</kbd> ဖိပြန်စ <kbd>ESC</kbd> နား</div>
       <div class="final-story" id="final-story" role="dialog" aria-labelledby="final-speaker"><span id="final-story-step" class="eyebrow"></span><h2 id="final-speaker"></h2><p id="final-dialogue"></p><small id="final-reveal" hidden>ရွှေဆေးကွာနေသော ကျောက်တုံးများ — ကိုယ်ကောက်လာသောရွှေက တန်ဖိုးရှိနေဆဲပါ။</small><div class="actions">${button('final-next','ဆက်မယ်',true)}${button('final-skip','ဒီစကားပြောခန်းကို ကျော်မယ်')}</div></div>
       <p class="unsaved-status" id="final-unsaved" hidden>Save မသိမ်းရသေးပါ — ယာယီကစားနေသည်။</p><div class="modal" id="final-modal" hidden></div>`;
@@ -55,7 +55,7 @@ export default class FinalChapterScene extends Phaser.Scene {
     const blur=()=>{if(!this.failureShown&&this.session.stage!=='FINISHED')this.pause(true);};const visibility=()=>{if(document.hidden)blur();};
     const storage=(e:StorageEvent)=>{if(e.key!==SAVE_KEY)return;store.conflict=true;this.pause(true);const el=ui().querySelector<HTMLElement>('#final-modal')!;el.innerHTML=`<section class="dialog"><h2>အခြား tab မှ save ပြောင်းသွားသည်</h2>${button('final-reload','Reload',true)}</section>`;this.bind('final-reload',()=>location.reload());};
     window.addEventListener('keydown',down);window.addEventListener('keyup',up);window.addEventListener('blur',blur);document.addEventListener('visibilitychange',visibility);window.addEventListener('storage',storage);
-    this.events.once('shutdown',()=>{window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',blur);document.removeEventListener('visibilitychange',visibility);window.removeEventListener('storage',storage);ui().classList.remove('final-outro');this.clear();});
+    this.events.once('shutdown',()=>{window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',blur);document.removeEventListener('visibilitychange',visibility);window.removeEventListener('storage',storage);ui().classList.remove('final-outro','final-chapter');this.clear();});
     this.sync();this.focusGame();
   }
   private nextStory(skip:boolean){this.session.advanceStory(skip);this.clear();if(this.session.stage==='FINISHED'){this.scene.start('CAMPAIGN_END');return;}this.sync();this.focusGame();}
@@ -77,10 +77,11 @@ export default class FinalChapterScene extends Phaser.Scene {
   }
   private retry(){if(store.conflict)return;this.session.restart();this.session.setPause(false);this.failureShown=false;this.bagOpen=false;this.clear();const el=ui().querySelector<HTMLElement>('#final-modal')!;el.hidden=true;el.innerHTML='';this.speak('ဒိုင်းဖွင့်ချိန်ကိုကြည့်ပြီး ပြန်တိုက်ပါ။');this.sync();this.focusGame();}
   private event(kind:FinalEvent){
-    const sound:Partial<Record<FinalEvent,'lock'|'gate'|'land'|'death'|'shatter'|'complete'|'coin'>>={shot:'lock',block:'gate',hit:'land',hurt:'death',crash:'shatter',down:'complete',refill:'coin'};
+    const sound:Partial<Record<FinalEvent,'lock'|'gate'|'land'|'death'|'shatter'|'complete'|'coin'>>={shot:'lock',block:'gate',cart_block:'gate',hit:'land',hurt:'death',crash:'shatter',down:'complete',refill:'coin'};
     if(sound[kind])this.audio.play(sound[kind]!);
-    if(kind==='block')this.speak('ပိတ်မိပြီ — ဒိုင်း/လှည်းကိုကျော်ပြီး ဖွင့်နေသောဘက်ကို တိုက်ပါ။',2);
-    if(kind==='hurt')this.speak('ဒဏ်ထိသွားပြီ — အကွက်ကိုကြည့်ပြီး ရှောင်ပါ။',2);
+    if(kind==='block')this.speak('ဒိုင်းကာထားလို့ မထိပါ — နားချိန် သို့မဟုတ် ဒိုင်းနောက်ဘက်က တိုက်ပါ။',2);
+    if(kind==='cart_block')this.speak('ကိုယ့်ကျောက်ခဲ လှည်းကိုထိသွားပြီ — လှည်းကျော်ပြီးမှ ပစ်ပါ။',2);
+    if(kind==='hurt'){const h=this.session.attempt.lastHurt;if(h)this.speak(`${FINAL_DAMAGE_LABELS[h.source]} ထိသည် · −${h.damage} သွေး။ ${h.source==='SLAM'?'အဝါရောင်ဧရိယာကနေ ဘေးရှောင်ပါ။':h.source==='CART'?'လှည်းပေါ် ခုန်တက် / ကျော်ပါ။':'ဒိုင်းတိုးလာချိန် ခုန် / L နဲ့ရှောင်ပါ။'}`,2,2);}
     if(kind==='empty')this.speak('ကျောက်ခဲကုန်ပြီ။ ဘေးကျောက်ပုံနား ရပ်ပြီး ဖြည့်နိုင်သည်။',3);
     if(kind==='refill')this.speak('ကျောက်ခဲ ပြန်ဖြည့်ပြီးပြီ။',2);
     if(kind==='crash')this.speak('လှည်းနဲ့တိုက်မိပြီ — ဒိုင်းဖွင့်နေတုန်း ပြန်ချနိုင်ပြီ။',2);
@@ -96,6 +97,9 @@ export default class FinalChapterScene extends Phaser.Scene {
     (ui().querySelector('#final-boss-hp') as HTMLProgressElement).value=b.hp;text('final-boss-hp-label',`${b.hp} / ${F5.bossHealth}`);
     text('final-boss-state',b.phase==='DOWN'?'ဦးကြီး လက်နက်ချပြီ':b.phase==='SLAM_WINDUP'?'တုတ်ကျတော့မည် — ဘေးရှောင်!':b.phase==='RUSH_WINDUP'?'ဒိုင်းတိုးတော့မည် — ခုန် / ရှောင်!':b.phase==='CART_WINDUP'?'လှည်းတွန်းတော့မည် — တား / ခုန်!':b.phase==='RECOVER'||b.phase==='STUN'?'ဒိုင်းဖွင့်နေပြီ — ပြန်တိုက်နိုင်သည်':finalGuarded(a)?'ရှေ့ဒိုင်း ကာထားသည်':'');
     text('final-time',`${a.combatSeconds.toFixed(2)} s`);text('final-ammo',a.hasSling?String(a.ammo):'—');text('final-weapon-label',a.weapon==='SLING'?a.staggerLeft>0?'ဒဏ်ထိ၍ ဆွဲအားပျက်ပြီ':a.charge>=F5.chargeTime?'အားပြည့်ပြီ — K လွှတ်ပစ်':'K ဖိဆွဲ → လွှတ်ပစ်':a.hasSling?'လက်ချည်း · B အိတ်မှလေးခွထုတ်နိုင်သည်':'လက်ချည်း · J နဲ့တိုက်နိုင်သည်');
+    text('final-punch',a.punchLeft>0?`J ပြန်အဆင်သင့် ${a.punchLeft.toFixed(1)} s`:'J · အနားကပ်ပြီး ချနိုင်ပြီ');
+    (ui().querySelector('#final-bag') as HTMLButtonElement).disabled=!['COMBAT','EXIT'].includes(this.session.stage);
+    const cartLabel=ui().querySelector<HTMLElement>('.final-cart-label')!;cartLabel.style.left=`${a.cart.x/C.width*100}%`;cartLabel.hidden=a.status!=='WAITING'&&!a.player.pushing;
     const charge=ui().querySelector('#final-charge') as HTMLProgressElement;charge.value=a.charge/F5.chargeTime;charge.hidden=a.weapon!=='SLING';text('final-dodge',a.dodgeCooldown>0?`L ပြန်အဆင်သင့် ${a.dodgeCooldown.toFixed(1)} s`:'L · ရှောင်နိုင်ပြီ');
     ui().querySelector<HTMLElement>('#final-message')!.hidden=a.elapsed>=this.messageUntil;ui().querySelector<HTMLElement>('#final-unsaved')!.hidden=!store.unsaved;
     const line=this.session.currentLine(),story=ui().querySelector<HTMLElement>('#final-story')!;story.hidden=!line;

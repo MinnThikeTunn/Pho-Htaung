@@ -2,6 +2,8 @@
 
 ## Current extension — 2026-10-29
 
+Latest owner-requested [experience review](chapter5_experience_review.md) fixes hit/damage feedback, J cooldown, moving-cart hints and narrow-screen overlay alignment. Follow its135-test/6-browser-case evidence for this revision; initial implementation evidence below remains historical.
+
 Owner authorized Chapter5 final-boss implementation with the proposed Burmese dialogue inside the game, then explicitly selected **10 gold** for debt repayment. Read [Chapter5 contract](chapter5_spec.md) and [actual checks](chapter5_implementation_report.md). Current endpoint is the real campaign ending after U Gyi's boss fight and a safe physical exit; Chapter5-pending descriptions below are historical. No-gold escape wins;10 gold is debited once for the better ending, never again on replay. Chapter4's starts-with-fists/bag contract carries into Chapter5. No new pickup, shop or currency reward was added.
 
 ## Current extension — 2026-10-28

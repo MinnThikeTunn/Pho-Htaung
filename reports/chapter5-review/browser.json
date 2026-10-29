@@ -1,0 +1,336 @@
+{
+  "config": {
+    "argv": [
+      "C:\\nvm4w\\nodejs\\node.exe",
+      "C:\\Users\\YOGA\\OneDrive - University of Information Technology\\Documents\\ChatGPT\\New project 2\\integration\\Pho-Htaung\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "tests/e2e/final.spec.ts",
+      "--reporter=line,json"
+    ],
+    "configFile": "C:\\Users\\YOGA\\OneDrive - University of Information Technology\\Documents\\ChatGPT\\New project 2\\integration\\Pho-Htaung\\playwright.config.ts",
+    "rootDir": "C:/Users/YOGA/OneDrive - University of Information Technology/Documents/ChatGPT/New project 2/integration/Pho-Htaung/tests/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/YOGA/OneDrive - University of Information Technology/Documents/ChatGPT/New project 2/integration/Pho-Htaung/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Users/YOGA/OneDrive - University of Information Technology/Documents/ChatGPT/New project 2/integration/Pho-Htaung/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Users\\YOGA\\OneDrive - University of Information Technology\\Documents\\ChatGPT\\New project 2\\integration\\Pho-Htaung\\test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "C:\\Users\\YOGA\\OneDrive - University of Information Technology\\Documents\\ChatGPT\\New project 2\\integration\\Pho-Htaung\\tests\\e2e",
+        "snapshotDir": "C:\\Users\\YOGA\\OneDrive - University of Information Technology\\Documents\\ChatGPT\\New project 2\\integration\\Pho-Htaung\\tests\\e2e",
+        "testIgnore": [],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 30000,
+        "use": {
+          "baseURL": "http://127.0.0.1:3000",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "trace": "retain-on-failure",
+          "launchOptions": {
+            "executablePath": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+          }
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "line"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.1",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev",
+      "url": "http://127.0.0.1:3000",
+      "reuseExistingServer": true,
+      "timeout": 30000
+    }
+  },
+  "suites": [
+    {
+      "title": "final.spec.ts",
+      "file": "final.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "all opening dialogue, gold reveal, frozen journal, initial hands and actual bag equipment",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 22428,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T14:02:22.843Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e79988ea38e06fc41059-7f8b6d3414b485511bdb",
+          "file": "final.spec.ts",
+          "line": 16,
+          "column": 1
+        },
+        {
+          "title": "no sling: honest bag and direct fists, no invented equipment",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 19569,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T14:02:46.423Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e79988ea38e06fc41059-5f69aac0393205803540",
+          "file": "final.spec.ts",
+          "line": 32,
+          "column": 1
+        },
+        {
+          "title": "narrow browser keeps the interface registered to the actual canvas",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 15312,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T14:03:06.165Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e79988ea38e06fc41059-086cbee8773bffa89657",
+          "file": "final.spec.ts",
+          "line": 38,
+          "column": 1
+        },
+        {
+          "title": "a real rush hit keeps its damage explanation when the boss then crashes into the cart",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 15726,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T14:03:21.575Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e79988ea38e06fc41059-ab15a4f07d4224970a29",
+          "file": "final.spec.ts",
+          "line": 47,
+          "column": 1
+        },
+        {
+          "title": "live input route to surrender, exit, ending and reload; sling=false",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 240000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 66604,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T14:03:37.375Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "route-result",
+                      "contentType": "application/json",
+                      "body": "eyJzbGluZyI6ZmFsc2UsImhwIjoxMDAsInNlY29uZHMiOjMzLjcxNjY2NjY2NjY2NjAzNiwic2hvdHMiOjAsInB1bmNoZXMiOjE4LCJjYXJ0U3RvcHMiOjEsIndhbGxldCI6MH0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e79988ea38e06fc41059-632b75a212db86d3a28e",
+          "file": "final.spec.ts",
+          "line": 55,
+          "column": 33
+        },
+        {
+          "title": "live input route to surrender, exit, ending and reload; sling=true",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 240000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 73269,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T14:04:44.059Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "route-result",
+                      "contentType": "application/json",
+                      "body": "eyJzbGluZyI6dHJ1ZSwiaHAiOjUyLCJzZWNvbmRzIjozNC45MzMzMzMzMzMzMzI2MzQsInNob3RzIjoxMSwicHVuY2hlcyI6MCwiY2FydFN0b3BzIjoxLCJ3YWxsZXQiOjV9"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e79988ea38e06fc41059-eaee0566616c36af7a1b",
+          "file": "final.spec.ts",
+          "line": 55,
+          "column": 33
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-29T14:02:15.318Z",
+    "duration": 226592.71899999998,
+    "expected": 6,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

@@ -22,6 +22,17 @@ function route(id:string,sling:boolean){const a=createFinalAttempt(id,sling);if(
 
 it.each([false,true])('real-spawn final route wins with live attacks and actual exit, sling=%s',sling=>{const a=route(`route-${sling}`,sling);expect(a.hp).toBeGreaterThan(0);expect(a.boss.phase2).toBe(true);expect(a.cartStops).toBeGreaterThan(0);if(sling)expect(a.shotsFired).toBeGreaterThan(0);else expect(a.punchesHit).toBe(18);});
 it('starts with hands, no clock/AI before effective input and no K auto-equip',()=>{const a=createFinalAttempt('wait',true);tick(a,{...ARENA_IDLE,sling:true},90);expect(a.elapsed).toBe(0);expect(a.weapon).toBe('FISTS');expect(a.boss.x).toBe(F5.bossSpawn);expect(a.shots).toEqual([]);});
+it('feedback records actual health lost, source and timing, and retry clears it',()=>{
+  const a=createFinalAttempt('feedback');a.status='ACTIVE';a.player.centerX=a.boss.x-70;a.hp=7;a.boss.phase='SLAM';a.boss.left=.1;a.boss.targetX=a.player.centerX;tick(a);
+  expect(a.lastHurt).toEqual({source:'SLAM',damage:7,at:a.elapsed});expect(a.status).toBe('FAILED');
+  const s=new FinalSession(()=>'retry-feedback',false,true);s.attempt=a;s.restart();expect(s.attempt.lastHurt).toBeNull();expect(s.attempt.lastBossHit).toBeNull();
+  const b=createFinalAttempt('boss-feedback');b.player.centerX=b.boss.x-55;tick(b,{...ARENA_IDLE,punch:true});expect(b.lastBossHit).toBeNull();
+  b.boss.phase='RECOVER';b.boss.left=2;b.boss.hp=6;b.punchLeft=0;tick(b,{...ARENA_IDLE,punch:true});expect(b.lastBossHit).toEqual({damage:6,at:b.elapsed});
+});
+it('a projectile stopped by the cart reports cover rather than a shield block',()=>{
+  const a=createFinalAttempt('cover-feedback',true);a.status='ACTIVE';a.boss.left=100;a.shots.push({id:0,x:a.cart.x-85,y:C.floor-40,vx:F5.shotSpeed,vy:0,age:0,damage:30});
+  const events:string[]=[];for(let i=0;i<6;i++){tick(a);events.push(...a.events);}expect(events).toContain('cart_block');expect(events).not.toContain('block');expect(a.lastBossHit).toBeNull();
+});
 it('front guard blocks J and K with feedback; rear/recovery hits work',()=>{
   const a=createFinalAttempt('guard',true);a.player.centerX=a.boss.x-55;tick(a,{...ARENA_IDLE,punch:true});expect(a.boss.hp).toBe(F5.bossHealth);expect(a.events).toContain('block');
   a.boss.phase='RECOVER';a.boss.left=2;a.punchLeft=0;tick(a,{...ARENA_IDLE,punch:true});expect(a.boss.hp).toBe(170);

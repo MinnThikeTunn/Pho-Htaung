@@ -10,11 +10,14 @@ export class FinalView {
   private background:Phaser.GameObjects.Image|null=null;
   private g:Phaser.GameObjects.Graphics;private fx:Phaser.GameObjects.Graphics;
   private hero:ReturnType<typeof createPhoe>;private boss:Phaser.GameObjects.Image|null=null;private cart:Phaser.GameObjects.Image|null=null;
+  private playerDamage:Phaser.GameObjects.Text;private bossDamage:Phaser.GameObjects.Text;
   constructor(scene:Phaser.Scene){
     const bg=scene.textures.exists(FINAL_ART.background.key)?FINAL_ART.background.key:scene.textures.exists(FINAL_ART.escape.key)?FINAL_ART.escape.key:'arena_chamber_v1';
     if(scene.textures.exists(bg))this.background=scene.add.image(640,360,bg).setDisplaySize(C.width,C.height);
     else scene.add.rectangle(640,360,C.width,C.height,0x33362a);
     this.g=scene.add.graphics().setDepth(12);this.fx=scene.add.graphics().setDepth(30);this.hero=createPhoe(scene,22);
+    this.playerDamage=scene.add.text(0,0,'',{fontFamily:'system-ui',fontSize:'22px',fontStyle:'bold',color:'#ff9a90',stroke:'#241411',strokeThickness:4}).setOrigin(.5).setDepth(40).setVisible(false);
+    this.bossDamage=scene.add.text(0,0,'',{fontFamily:'system-ui',fontSize:'22px',fontStyle:'bold',color:'#ffe4a0',stroke:'#241411',strokeThickness:4}).setOrigin(.5).setDepth(40).setVisible(false);
     if(scene.textures.exists(FINAL_ART.ugyi.key)){
       const tex=scene.textures.get(FINAL_ART.ugyi.key);for(const [name,f]of Object.entries(UGYI_FRAMES))if(!tex.has(name))tex.add(name,0,f.x,f.y,f.w,f.h);
       if(tex.has('guard'))this.boss=scene.add.image(F5.bossSpawn,C.floor,FINAL_ART.ugyi.key,'guard').setOrigin(.5,1).setDepth(20);
@@ -27,6 +30,10 @@ export class FinalView {
   render(a:FinalAttempt,options:{bag?:boolean;reveal?:boolean;outside?:boolean}={}){
     const g=this.g,fx=this.fx,p=a.player,b=a.boss;g.clear();fx.clear();
     const outside=Boolean(options.outside);
+    const hurtAge=a.lastHurt?a.elapsed-a.lastHurt.at:Infinity,hitAge=a.lastBossHit?a.elapsed-a.lastBossHit.at:Infinity;
+    this.playerDamage.setVisible(!outside&&hurtAge<F5.feedbackTime);this.bossDamage.setVisible(!outside&&hitAge<F5.feedbackTime);
+    if(a.lastHurt&&hurtAge<F5.feedbackTime)this.playerDamage.setText(`−${a.lastHurt.damage}`).setPosition(p.centerX,p.feetY-C.playerH-20-hurtAge*35).setAlpha(1-hurtAge/F5.feedbackTime);
+    if(a.lastBossHit&&hitAge<F5.feedbackTime)this.bossDamage.setText(`−${a.lastBossHit.damage}`).setPosition(b.x,C.floor-F5.bossH-24-hitAge*35).setAlpha(1-hitAge/F5.feedbackTime);
     if(this.background&&this.background.scene.textures.exists(outside?FINAL_ART.escape.key:FINAL_ART.background.key))this.background.setTexture(outside?FINAL_ART.escape.key:FINAL_ART.background.key).setDisplaySize(C.width,C.height);
     this.boss?.setVisible(!outside);this.cart?.setVisible(!outside);
     // Outdoor still has a different painted terrace; this is cosmetic, never collision geometry.
@@ -46,6 +53,8 @@ export class FinalView {
     if(a.weapon==='SLING'&&!options.bag&&a.dodgeLeft<=0){const dir=a.charge>0?a.aimFacing:p.facing,x=p.centerX+dir*25,y=p.feetY-47,pull=a.charge/F5.chargeTime*22;
       fx.lineStyle(5,0x513a23).lineBetween(x,y+13,x,y-2).lineBetween(x,y-2,x-9,y-15).lineBetween(x,y-2,x+9,y-15);
       fx.lineStyle(2,0xe5c080).lineBetween(x-9,y-15,x-dir*pull,y-7).lineBetween(x+9,y-15,x-dir*pull,y-7);}
+    if(a.punchLeft>F5.punchCooldown-F5.punchVisualTime){const dir=p.facing,x=p.centerX+dir*22,y=p.feetY-35;fx.lineStyle(4,0xffe5ad,a.punchLeft/F5.punchCooldown).lineBetween(x,y+9,x+dir*27,y-4).lineBetween(x+dir*27,y-4,x+dir*44,y+2);}
+    if(hurtAge<.3){fx.lineStyle(12,0xcd352c,.35*(1-hurtAge/.3)).strokeRect(6,6,C.width-12,C.height-12);}
     for(const s of a.shots){fx.lineStyle(3,0xefc77f,.7).lineBetween(s.x,s.y,s.x-s.vx*.025,s.y-s.vy*.025);fx.fillStyle(0x716f5f).fillCircle(s.x,s.y,5);fx.lineStyle(2,0xffe4a0).strokeCircle(s.x,s.y,6);}
     if(finalGuarded(a)&&b.hp>0){const x=b.x+b.facing*30;fx.lineStyle(4,b.blockLeft>0?0xffffff:0xe4c178,.85).lineBetween(x,C.floor-F5.bossH,x,C.floor-12);}
     if(b.phase==='SLAM_WINDUP'||b.phase==='SLAM'){const r=finalSlamArea(a);g.fillStyle(0xe7a34c,b.phase==='SLAM'?.45:.16).fillRect(r.x,r.y,r.w,r.h);g.lineStyle(3,0xffc773).strokeRect(r.x,r.y,r.w,r.h);}
