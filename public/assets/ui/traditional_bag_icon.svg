@@ -1,0 +1,245 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 160" width="120" height="160">
+  <defs>
+    <!-- Background / Drop Shadow Filter -->
+    <filter id="inkShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#0a120e" flood-opacity="0.6"/>
+    </filter>
+
+    <!-- Crimson Textile Weave Gradient -->
+    <linearGradient id="crimsonFabric" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#cf2737"/>
+      <stop offset="60%" stop-color="#ba1e2d"/>
+      <stop offset="100%" stop-color="#80101b"/>
+    </linearGradient>
+
+    <!-- Black Woven Strap Gradient -->
+    <linearGradient id="blackStrap" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#141312"/>
+      <stop offset="50%" stop-color="#2d2b29"/>
+      <stop offset="100%" stop-color="#141312"/>
+    </linearGradient>
+
+    <!-- Polished Silver Concho Dome Gradient -->
+    <radialGradient id="silverConcho" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="25%" stop-color="#eaf0f2"/>
+      <stop offset="70%" stop-color="#a4b0b5"/>
+      <stop offset="100%" stop-color="#566266"/>
+    </radialGradient>
+
+    <!-- Metallic Silver Pendant Tube Gradient -->
+    <linearGradient id="silverTube" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#7e8a8f"/>
+      <stop offset="35%" stop-color="#ffffff"/>
+      <stop offset="70%" stop-color="#c5cfd4"/>
+      <stop offset="100%" stop-color="#515d61"/>
+    </linearGradient>
+
+    <!-- Gold Embroidery Gradient -->
+    <linearGradient id="goldThread" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#f5cc5b"/>
+      <stop offset="50%" stop-color="#ffe891"/>
+      <stop offset="100%" stop-color="#d49b28"/>
+    </linearGradient>
+  </defs>
+
+  <g filter="url(#inkShadow)">
+    <!-- ================= 1. BLACK WOVEN SHOULDER STRAP ================= -->
+    <!-- Outer Ink Border -->
+    <path d="M 27 48 L 27 20 C 27 10, 36 6, 48 6 L 72 6 C 84 6, 93 10, 93 20 L 93 48"
+          fill="none" stroke="#182720" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Main Black Strap Body -->
+    <path d="M 27 48 L 27 20 C 27 10, 36 6, 48 6 L 72 6 C 84 6, 93 10, 93 20 L 93 48"
+          fill="none" stroke="url(#blackStrap)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Subtle Woven Texture Stitch on Strap -->
+    <path d="M 27 46 L 27 22 C 27 12, 36 9, 48 9 L 72 9 C 84 9, 93 12, 93 22 L 93 46"
+          fill="none" stroke="#e9dfbd" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.35"/>
+
+    <!-- ================= 2. MAIN CRIMSON BODY (3 VERTICAL PANELS) ================= -->
+    <!-- Heavy Ink Outline -->
+    <rect x="20" y="40" width="80" height="82" rx="4" fill="#182720"/>
+
+    <!-- Base Crimson Fabric Fill -->
+    <rect x="22" y="42" width="76" height="78" rx="2" fill="url(#crimsonFabric)"/>
+
+    <!-- Left Vertical Panel Divider & Shadow -->
+    <rect x="22" y="42" width="22" height="78" fill="#5a1219" opacity="0.18"/>
+    <line x1="44" y1="42" x2="44" y2="120" stroke="#182720" stroke-width="1.2" opacity="0.75"/>
+    <line x1="45" y1="42" x2="45" y2="120" stroke="#ff8282" stroke-width="0.8" opacity="0.25"/>
+
+    <!-- Right Vertical Panel Divider & Shadow -->
+    <rect x="76" y="42" width="22" height="78" fill="#5a1219" opacity="0.18"/>
+    <line x1="76" y1="42" x2="76" y2="120" stroke="#182720" stroke-width="1.2" opacity="0.75"/>
+    <line x1="77" y1="42" x2="77" y2="120" stroke="#ff8282" stroke-width="0.8" opacity="0.25"/>
+
+    <!-- Center Panel Subtle Weave Texture -->
+    <g opacity="0.2" stroke="#e9dfbd" stroke-width="0.5">
+      <line x1="48" y1="72" x2="72" y2="72"/>
+      <line x1="48" y1="84" x2="72" y2="84"/>
+      <line x1="48" y1="96" x2="72" y2="96"/>
+      <line x1="48" y1="108" x2="72" y2="108"/>
+    </g>
+
+    <!-- ================= 3. TRADITIONAL EMBROIDERY WEAVE BANDS ================= -->
+    <!-- Row of Multi-Colored Cross-Stitches (X-Motifs) at Top -->
+    <!-- Green Crosses -->
+    <path d="M 26 46 L 30 50 M 30 46 L 26 50" stroke="#228b4c" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M 50 46 L 54 50 M 54 46 L 50 50" stroke="#228b4c" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M 74 46 L 78 50 M 78 46 L 74 50" stroke="#228b4c" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- Yellow/Gold Crosses -->
+    <path d="M 34 46 L 38 50 M 38 46 L 34 50" stroke="#ebb336" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M 58 46 L 62 50 M 62 46 L 58 50" stroke="#ebb336" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M 82 46 L 86 50 M 86 46 L 82 50" stroke="#ebb336" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- Cyan/Blue Crosses -->
+    <path d="M 42 46 L 46 50 M 46 46 L 42 50" stroke="#2d78c4" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M 66 46 L 70 50 M 70 46 L 66 50" stroke="#2d78c4" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M 90 46 L 94 50 M 94 46 L 90 50" stroke="#2d78c4" stroke-width="1.5" stroke-linecap="round"/>
+
+    <!-- Upper Mid Golden Zigzag Wave Chevron Band -->
+    <line x1="22" y1="58" x2="98" y2="58" stroke="#e9dfbd" stroke-width="0.8" opacity="0.6"/>
+    <path d="M 23 63 L 26 59 L 29 63 L 32 59 L 35 63 L 38 59 L 41 63 L 44 59 L 47 63 L 50 59 L 53 63 L 56 59 L 59 63 L 62 59 L 65 63 L 68 59 L 71 63 L 74 59 L 77 63 L 80 59 L 83 63 L 86 59 L 89 63 L 92 59 L 95 63 L 97 60"
+          fill="none" stroke="url(#goldThread)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <line x1="22" y1="65" x2="98" y2="65" stroke="#e9dfbd" stroke-width="0.8" opacity="0.6"/>
+
+    <!-- Subtle Starburst / Diamond Motifs in Crimson Field -->
+    <g fill="#ebb336" opacity="0.75">
+      <circle cx="33" cy="74" r="1.2"/>
+      <circle cx="87" cy="74" r="1.2"/>
+      <circle cx="48" cy="80" r="1.2"/>
+      <circle cx="72" cy="80" r="1.2"/>
+      <circle cx="60" cy="98" r="1.2"/>
+      <circle cx="33" cy="106" r="1.2"/>
+      <circle cx="87" cy="106" r="1.2"/>
+    </g>
+
+    <!-- ================= 4. SILVER CONCHO BUTTONS (ငွေကြယ်သီး) ================= -->
+    <!-- Row 1: 3 Concho Buttons (Left, Center, Right) -->
+    <!-- Left -->
+    <circle cx="33" cy="54" r="4.5" fill="#182720"/>
+    <circle cx="33" cy="54" r="3.8" fill="url(#silverConcho)"/>
+    <circle cx="31.8" cy="52.8" r="1" fill="#ffffff" opacity="0.9"/>
+    <!-- Center -->
+    <circle cx="60" cy="54" r="4.5" fill="#182720"/>
+    <circle cx="60" cy="54" r="3.8" fill="url(#silverConcho)"/>
+    <circle cx="58.8" cy="52.8" r="1" fill="#ffffff" opacity="0.9"/>
+    <!-- Right -->
+    <circle cx="87" cy="54" r="4.5" fill="#182720"/>
+    <circle cx="87" cy="54" r="3.8" fill="url(#silverConcho)"/>
+    <circle cx="85.8" cy="52.8" r="1" fill="#ffffff" opacity="0.9"/>
+
+    <!-- Row 2: 2 Concho Buttons (Mid-Left, Mid-Right) -->
+    <!-- Mid-Left -->
+    <circle cx="46" cy="69" r="4.2" fill="#182720"/>
+    <circle cx="46" cy="69" r="3.5" fill="url(#silverConcho)"/>
+    <circle cx="44.8" cy="67.8" r="0.9" fill="#ffffff" opacity="0.9"/>
+    <!-- Mid-Right -->
+    <circle cx="74" cy="69" r="4.2" fill="#182720"/>
+    <circle cx="74" cy="69" r="3.5" fill="url(#silverConcho)"/>
+    <circle cx="72.8" cy="67.8" r="0.9" fill="#ffffff" opacity="0.9"/>
+
+    <!-- ================= 5. DANGLING SILVER BELL PENDANTS (ငွေခေါင်းလောင်းသီးများ) ================= -->
+    <!-- 5 Clusters across the 5 Positions with Hanging Links and Bell Tubes -->
+
+    <!-- Cluster 1: Left Flank (cx: 32) -->
+    <circle cx="32" cy="74" r="4" fill="#182720"/>
+    <circle cx="32" cy="74" r="3.3" fill="url(#silverConcho)"/>
+    <circle cx="31" cy="73" r="0.8" fill="#ffffff"/>
+    <line x1="32" y1="77" x2="32" y2="84" stroke="#a4b0b5" stroke-width="1.2"/>
+    <circle cx="32" cy="85" r="2.2" fill="url(#silverConcho)"/>
+    <line x1="32" y1="87" x2="31" y2="94" stroke="#a4b0b5" stroke-width="1"/>
+    <!-- Dangling Bell Tubes -->
+    <polygon points="29,94 33,94 32,106 30,106" fill="url(#silverTube)" stroke="#182720" stroke-width="0.8"/>
+    <polygon points="32,93 36,93 35,108 33,108" fill="url(#silverTube)" stroke="#182720" stroke-width="0.8"/>
+    <polygon points="27,96 30,96 28,103 26,103" fill="url(#silverTube)" stroke="#182720" stroke-width="0.8"/>
+
+    <!-- Cluster 2: Mid-Left (cx: 48) -->
+    <circle cx="48" cy="83" r="4" fill="#182720"/>
+    <circle cx="48" cy="83" r="3.3" fill="url(#silverConcho)"/>
+    <circle cx="47" cy="82" r="0.8" fill="#ffffff"/>
+    <line x1="48" y1="86" x2="48" y2="92" stroke="#a4b0b5" stroke-width="1.2"/>
+    <!-- Dangling Bell Tubes -->
+    <polygon points="45,92 49,92 48,106 46,106" fill="url(#silverTube)" stroke="#182720" stroke-width="0.8"/>
+    <polygon points="48,91 52,91 51,109 49,109" fill="url(#silverTube)" stroke="#182720" stroke-width="0.8"/>
+    <polygon points="43,94 46,94 45,102 43,102" fill="url(#silverTube)" stroke="#182720" stroke-width="0.8"/>
+
+    <!-- Cluster 3: Center (cx: 60) -->
+    <circle cx="60" cy="72" r="4.4" fill="#182720"/>
+    <circle cx="60" cy="72" r="3.7" fill="url(#silverConcho)"/>
+    <circle cx="58.8" cy="70.8" r="1" fill="#ffffff"/>
+    <line x1="60" y1="76" x2="60" y2="83" stroke="#a4b0b5" stroke-width="1.2"/>
+    <circle cx="60" cy="84" r="2.2" fill="url(#silverConcho)"/>
+    <line x1="60" y1="86" x2="59" y2="93" stroke="#a4b0b5" stroke-width="1"/>
+    <!-- Dangling Bell Tubes -->
+    <polygon points="56,92 60,92 59,107 57,107" fill="url(#silverTube)" stroke="#182720" stroke-width="0.8"/>
+    <polygon points="59,91 63,91 62,111 60,111" fill="url(#silverTube)" stroke="#182720" stroke-width="0.8"/>
+    <polygon points="62,93 65,93 64,103 62,103" fill="url(#silverTube)" stroke="#182720" stroke-width="0.8"/>
+
+    <!-- Cluster 4: Mid-Right (cx: 72) -->
+    <circle cx="72" cy="83" r="4" fill="#182720"/>
+    <circle cx="72" cy="83" r="3.3" fill="url(#silverConcho)"/>
+    <circle cx="71" cy="82" r="0.8" fill="#ffffff"/>
+    <line x1="72" y1="86" x2="72" y2="92" stroke="#a4b0b5" stroke-width="1.2"/>
+    <!-- Dangling Bell Tubes -->
+    <polygon points="69,92 73,92 72,106 70,106" fill="url(#silverTube)" stroke="#182720" stroke-width="0.8"/>
+    <polygon points="72,91 76,91 75,109 73,109" fill="url(#silverTube)" stroke="#182720" stroke-width="0.8"/>
+    <polygon points="75,94 78,94 77,102 75,102" fill="url(#silverTube)" stroke="#182720" stroke-width="0.8"/>
+
+    <!-- Cluster 5: Right Flank (cx: 88) -->
+    <circle cx="88" cy="74" r="4" fill="#182720"/>
+    <circle cx="88" cy="74" r="3.3" fill="url(#silverConcho)"/>
+    <circle cx="87" cy="73" r="0.8" fill="#ffffff"/>
+    <line x1="88" y1="77" x2="88" y2="84" stroke="#a4b0b5" stroke-width="1.2"/>
+    <circle cx="88" cy="85" r="2.2" fill="url(#silverConcho)"/>
+    <line x1="88" y1="87" x2="89" y2="94" stroke="#a4b0b5" stroke-width="1"/>
+    <!-- Dangling Bell Tubes -->
+    <polygon points="85,94 89,94 88,106 86,106" fill="url(#silverTube)" stroke="#182720" stroke-width="0.8"/>
+    <polygon points="88,93 92,93 91,108 89,108" fill="url(#silverTube)" stroke="#182720" stroke-width="0.8"/>
+    <polygon points="91,96 94,96 93,103 91,103" fill="url(#silverTube)" stroke="#182720" stroke-width="0.8"/>
+
+    <!-- ================= 6. LOWER HEM WEAVE & BLACK CORNER TASSELS (ချည်မြိတ်) ================= -->
+    <!-- Left Flank Lower Hem: Black & White Woven Border -->
+    <rect x="22" y="116" width="22" height="4" fill="#182720"/>
+    <g fill="#ffffff">
+      <rect x="23" y="117" width="2" height="2"/>
+      <rect x="27" y="117" width="2" height="2"/>
+      <rect x="31" y="117" width="2" height="2"/>
+      <rect x="35" y="117" width="2" height="2"/>
+      <rect x="39" y="117" width="2" height="2"/>
+    </g>
+
+    <!-- Right Flank Lower Hem: Black & White Woven Border -->
+    <rect x="76" y="116" width="22" height="4" fill="#182720"/>
+    <g fill="#ffffff">
+      <rect x="77" y="117" width="2" height="2"/>
+      <rect x="81" y="117" width="2" height="2"/>
+      <rect x="85" y="117" width="2" height="2"/>
+      <rect x="89" y="117" width="2" height="2"/>
+      <rect x="93" y="117" width="2" height="2"/>
+    </g>
+
+    <!-- Center Lower Hem Subtle Outline -->
+    <line x1="44" y1="120" x2="76" y2="120" stroke="#182720" stroke-width="1.5"/>
+
+    <!-- Left Hanging Black Fringe Tassels (ချည်မြိတ်) -->
+    <g stroke="#141312" stroke-width="1.3" stroke-linecap="round">
+      <line x1="24" y1="120" x2="22" y2="148"/>
+      <line x1="27" y1="120" x2="25" y2="152"/>
+      <line x1="30" y1="120" x2="30" y2="154"/>
+      <line x1="33" y1="120" x2="34" y2="151"/>
+      <line x1="36" y1="120" x2="38" y2="153"/>
+      <line x1="39" y1="120" x2="41" y2="149"/>
+      <line x1="42" y1="120" x2="43" y2="146"/>
+    </g>
+
+    <!-- Right Hanging Black Fringe Tassels (ချည်မြိတ်) -->
+    <g stroke="#141312" stroke-width="1.3" stroke-linecap="round">
+      <line x1="77" y1="120" x2="76" y2="147"/>
+      <line x1="80" y1="120" x2="79" y2="151"/>
+      <line x1="83" y1="120" x2="84" y2="155"/>
+      <line x1="86" y1="120" x2="87" y2="153"/>
+      <line x1="89" y1="120" x2="91" y2="152"/>
+      <line x1="92" y1="120" x2="94" y2="148"/>
+      <line x1="95" y1="120" x2="97" y2="145"/>
+    </g>
+  </g>
+</svg>

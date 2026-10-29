@@ -12,6 +12,7 @@ import { WorldView } from './view/WorldView';
 import { store } from './services/adventure';
 import PreloadScene from './scenes/PreloadScene.js';
 import BridgeChapterScene from './scenes/BridgeChapterScene.js';
+import Chapter2Scene from './scenes/Chapter2Scene';
 import ScaleChapterScene from './scenes/ScaleChapterScene';
 import { SCALE_ART } from './content/chapter3Art';
 import ArenaChapterScene from './scenes/ArenaChapterScene';
@@ -23,8 +24,8 @@ const ui = document.querySelector<HTMLDivElement>('#interface')!;
 let shade = true, showHints = true, debug = false;
 try { const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}'); audio.muted = Boolean(s.muted); shade = s.shake !== false; showHints = s.hints !== false; } catch { /* Readable defaults when settings are unavailable. */ }
 function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ muted: audio.muted, shake: shade, hints: showHints })); } catch { /* Campaign warnings remain independent. */ } }
-document.body.insertAdjacentHTML('afterbegin', `<header class="page-header"><a class="wordmark" href="/" aria-label="ဖိုးထောင် home"><span class="mark">ဖ</span><span>ဖိုးထောင်<small>THE GOLDEN CITY</small></span></a><span class="build-label"><i></i> FOUR CHAPTER ADVENTURE</span></header>`);
-document.body.insertAdjacentHTML('beforeend', `<footer class="page-footer"><span>ကိုယ့်ကိုပစ်တဲ့တုံးနဲ့ ကိုယ့်လမ်းကိုဖွင့်။</span><span>DESKTOP / KEYBOARD <b>·</b> မူကြမ်းပုံနှင့်အသံများ</span></footer>`);
+// Full viewport mode - header & footer omitted
+
 const buttons = (html: string) => `<div class="actions">${html}</div>`;
 const button = (id: string, text: string, primary = false) => `<button type="button" id="${id}" class="${primary ? 'primary' : 'secondary'}">${text}</button>`;
 function bind(id: string, fn: () => void) { ui.querySelector<HTMLButtonElement>(`#${id}`)?.addEventListener('click', fn); }
@@ -62,6 +63,7 @@ class BootScene extends Phaser.Scene {
     this.load.image('phoe_crouch', '/assets/character/phoe_crouch.png');
     this.load.image('phoe_bag_rummage', '/assets/character/phoe_bag_rummage.png');
     this.load.image('phoe_hold', '/assets/character/phoe_hold.png');
+    this.load.image('traditional_bag_icon', '/assets/ui/traditional_bag_icon.png');
   }
   create() { this.scene.start('PreloadScene'); }
 }
@@ -100,137 +102,6 @@ class BridgeLinkScene extends Phaser.Scene {
   update(_t:number,ms:number){if(document.hidden||!document.hasFocus())return;if(this.suspended){this.suspended=false;return;}if(!store.unsaved&&!this.replay){this.elapsed+=ms/1000;if(this.elapsed>=C.linkTime)this.go();}}
 }
 
-class ActionChapterScene extends Phaser.Scene {
-  private session!: Session;
-  private mode: Mode = 'CAMPAIGN';
-  private world!: WorldView;
-  private held = new Set<string>();
-  private jumpEdge = false;
-  private tauntEdge = false;
-  private result: ChapterResult | null = null;
-  private fadeTime = 0;
-  private speechLeft = 0;
-  private hintLeft = 0;
-  private waitingForSave = false;
-  private voiceCooldown = 0;
-  constructor() { super('CHAPTER_2'); }
-  init(data: { preset?: Preset; mode?: Mode }) {
-    if(!store.campaign.bridgeCompleted)throw new Error('Chapter 2 is locked');
-    this.mode = data.mode ?? 'CAMPAIGN'; const preset = data.preset ?? 'A';
-    if ((preset === 'A') !== (this.mode !== 'PRACTICE') || (preset !== 'A' && !store.campaign.chapter2Completed)) throw new Error('Invalid chapter entry');
-    this.session = new Session(preset, uid); this.result = null; this.fadeTime = 0; this.waitingForSave = false;
-    this.speechLeft = 0; this.hintLeft = 0; this.voiceCooldown = 0; this.clearKeys();
-  }
-  private clearKeys() { this.held.clear(); this.jumpEdge = false; this.tauntEdge = false; }
-  private speak(text: string, duration: number, who = 'ဦးကြီး') {
-    const speech = ui.querySelector<HTMLElement>('#speech'); if (!speech) return;
-    speech.innerHTML = `<span>${who}</span><p></p>`; speech.querySelector('p')!.textContent = text;
-    speech.classList.add('visible'); this.speechLeft = duration;
-  }
-  private hint(id: 'lock' | 'land' | 'shatter') {
-    if (!showHints || !store.hint(id)) return;
-    const el = ui.querySelector<HTMLElement>('#hint'); if (!el) return;
-    el.textContent = DIALOGUE[`hint_${id}`]; el.classList.add('visible'); this.hintLeft = 2;
-  }
-  private setPause(value: boolean) {
-    this.session.setPause(value); this.clearKeys();
-    const panel = ui.querySelector<HTMLElement>('#pause-panel')!;
-    if (value) {
-      panel.innerHTML = `<section class="dialog"><span class="eyebrow">ခဏနားမယ်</span><h2>ရပ်ထားပါတယ်</h2>${buttons(button('resume','ဆက်ကစားမယ်',true)+button('menu','ပင်မစာမျက်နှာ'))}<div class="settings"><label><input id="mute-setting" type="checkbox" ${audio.muted?'checked':''}/> အသံပိတ်</label><label><input id="shake-setting" type="checkbox" ${shade?'checked':''}/> Screen shake</label><label><input id="hints-setting" type="checkbox" ${showHints?'checked':''}/> အကူအညီစာတန်း</label>${button('reset-hints','အကူအညီစာတန်း ပြန်ပြ')}</div></section>`;
-      panel.hidden = false;
-      bind('resume', () => { audio.unlock(); this.setPause(false); }); bind('menu', () => this.scene.start('MENU'));
-      ui.querySelector<HTMLInputElement>('#mute-setting')!.onchange = e => { audio.muted = (e.target as HTMLInputElement).checked; saveSettings(); };
-      ui.querySelector<HTMLInputElement>('#shake-setting')!.onchange = e => { shade = (e.target as HTMLInputElement).checked; saveSettings(); };
-      ui.querySelector<HTMLInputElement>('#hints-setting')!.onchange = e => { showHints = (e.target as HTMLInputElement).checked; saveSettings(); };
-      bind('reset-hints', () => { store.campaign.hintsSeen = []; store.campaign.revision++; store.save(); this.setPause(false); });
-    } else { panel.hidden = true; panel.innerHTML = ''; focusGame(this); }
-  }
-  create() {
-    try{const prefs=JSON.parse(localStorage.getItem(SETTINGS_KEY)??'{}');audio.muted=Boolean(prefs.muted);}catch{}
-    liveSession = this.session; currentMode = this.mode; audio.attach(this); this.world = new WorldView(this);
-    ui.innerHTML = `<div class="hud"><div class="stage-title"><span class="eyebrow">အခန်း ၂ / ${this.session.preset}</span><strong>ကျောက်တုံးချစက်</strong></div><div class="ledger"><div><span>စုထား</span><b id="coins">0<small>/15</small></b></div><div><span>သိမ်းပြီး</span><b id="wallet">${store.campaign.walletCoins}</b></div><div><span>သေဆုံး</span><b id="deaths">${store.campaign.deathCount}</b></div><div><span>ကစားချိန်</span><b id="time">0.00</b></div></div><button id="pause" class="icon-button" aria-label="Pause">Ⅱ</button></div><div id="speech" class="speech" aria-live="polite"></div><div id="hint" class="hint" aria-live="polite"></div><div class="game-bottom"><span id="machine" class="machine-status"><i></i> စောင့်နေသည်</span><span class="small-controls"><kbd>A</kbd><kbd>D</kbd> ရွေ့ <kbd>SPACE</kbd> ခုန် <kbd>E</kbd> ဆွ <kbd>R</kbd> ဖိထားပြီးပြန်စ</span></div><div id="pause-panel" class="modal" hidden></div><div id="save-panel" class="modal" hidden></div><div id="death-vignette" class="death-vignette"></div>`;
-    bind('pause', () => this.setPause(!this.session.paused));
-    ui.insertAdjacentHTML('beforeend','<div id="reset-fade" class="reset-fade"></div>');
-    this.speak(DIALOGUE.entry, 2.5);
-    const onDown = (event: KeyboardEvent) => {
-      const key = event.key.toLowerCase();
-      if (key === 'escape') { event.preventDefault(); if(!event.repeat) this.setPause(!this.session.paused); return; }
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || this.session.paused) return;
-      if (!['a','d','arrowleft','arrowright',' ','e','r','f3'].includes(key)) return;
-      event.preventDefault(); audio.unlock();
-      if (!this.held.has(key) && !event.repeat) {
-        if (key === ' ') this.jumpEdge = true; if (key === 'e') this.tauntEdge = true; if (key === 'f3') debug = !debug;
-      }
-      this.held.add(key);
-    };
-    const onUp = (event: KeyboardEvent) => { this.held.delete(event.key.toLowerCase()); };
-    const onBlur = () => this.setPause(true);
-    const onVisibility = () => { if (document.hidden) this.setPause(true); };
-    const onStorage = (event: StorageEvent) => {
-      if (event.key === SAVE_KEY) { store.conflict = true; this.setPause(true); const panel = ui.querySelector('#pause-panel .dialog'); if (panel) { panel.innerHTML = `<h2>အခြား tab မှ save ပြောင်းသွားသည်</h2><p>ဒီ tab ကနေ ထပ်မသိမ်းခင် reload လုပ်ပါ။</p>${button('reload','Reload',true)}`; bind('reload', () => location.reload()); } }
-    };
-    window.addEventListener('keydown', onDown); window.addEventListener('keyup', onUp); window.addEventListener('blur', onBlur);
-    document.addEventListener('visibilitychange', onVisibility); window.addEventListener('storage', onStorage);
-    this.events.once('shutdown', () => {
-      window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp); window.removeEventListener('blur', onBlur);
-      document.removeEventListener('visibilitychange', onVisibility); window.removeEventListener('storage', onStorage); this.clearKeys(); liveSession = null;
-    });
-    focusGame(this);
-  }
-  private savePanel() {
-    this.waitingForSave = true; this.clearKeys();
-    const el = ui.querySelector<HTMLElement>('#save-panel')!; el.hidden = false;
-    el.innerHTML = `<section class="dialog"><span class="eyebrow">မသိမ်းရသေးပါ</span><h2>Browser save မရပါ</h2><p>ယခု session မှာ ရလာဒ်ရှိနေသေးတယ်။ Reload လုပ်ရင် ပျောက်နိုင်တယ်။</p>${buttons(button('retry-save','ထပ်သိမ်းမယ်',true)+button('temporary-continue','ယာယီအတိုင်း ဆက်မယ်'))}</section>`;
-    bind('retry-save', () => { if (store.save()) { this.waitingForSave = false; el.hidden = true; } });
-    bind('temporary-continue', () => { this.waitingForSave = false; el.hidden = true; });
-  }
-  update(_time: number, milliseconds: number) {
-    const dt = milliseconds / 1000, s = this.session;
-    if (!s) return;
-    if (!s.paused && !this.waitingForSave) {
-      const before = s.generation;
-      const input: Input = { left: this.held.has('a') || this.held.has('arrowleft'), right: this.held.has('d') || this.held.has('arrowright'), jump: this.jumpEdge, taunt: this.tauntEdge };
-      const willStep = s.accumulator + dt + 1e-9 >= C.dt;
-      const events = s.tick(dt, input, this.held.has('r'));
-      if (willStep) { this.jumpEdge = false; this.tauntEdge = false; }
-      if (s.generation !== before) { this.clearKeys(); ui.querySelector('#death-vignette')?.classList.remove('visible'); }
-      this.voiceCooldown = Math.max(0, this.voiceCooldown - dt);
-      for (const event of events) {
-        audio.play(event.kind);
-        if (event.kind === 'lock') this.hint('lock');
-        if (event.kind === 'land') this.hint('land');
-        if (event.kind === 'death') { store.death(s.attempt.id); this.speak(DIALOGUE.death, .8); ui.querySelector('#death-vignette')?.classList.add('visible'); }
-        if (event.kind === 'gate' || event.kind === 'shelf') this.speak(DIALOGUE[event.kind], 1.2);
-        if (event.kind === 'plate' && event.value) this.speak(DIALOGUE.plate, 1.2);
-        if (event.kind === 'taunt' && this.voiceCooldown <= 0) { this.speak(DIALOGUE.taunt, .8, 'ဖိုးထောင်'); this.voiceCooldown = 3; }
-        if (event.kind === 'complete') { this.result = store.complete(s.attempt, this.mode, s.sessionDeaths); this.clearKeys(); if (store.unsaved) this.savePanel(); }
-      }
-      if (s.attempt.machine.state === 'LOCKED' && preview(s.attempt).surfaces[0]?.shatter) this.hint('shatter');
-      this.speechLeft -= dt; this.hintLeft -= dt;
-      if (this.speechLeft <= 0) ui.querySelector('#speech')?.classList.remove('visible');
-      if (this.hintLeft <= 0) ui.querySelector('#hint')?.classList.remove('visible');
-      if (s.attempt.status === 'COMPLETE' && this.result && !this.waitingForSave) {
-        this.fadeTime += dt;
-        if (this.fadeTime >= C.exitFade) { this.scene.start('CH2_EXIT_LINK', { result: this.result, mode: this.mode }); return; }
-      }
-    }
-    this.world.render(s.attempt, s.paused ? 0 : dt, debug, shade);
-    const a = s.attempt;
-    const fade=ui.querySelector<HTMLElement>('#reset-fade');
-    if(fade)fade.style.opacity=String(a.status==='DEAD'?Math.max(0,Math.min(1,(s.deathElapsed-C.deathFreeze)/C.resetFade)):a.status==='COMPLETE'?Math.min(1,this.fadeTime/C.exitFade):0);
-    ui.querySelector('#coins')!.innerHTML = `${a.coins}<small>/15</small>`;
-    ui.querySelector('#wallet')!.textContent = String(store.campaign.walletCoins);
-    ui.querySelector('#deaths')!.textContent = String(store.campaign.deathCount);
-    ui.querySelector('#time')!.textContent = a.elapsed.toFixed(2);
-    const labels = { READY: 'E · ဆွလို့ရပြီ', TRACK: 'ပစ်မှတ်လိုက်နေသည်', LOCKED: 'ပစ်မှတ်ရပ်ပြီ — ရှောင်!', DROP: 'ကျောက်တုံးကျနေသည်', RECOVER: 'စက်ပြန်တင်နေသည်' };
-    const indicator = ui.querySelector<HTMLElement>('#machine')!;
-    indicator.innerHTML = `<i></i>${a.status === 'WAITING' ? 'ရွေ့လိုက်တာနဲ့ စမယ်' : labels[a.machine.state]}`;
-    indicator.dataset.state = a.machine.state;
-    let saveStatus = ui.querySelector<HTMLElement>('#save-status');
-    if (store.unsaved && !saveStatus) { saveStatus = document.createElement('div'); saveStatus.id='save-status'; saveStatus.className='unsaved-status'; saveStatus.setAttribute('role','status'); ui.append(saveStatus); }
-    if(saveStatus) { saveStatus.hidden=!store.unsaved; saveStatus.textContent='ယာယီ session · save မသိမ်းရသေးပါ'; }
-  }
-}
 
 class ExitLinkScene extends Phaser.Scene {
   private elapsed = 0;
@@ -295,11 +166,27 @@ class ChapterFivePendingScene extends Phaser.Scene {
 const game = new Phaser.Game({ type: Phaser.AUTO, parent: 'game', width: C.width, height: C.height, backgroundColor: '#22382c',
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   physics:{default:'arcade',arcade:{gravity:{x:0,y:0},fixedStep:true,fps:60}},
-  render: { antialias: true, pixelArt: false }, scene: [BootScene,SharedPreloadScene,MenuScene,BridgeChapterScene,BridgeLinkScene,ActionChapterScene,ExitLinkScene,ScaleChapterScene,ChapterFourPendingScene,ArenaChapterScene,ChapterFivePendingScene] });
+  render: { antialias: true, pixelArt: false }, scene: [BootScene,SharedPreloadScene,MenuScene,BridgeChapterScene,BridgeLinkScene,Chapter2Scene,ExitLinkScene,ScaleChapterScene,ChapterFourPendingScene,ArenaChapterScene,ChapterFivePendingScene] });
 
 if (import.meta.env.DEV) (window as any).__PHOE_GAME__ = game;
 declare global { interface Window { __PHOE_TEST__?: { snapshot(): unknown } } }
-if (import.meta.env.DEV) window.__PHOE_TEST__ = { snapshot: () => ({ mode: currentMode, attempt: liveSession ? structuredClone(liveSession.attempt) : null,
-  generation: liveSession?.generation, paused: liveSession?.paused, campaign: structuredClone(store.campaign), activeScenes: game.scene.getScenes(true).map(s => s.scene.key),
-  scale: game.scene.isActive('CHAPTER_3') ? (game.scene.getScene('CHAPTER_3') as ScaleChapterScene).snapshot() : null,
-  arena: game.scene.isActive('CHAPTER_4') ? (game.scene.getScene('CHAPTER_4') as ArenaChapterScene).snapshot() : null }) };
+if (import.meta.env.DEV) {
+  window.__PHOE_TEST__ = {
+    snapshot: () => {
+      const ch2 = game.scene.isActive('CHAPTER_2') ? (game.scene.getScene('CHAPTER_2') as any) : null;
+      const ch2Snap = ch2?.snapshot?.();
+      return {
+        mode: ch2Snap ? ch2Snap.mode : currentMode,
+        attempt: ch2Snap ? ch2Snap.attempt : (liveSession ? structuredClone(liveSession.attempt) : null),
+        generation: ch2Snap ? ch2Snap.generation : liveSession?.generation,
+        paused: ch2Snap ? ch2Snap.paused : liveSession?.paused,
+        campaign: structuredClone(store.campaign),
+        activeScenes: game.scene.getScenes(true).map(s => s.scene.key),
+        bridge: game.scene.isActive('Chapter1Scene') ? (game.scene.getScene('Chapter1Scene') as any)?.snapshot?.() : null,
+        chapter2: ch2Snap ?? null,
+        scale: game.scene.isActive('CHAPTER_3') ? (game.scene.getScene('CHAPTER_3') as ScaleChapterScene).snapshot() : null,
+        arena: game.scene.isActive('CHAPTER_4') ? (game.scene.getScene('CHAPTER_4') as ArenaChapterScene).snapshot() : null
+      };
+    }
+  };
+}

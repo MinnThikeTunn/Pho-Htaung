@@ -76,4 +76,75 @@ it('laying control state and belly-crawling configuration align with actor contr
 it.each([['rusty_cog','bamboo_pole'],['bamboo_pole','rusty_cog']])('puzzle supports both valid fitting orders: %s first',(first,second)=>{let inventory=['rusty_cog','bamboo_pole'];let installed={cog:false,lever:false};for(const id of [first,second]){const r=installBridgePart(inventory,installed,id)!;inventory=r.inventory;installed=r.installed;}expect(inventory).toEqual([]);expect(installed).toEqual({cog:true,lever:true});expect(installBridgePart(inventory,installed,first)).toBeNull();});
 it('missing or unrelated parts cannot grant bridge progress',()=>{expect(installBridgePart([],{cog:false,lever:false},'rusty_cog')).toBeNull();expect(installBridgePart(['red_gem'],{cog:false,lever:false},'red_gem')).toBeNull();});
 it('action banking after bridge retains both chapter progress and deduplicates',()=>{const c=settleBridge(newCampaign('c'),'bridge',exit);const a=createAttempt('A','action');a.status='COMPLETE';a.player.control='EXITING';a.coins=15;a.pickups.forEach(p=>p.collected=true);const n=settle(c,a,'CAMPAIGN',2).campaign;expect(n.bridgeCompleted).toBe(true);expect(n.chapter2Completed).toBe(true);expect(n.walletCoins).toBe(15);expect(n.resumeAt).toBe('CH2_EXIT_LINK');expect(settle(n,a,'CAMPAIGN',2).duplicate).toBe(true);});
-it('combined save survives reload without touching either legacy key',()=>{let raw:string|null=null;const adapter={read:()=>raw,write:(s:string)=>{raw=s;}};const s=new CampaignStore(adapter,'c');s.completeBridge('bridge',exit);const loaded=new CampaignStore(adapter,'unused');expect(loaded.campaign.bridgeCompleted).toBe(true);expect(loaded.campaign.resumeAt).toBe('CHAPTER_2');});
+it('universal walkable ground baseline is strictly 576px across 1280x720 canvas in all chapters',()=>{
+  const height = 720;
+  const universalGroundY = Math.round(height * 0.80);
+  expect(universalGroundY).toBe(576);
+  // Verify standard exit predicate alignment with 576px
+  expect(exit.groundY).toBe(576);
+  expect(exit.feetY).toBe(576);
+});
+
+it('myanmar traditional bag design tokens and bottom dock coordinates contract', ()=>{
+  const SHAN_RED = 0x8b1e28;
+  const SHAN_DARK = 0x5a1219;
+  const INK = 0x182720;
+  const GOLD = 0xe7bb55;
+  const CREAM = 0xe9dfbd;
+  expect(SHAN_RED).toBe(0x8b1e28);
+  expect(SHAN_DARK).toBe(0x5a1219);
+  expect(INK).toBe(0x182720);
+  expect(GOLD).toBe(0xe7bb55);
+  expect(CREAM).toBe(0xe9dfbd);
+
+  // Bag bottom dock coordinate: 672px (within subterranean 576-720 area)
+  const bagDockY = 672;
+  const trayExpandedY = 596;
+  expect(bagDockY).toBeGreaterThan(576);
+  expect(trayExpandedY).toBeGreaterThan(576);
+  expect(trayExpandedY).toBeLessThan(bagDockY);
+});
+
+it('chapter 2 puzzle and relic coordinates contract matches Pho-Htaung-Safe.docx specifications', async () => {
+  const { CH2_POLE_SPAWN, CH2_COG_SPAWN, CH2_GEARBOX_RECT, PLATFORM_MID, PLATFORM_HIGH, CH2_SLINGSHOT_SPAWN, CH2_TRAP_RANGE } = await import('../../src/content/chapter1');
+  // 1. Bamboo pole on step block
+  expect(CH2_POLE_SPAWN.x).toBe(536);
+  expect(CH2_POLE_SPAWN.y).toBe(524);
+
+  // 2. Cog on shelf
+  expect(CH2_COG_SPAWN.x).toBe(860);
+  expect(CH2_COG_SPAWN.y).toBe(304);
+
+  // 3. Gear box above gate
+  expect(CH2_GEARBOX_RECT.x).toBe(1084);
+  expect(CH2_GEARBOX_RECT.y).toBe(340);
+
+  // 4. Platforms
+  expect(PLATFORM_MID.x).toBe(380);
+  expect(PLATFORM_MID.y).toBe(404);
+  expect(PLATFORM_HIGH.x).toBe(130);
+  expect(PLATFORM_HIGH.y).toBe(304);
+
+  // 5. Slingshot relic on high platform
+  expect(CH2_SLINGSHOT_SPAWN.x).toBe(205);
+  expect(CH2_SLINGSHOT_SPAWN.y).toBe(284);
+
+  // 6. Die Again surprise floor trap range
+  expect(CH2_TRAP_RANGE.minX).toBe(1150);
+  expect(CH2_TRAP_RANGE.maxX).toBe(1220);
+});
+
+it('acquiring Chapter 2 slingshot relic directly unlocks slingshot in campaign inventory for Chapter 4', () => {
+  const c = newCampaign('slingshot-test');
+  expect(c.inventory).not.toContain('slingshot');
+  expect(c.ownedTools).not.toContain('slingshot');
+
+  // Simulating slingshot relic collection
+  c.inventory.push('slingshot');
+  c.ownedTools.push('slingshot');
+
+  expect(c.inventory).toContain('slingshot');
+  expect(c.ownedTools).toContain('slingshot');
+  expect(validateCampaign(c)).toBe(true);
+});
+

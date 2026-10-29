@@ -1,4 +1,4 @@
-import { C, GATE, GROUND, PLATE, SHELF, STEP, liftRect } from '../content/chapter1';
+import { C, GATE, GROUND, PLATE, SHELF, STEP, liftRect, CH2_POLE_SPAWN, CH2_COG_SPAWN, PLATFORM_MID, PLATFORM_HIGH, CH2_SLINGSHOT_SPAWN, CH2_TRAP_RANGE } from '../content/chapter1';
 import { overlaps, overlapX, overlapY, sweep } from './collision';
 import type { Body, Hit } from './collision';
 import type { Attempt, Input, Player, Rect, Stone } from './types';
@@ -6,7 +6,7 @@ import type { Attempt, Input, Player, Rect, Stone } from './types';
 export const playerRect = (p: Player): Rect => ({ id: 'player', x: p.centerX - C.playerW / 2, y: p.feetY - C.playerH, w: C.playerW, h: C.playerH });
 export const stoneRect = (s: Stone): Rect => ({ id: s.id, x: s.centerX - C.rock / 2, y: s.bottomY - C.rock, w: C.rock, h: C.rock });
 export function solids(a: Attempt): Rect[] {
-  return [GROUND, STEP, liftRect(a.liftY), ...(a.gateIntact ? [GATE] : []), ...(a.shelfIntact ? [SHELF] : [])];
+  return [GROUND, STEP, liftRect(a.liftY), ...(a.gateIntact ? [GATE] : []), ...(a.shelfIntact ? [SHELF] : []), ...(a.platformsRevealed ? [PLATFORM_MID, PLATFORM_HIGH] : [])];
 }
 export function weighted(a: Attempt): boolean {
   return a.stones.some(s => s.state !== 'FALLING' && s.support === 'ground' && Math.abs(s.bottomY - C.floor) <= C.plateTolerance && overlapX(stoneRect(s), PLATE) >= C.plateOverlap - C.epsilon);
@@ -231,6 +231,45 @@ export function step(a: Attempt, input: Input, dt = C.dt): void {
       pickup.collected = true; a.coins += pickup.value;
       a.events.push({ kind: 'coin', x: pickup.x, y: pickup.y, value: pickup.value });
     }
+  }
+  if (!a.hasPole && Math.abs(p.centerX - CH2_POLE_SPAWN.x) <= 36 && Math.abs(p.feetY - STEP.y) <= 16) {
+    a.hasPole = true;
+    a.events.push({ kind: 'puzzle_item', x: CH2_POLE_SPAWN.x, y: CH2_POLE_SPAWN.y });
+  }
+  if (!a.hasCog && Math.abs(p.centerX - CH2_COG_SPAWN.x) <= 36 && Math.abs(p.feetY - SHELF.y) <= 16) {
+    a.hasCog = true;
+    a.events.push({ kind: 'puzzle_item', x: CH2_COG_SPAWN.x, y: CH2_COG_SPAWN.y });
+  }
+  if (!a.gearBoxActive && a.hasPole && a.hasCog && Math.abs(p.centerX - 1104) <= 64) {
+    a.gearBoxActive = true;
+    a.platformsRevealed = true;
+    a.events.push({ kind: 'gear_box', x: 1104, y: 360 });
+    a.events.push({ kind: 'platforms' });
+  }
+  if (a.platformsRevealed && !a.hasSlingshot && Math.abs(p.centerX - CH2_SLINGSHOT_SPAWN.x) <= 36 && Math.abs(p.feetY - PLATFORM_HIGH.y) <= 16) {
+    a.hasSlingshot = true;
+    a.events.push({ kind: 'slingshot', x: CH2_SLINGSHOT_SPAWN.x, y: CH2_SLINGSHOT_SPAWN.y });
+  }
+  if (a.elapsed >= 40.0 && !a.beehiveTriggered) {
+    a.beehiveTriggered = true;
+    a.beehiveX = p.centerX;
+    a.beehiveY = 120;
+    a.events.push({ kind: 'beehive', x: a.beehiveX, y: a.beehiveY });
+  }
+  if (a.beehiveTriggered && a.beehiveY < C.floor) {
+    a.beehiveY += 240 * dt;
+    if (Math.abs(p.centerX - a.beehiveX) < 28 && Math.abs(p.feetY - a.beehiveY) < 40 && p.control === 'FREE') {
+      a.status = 'DEAD';
+      p.control = 'DEAD';
+      a.events.push({ kind: 'death', x: p.centerX, y: p.feetY });
+    }
+  }
+  if (p.grounded && Math.abs(p.feetY - C.floor) <= C.epsilon && p.centerX >= CH2_TRAP_RANGE.minX && p.centerX <= CH2_TRAP_RANGE.maxX) {
+    a.trapFloorOpen = true;
+    a.status = 'DEAD';
+    p.control = 'DEAD';
+    a.events.push({ kind: 'trap', x: p.centerX, y: p.feetY });
+    a.events.push({ kind: 'death', x: p.centerX, y: p.feetY });
   }
   if (p.grounded && Math.abs(p.feetY - C.floor) <= C.epsilon && p.centerX >= 1234) {
     a.status = 'COMPLETE'; p.control = 'EXITING'; a.events.push({ kind: 'complete' });

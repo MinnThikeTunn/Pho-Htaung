@@ -19,3 +19,10 @@ export const PLATE: Readonly<Rect> = { id: 'pressure_plate', x: 336, y: 632, w: 
 export const liftRect = (y: number): Rect => ({ id: 'lift', x: 640, y, w: 128, h: 16 });
 export const COINS = [160, 208, 256, 304, 352].map((x, i) => Object.freeze({ id: `coin_0${i + 1}`, x, y: 616, value: 1, size: 20 }));
 export const POUCH = Object.freeze({ id: 'gold_pouch', x: 896, y: 308, value: 10, size: 24 });
+export const CH2_POLE_SPAWN = Object.freeze({ id: 'ch2_bamboo_pole', x: 536, y: 524 });
+export const CH2_COG_SPAWN = Object.freeze({ id: 'ch2_cog', x: 860, y: 304 });
+export const CH2_GEARBOX_RECT: Readonly<Rect> = Object.freeze({ id: 'gear_box', x: 1084, y: 340, w: 48, h: 48 });
+export const PLATFORM_MID: Readonly<Rect> = Object.freeze({ id: 'plat_mid', x: 380, y: 404, w: 140, h: 16 });
+export const PLATFORM_HIGH: Readonly<Rect> = Object.freeze({ id: 'plat_high', x: 130, y: 304, w: 150, h: 16 });
+export const CH2_SLINGSHOT_SPAWN = Object.freeze({ id: 'ch2_slingshot', x: 205, y: 284 });
+export const CH2_TRAP_RANGE = Object.freeze({ minX: 1150, maxX: 1220 });

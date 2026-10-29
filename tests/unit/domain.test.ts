@@ -162,3 +162,54 @@ describe('Lifecycle', () => {
   });
   it('T20: drops excessive backlog', () => { const s = session(); s.tick(2, { ...NO_INPUT, right: true }); expect(s.droppedBacklog).toBeGreaterThan(1); expect(s.attempt.elapsed).toBeCloseTo(8 / 60); });
 });
+
+describe('Chapter 2 enhancements (Pho-Htaung-Safe.docx specifications)', () => {
+  it('collects bamboo pole and cog, activates door gear box to reveal platforms', () => {
+    const a = active();
+    a.player.centerX = 536; a.player.feetY = 544;
+    step(a, NO_INPUT);
+    expect(a.hasPole).toBe(true);
+
+    a.player.centerX = 860; a.player.feetY = 320;
+    step(a, NO_INPUT);
+    expect(a.hasCog).toBe(true);
+
+    a.player.centerX = 1104; a.player.feetY = 640;
+    step(a, NO_INPUT);
+    expect(a.gearBoxActive).toBe(true);
+    expect(a.platformsRevealed).toBe(true);
+
+    a.player.centerX = 205; a.player.feetY = 304;
+    step(a, NO_INPUT);
+    expect(a.hasSlingshot).toBe(true);
+  });
+
+  it('triggers 40s beehive drop hazard', () => {
+    const a = active();
+    a.elapsed = 39.9;
+    step(a, NO_INPUT, 0.2);
+    expect(a.beehiveTriggered).toBe(true);
+    expect(a.events.some(e => e.kind === 'beehive')).toBe(true);
+  });
+
+  it('triggers Die Again surprise floor trap when stepping blindly on 1150-1220 ground', () => {
+    const a = active();
+    a.player.centerX = 1180; a.player.feetY = 640; a.player.grounded = true;
+    step(a, NO_INPUT);
+    expect(a.trapFloorOpen).toBe(true);
+    expect(a.status).toBe('DEAD');
+    expect(a.events.some(e => e.kind === 'trap')).toBe(true);
+  });
+
+  it('allows jumping safely over the floor trap to exit', () => {
+    const a = active();
+    a.player.centerX = 1180; a.player.feetY = 580; a.player.grounded = false; a.player.vy = -200;
+    step(a, NO_INPUT);
+    expect(a.status).toBe('ACTIVE');
+    expect(a.trapFloorOpen).toBe(false);
+
+    a.player.centerX = 1235; a.player.feetY = 640; a.player.vy = 0; a.player.grounded = true;
+    step(a, NO_INPUT);
+    expect(a.status).toBe('COMPLETE');
+  });
+});

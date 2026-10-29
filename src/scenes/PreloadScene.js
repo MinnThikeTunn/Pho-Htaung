@@ -146,6 +146,7 @@ export default class PreloadScene extends Phaser.Scene {
     this.load.image('phoe_crouch', 'assets/character/phoe_crouch.png');
     this.load.image('phoe_bag_rummage', 'assets/character/phoe_bag_rummage.png');
     this.load.image('phoe_hold', 'assets/character/phoe_hold.png');
+    this.load.image('traditional_bag_icon', 'assets/ui/traditional_bag_icon.png');
   }
 
   create() {

@@ -16,13 +16,22 @@ export interface Machine {
   state: 'READY' | 'TRACK' | 'LOCKED' | 'DROP' | 'RECOVER';
   elapsed: number; readyDuration: number; targetX: number; shotId: string | null;
 }
-export type EventKind = 'start' | 'lock' | 'drop' | 'land' | 'shatter' | 'gate' | 'shelf' | 'plate' | 'coin' | 'death' | 'complete' | 'taunt';
+export type EventKind = 'start' | 'lock' | 'drop' | 'land' | 'shatter' | 'gate' | 'shelf' | 'plate' | 'coin' | 'death' | 'complete' | 'taunt' | 'puzzle_item' | 'gear_box' | 'platforms' | 'beehive' | 'trap' | 'slingshot';
 export interface GameEvent { kind: EventKind; x?: number; y?: number; value?: number }
 export interface Attempt {
   id: string; preset: Preset; status: 'WAITING' | 'ACTIVE' | 'DEAD' | 'COMPLETE';
   player: Player; machine: Machine; stones: Stone[]; pickups: Pickup[];
   gateIntact: boolean; shelfIntact: boolean; plateWeighted: boolean; liftY: number;
   elapsed: number; coins: number; nextStone: number; events: GameEvent[];
+  hasCog: boolean;
+  hasPole: boolean;
+  gearBoxActive: boolean;
+  platformsRevealed: boolean;
+  hasSlingshot: boolean;
+  beehiveTriggered: boolean;
+  beehiveX: number;
+  beehiveY: number;
+  trapFloorOpen: boolean;
 }
 export interface Input { left: boolean; right: boolean; jump: boolean; taunt: boolean }
 export const NO_INPUT: Readonly<Input> = { left: false, right: false, jump: false, taunt: false };

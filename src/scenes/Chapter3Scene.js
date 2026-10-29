@@ -39,7 +39,8 @@ export default class Chapter3Scene extends Phaser.Scene {
 
     this.createTempleColumns(width, height);
 
-    const groundY = height - 120;
+    // Ground line - Unified exact Chapter 1 Baseline (576px on 1280x720)
+    const groundY = Math.round(height * 0.80);
     this.groundY = groundY;
     const ground = this.add.rectangle(width / 2, groundY + 60, width, 120, 0x17120e);
     this.physics.add.existing(ground, true);
@@ -110,13 +111,14 @@ export default class Chapter3Scene extends Phaser.Scene {
   createTempleColumns(width, height) {
     const cols = this.add.graphics();
 
+    const wallGroundY = this.groundY || Math.round(height * 0.80);
     // 1. Rear Wall Stone Reliefs & Arched Sanctuary Niches
     cols.fillStyle(0x19130e, 0.95);
-    cols.fillRect(0, 0, width, height - 120);
+    cols.fillRect(0, 0, width, wallGroundY);
 
     // Weathered Bagan sandstone brick courses
     cols.lineStyle(1.5, 0x2e1c12, 0.6);
-    for (let by = 30; by < height - 120; by += 32) {
+    for (let by = 30; by < wallGroundY; by += 32) {
       cols.lineBetween(0, by, width, by);
     }
 
@@ -200,7 +202,7 @@ export default class Chapter3Scene extends Phaser.Scene {
     createTorch(width * 0.76, 180);
 
     // 4. Temple Floor Slabs with Ancient Cracks & Lotus Medallion
-    const groundY = height - 120;
+    const groundY = this.groundY || Math.round(height * 0.80);
     const floorDetail = this.add.graphics().setDepth(3);
     floorDetail.fillStyle(0x271911, 1);
     floorDetail.fillRect(0, groundY, width, 20);

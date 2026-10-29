@@ -1,2 +1,62 @@
 <!doctype html>
-<html lang="my"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ဖိုးထောင် — ပုဂံရွှေမြို့တော် စွန့်စားခန်း</title><meta name="description" content="Phoe Htaung: a two-chapter Burmese cartoon puzzle and action adventure."></head><body><main id="app"><div id="game"></div><div id="interface"></div></main><script type="module" src="/src/main.ts"></script></body></html>
+<html lang="my">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <title>ဖိုးထောင် — ပုဂံရွှေမြို့တော် စွန့်စားခန်း</title>
+    <meta name="description" content="Phoe Htaung: a Burmese cartoon puzzle and action adventure." />
+  </head>
+  <body>
+    <div class="game-viewport-frame">
+      <!-- Left Boundary Flank -->
+      <aside class="game-flank flank-left" aria-label="Game Branding">
+        <div class="flank-content">
+          <div class="flank-badge">
+            <div class="mark">ဖ</div>
+            <div class="flank-title">
+              <span class="eyebrow">ပုဂံရွှေမြို့တော်</span>
+              <strong>ဖိုးထောင်</strong>
+              <small>THE GOLDEN CITY</small>
+            </div>
+          </div>
+          <div class="flank-divider">
+            <span class="diamond-motif">❖</span>
+          </div>
+          <div class="flank-meta">
+            <span class="build-label"><i></i> စွန့်စားခန်း</span>
+            <span class="flank-sub">ကျောက်တုံးချစက်ခန်း</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Central Game Canvas Frame: rounded-[32px] per Core Design System -->
+      <main id="app">
+        <div id="game"></div>
+        <div id="interface"></div>
+      </main>
+
+      <!-- Right Boundary Flank -->
+      <aside class="game-flank flank-right" aria-label="Game Lore and Boundary">
+        <div class="flank-content">
+          <div class="flank-quote">
+            <span class="quote-glyph">“</span>
+            <p>ကိုယ့်ကိုပစ်တဲ့တုံးနဲ့<br />ကိုယ့်လမ်းကိုဖွင့်။</p>
+          </div>
+          <div class="flank-divider">
+            <span class="diamond-motif">❖</span>
+          </div>
+          <div class="flank-progress">
+            <div class="prog-dots">
+              <span class="dot done" title="အခန်း ၁ တံတား"></span>
+              <span class="dot active" title="အခန်း ၂ ကျောက်တုံးချစက်"></span>
+              <span class="dot" title="အခန်း ၃ ချိန်ခွင်"></span>
+              <span class="dot" title="အခန်း ၄ လူဝံအစောင့်"></span>
+            </div>
+            <small>CHAPTER 02 / 04</small>
+          </div>
+        </div>
+      </aside>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

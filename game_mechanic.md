@@ -11,6 +11,30 @@
 * **The Gameplay Loop:**
   $$\text{Observe Arena (Single Screen)} \xrightarrow{\text{Plan (Safe Beat)}} \text{Execute under Mild Pressure} \xrightarrow{\text{Hilarious Slapstick Death / Troll Victory}} \text{Instant Respawn / Next Room}$$
 
+### 1.1 The Multi-Winning-Condition Paradigm (The Universal Standard)
+
+A foundational architectural rule of *Phoe Htaung* is that **no room or puzzle chamber should ever have only a single rigid way to win**. Every single chapter supports multiple distinct, fully validated winning pathways:
+
+1. **Winning Condition 1: The Canonical Mechanical Route (The Engineer's Way):**
+   - The thematic, multi-step tool discovery, in-bag crafting, and environmental assembly route.
+   - *Chapter 1 (Bridge):* Assembling the winch, lubricating with betel spit, and lowering the drawbridge.
+   - *Chapter 2 (Stone Crusher):* Baiting stone drop onto the pressure plate ($x=336$), raising the lift ($x=640$), traversing upper shelves, and safely reaching the high exit.
+2. **Winning Condition 2: The Athletic / Speedrun Bypass Win (The Athlete's Way):**
+   - High-skill platforming, physics exploitation, momentum conservation, or athletic tool vaulting that skips major puzzle steps cleanly.
+   - *Chapter 1 (Bridge):* Sprint pole-vaulting clean across the 192px pit chasm with the bamboo stick.
+   - *Chapter 2 (Stone Crusher):* Baiting the machine to drop a 50kg boulder directly onto the wooden gate ($x=1104$), smashing it to splinters, and sprinting through ground exit without touching the lift.
+3. **Winning Condition 3: The Secret Troll / "အောက်လမ်း" Alternate Win (The Trickster's Way):**
+   - Unorthodox lateral thinking, environmental sabotage, or hidden backwards passages subverting expected game logic.
+   - *Chapter 1 (Bridge):* Pushing against the starting left wall for 1.0s to reveal the secret dungeon door and exit left.
+   - *Chapter 2 (Stone Crusher):* Stacking multiple dropped stones to shatter them into rubble, or near-miss taunting (<kbd>E</kbd>) to exploit machine recoil and bypass obstacles.
+4. **Winning Condition 4: The Master Collector / Relic Heist Win (The Thief's Way):**
+   - Snatching optional legendary chapter treasures, disarming or outsmarting deadly greed traps, and escaping with full loot for maximum settlement appraisal.
+   - *Chapter 1 (Bridge):* Outsmarting the string-pulled coin yoink trap and escaping with the ancient relic.
+   - *Chapter 2 (Stone Crusher):* Collecting all 5 floor coins ($160\text{–}352$), demolishing the shelf to drop the gold pouch ($+10$), and escaping with full 15/15 gold.
+
+> [!IMPORTANT]
+> **Domain Architecture Contract:** The domain engine validates room completion using spatial survival predicates (e.g. `s.alive && s.grounded && ...`) and alternate route predicates (e.g. `s.tunnelOpened && s.x <= 35` or athletic threshold coordinates), rather than checking a single monolithic puzzle-step boolean flag. This decouples player ingenuity from rigid, brittle scripting.
+
 ---
 
 ## 2. Core Control Schema & Ergonomics
@@ -23,7 +47,7 @@ To completely eliminate friction between fast-paced platforming and deliberate p
 | **Jump** | <kbd>Space</kbd> / <kbd>W</kbd> | Up Arrow | -570 px/s vertical impulse. Includes 80ms coyote time and 100ms jump buffering. |
 | **Belly-Crawl** | <kbd>S</kbd> / <kbd>↓</kbd> (Hold) | — | Drops Phoe Htaung into a prone belly-crawl (hitbox height reduced by 55%, speed at 40%). Slides under low beams and submerges in mud. |
 | **Universal "Mouth Verb"** | <kbd>E</kbd> | Contextual UI prompt | **Unified Agency:**<br>• *Ambient:* Spits red betel nut juice (*"စွပ်"*).<br>• *Machinery:* Acts as emergency lubricant ("ဆေးမြီးတို") for rusty gears.<br>• *Hazards / Machine:* Provokes/taunts machines or enemies with Upper-Burma banter.<br>• *Tool in Hand:* If standing within proximity ($d \le 85\text{px}$) of an active target with an item held, applies the item. |
-| **Shoulder Bag Dock Reveal** | Pointer Move ($y < 115\text{px}$) | Click `🎒 လွယ်အိတ်` Tab | Slides the 12-slot auto-hiding inventory dock down from $y=55\text{px}$ to $y=140\text{px}$ with a tactile fabric rustle. |
+| **Myanmar Traditional Bag Dock (Lwe-Ait)** | Click Bag Dock / <kbd>B</kbd> / <kbd>Tab</kbd> | Click `🎒` in HUD | Permanently visible at bottom center ($x=640\text{px}, y=672\text{px}$). Expands upward to $y=596\text{px}$ to reveal 12 item slots with tactile fabric rustle audio. |
 | **Slot Selection / Held Item** | <kbd>1</kbd>, <kbd>2</kbd>, <kbd>3</kbd> | Left-Click Slot | Instantly equips tool into Phoe Htaung's hand sprite. Clicking the active slot a second time deselects it and clears hands. |
 | **In-Bag Tool Crafting** | Left-Click Slot $B$ while holding $A$ | Drag & Drop | Evaluates crafting recipe (e.g. `betel_cutter` + `torn_bottle` $\rightarrow$ `half_bottle`) with dedicated crafting audio. |
 | **Contextual Tool Application** | <kbd>E</kbd> or Left-Click Target | Proximity Click ($d \le 85\text{px}$) | Applies held tool to world prop. If no tool is held, triggers tactile bare-handed inspection or narrator hint. |
@@ -56,12 +80,13 @@ The opening chamber naturally teaches all game mechanics through spatial geometr
 
 ## 4. The Diegetic Item & Inventory Architecture (The "Snip, Pry & Lubricate" System)
 
-### 4.1 The Auto-Hiding Shoulder Bag (*Lwe-Ait*) HUD & Ergonomics
-To keep the player immersed in the atmospheric ruins without persistent UI clutter, the inventory is implemented as an auto-hiding diegetic container:
-* **Off-Screen Docking & Reveal Mechanics:**
-  - **Resting State:** Tucked flush against the top edge of the screen at $y = 55\text{px}$, exposing only the rounded leather badge tab (`🎒 လွယ်အိတ်`).
-  - **Active Reveal:** Glides downward to $y = 140\text{px}$ with a tactile fabric rustle tween (`Back.Out`, 260ms) when the mouse pointer enters the top screen boundary ($y < 115\text{px}$) or when the player clicks the tab directly.
-  - **Auto-Hide:** Smoothly retreats to $y = 55\text{px}$ after 400ms when the pointer leaves the region ($y > 230\text{px}$), provided no tool is actively selected.
+### 4.1 The Permanent Bottom-Docked Myanmar Traditional Bag (*Lwe-Ait*) & 12-Slot Tray
+To keep the player immersed in the atmospheric ruins while ensuring immediate, reliable inventory access across all chapters:
+* **Permanent Bottom Docking & Reveal Mechanics:**
+  - **Permanent Docked Visibility:** Resting in the subterranean base at $x = 640\text{px}$, $y = 672\text{px}$ (Depth: 320), the authentic hand-woven Shan crimson textile bag (*လွယ်အိတ်*) remains permanently visible across all chapters.
+  - **Active Drawer Reveal:** Toggling the bag (via clicking the bottom dock, clicking the HUD `🎒` button, or pressing shortcut keys <kbd>B</kbd> / <kbd>Tab</kbd>) smoothly expands the 12-slot inventory tray upward from $y = 760\text{px}$ to $y = 596\text{px}$ (`Back.Out`, 240ms) with authentic fabric rustle foley.
+  - **Dismissal & Action Canceling:** Clicking the bag again, pressing <kbd>B</kbd>, <kbd>Tab</kbd>, or <kbd>Escape</kbd>, or inputting locomotion (<kbd>A</kbd>, <kbd>D</kbd>, <kbd>Space</kbd>) instantly collapses the tray back into the bag.
+  - **Universal Component:** Sourced from Chapter 1 as the authoritative, shared `InventoryBar` across every chapter.
 * **Slot Matrix & Minimalist Aesthetic:**
   - 12 slots styled with deep ink (`#182720`), moss-slate (`#22352b`), and warm gold brass rims (`#e7bb55`).
   - Active Slot Highlight: The selected slot illuminates with a vibrant gold border and specular glass bevel.
@@ -204,92 +229,190 @@ The core onboarding rule across all chapters: **The First Hit Must Be Slapstick 
 
 ---
 
-## 6. The Tri-Modal Resolution Topology & Chapter Trap Matrix
+## 6. The Multi-Winning-Condition Architecture & Chapter Trap Matrix
 
-Every single-screen room is engineered around three distinct resolution pathways:
+Every single-screen room in *Phoe Htaung* is engineered around **multiple concurrent resolution topologies**. In strict accordance with the **Chapter 1 Multi-Exit Standard**, players are never constrained to a single scripted puzzle solution. 
 
+Each chamber delivers:
+* **The Sucker Trap (Path A):** Comedic punishment subverting conventional gaming habits with slapstick mortality.
+* **Winning Condition 1 (The Canonical Engineer Route):** The primary thematic puzzle sequence utilizing tool chaining, crafting, and mechanical assembly.
+* **Winning Condition 2 (The Athletic Speedrun Bypass):** High-skill physical platforming, physics exploitation, momentum conservation, or athletic tool usage skipping major steps.
+* **Winning Condition 3 (The Secret Troll / "အောက်လမ်း" Alternate Route):** Unconventional lateral thinking, environmental sabotage, backwards exploration, or hidden doorways bypassing room logic entirely.
+* **Winning Condition 4 (The Master Heist / Relic Collector Win):** Outsmarting greed traps to escape with legendary optional treasures for top-tier viral settlement receipts.
+
+```mermaid
+flowchart TD
+    Spawn["Chamber Entry (Spawn)"] --> Observe["Observation & Planning (Beats 1-3)"]
+    Observe --> Sucker["Path A: The Sucker (Greedy Dash / Obvious Bait)"]
+    Observe --> Win1["Win 1: Canonical Puzzle Route (Tool Chaining & Assembly)"]
+    Observe --> Win2["Win 2: Athletic Speedrun Route (Physics / Momentum / Vaulting)"]
+    Observe --> Win3["Win 3: Secret 'အောက်လမ်း' Route (Hidden Door / Sabotage)"]
+    Observe --> Win4["Win 4: Master Heist Route (Disarm Greed Trap & Steal Relic)"]
+
+    Sucker --> Death["Slapstick Death Animation + U Gyi Roast + Sub-200ms Instant Respawn"]
+    Win1 --> Settle1["Room Cleared: Standard Engineer Badge"]
+    Win2 --> Settle2["Room Cleared: Speedrunner Acrobat Badge"]
+    Win3 --> Settle3["Room Cleared: Trickster 'အောက်လမ်း' Badge"]
+    Win4 --> Settle4["Room Cleared: Viral Pawnshop Master Thief Receipt"]
 ```
-                           ┌──────────────────────────────┐
-                           │      ROOM ENTRY (SPAWN)      │
-                           └──────────────┬───────────────┘
-                                          │
-            ┌─────────────────────────────┼─────────────────────────────┐
-            ▼                             ▼                             ▼
-    [PATH A: THE SUCKER]          [PATH B: THE TROLL]           [PATH C: THE ATHLETE]
-  (Standard Video Game Logic)    (Burmese Jungle Logic)        (Frame-Tight Execution)
-            │                             │                             │
-     Hilarious Slapstick           Secret Creative               Speedrun Micro-Bypass /
-      Death Animation                Discovery                   Frame-Perfect Vault
-            │                             │                             │
-            ▼                             ▼                             ▼
-     Death Counter + 1             PROGRESSION TO                SPEEDRUN RECORD
-   (U Gyi Laughs at You)             NEXT CHAPTER                (Unlocks Secret Badge)
-```
 
-### Chapter-by-Chapter Application & Detailed Trap Matrix:
+---
+
+### Chapter-by-Chapter Application & Detailed Multi-Exit Specifications:
 
 #### 6.1 Chapter 1: Bridge & Winch Chasm (တံတားချစက်)
-* **Path A (The Sucker - The Monastic Fishing-Line Yoink):** A glittering Pyu gold coin floats above the opposite precipice. The greedy player leaps across $\rightarrow$ monofilament line goes taut with a rod *TWANG!* $\rightarrow$ coin yoinks 300px straight up into ceiling rafters $\rightarrow$ Phoe Htaung grabs empty air, hangs in mid-air for 150ms like Wile E. Coyote, and plunges into the abyss while his flip-flop hovers for an extra beat.
-  - *Remote Disarm:* Throwing an `ancient_brick` across the pit hits the coin, triggering the yoink safely from afar!
-* **Trap: The High-Torque Winch Backfire Catapult:** Assembling the `rusty_cog` and `bamboo_pole` into the winch without lubricant and stubbornly cranking a second time snaps the bamboo lever backward (*KAPOW!*), launching Phoe Htaung 400px across the screen.
-* **Trap: The Stupa Hornet Hive & Mud Sanctuary:** Shattering the dropped beehive releases an angry bee swarm (chase speed 140 px/s; spikes to 320 px/s with anger symbols `💢` if struck with a brick). Ducking into the procedural Mud Patch (<kbd>S</kbd> belly-crawl) repels the bees and leaves behind **Beeswax (`beeswax`)** as an alternate lubricant.
-* **Trap: The Invisible Sky Block:** Plaster dust motes flutter downward at $(x=567, y=420)$. Bumping it makes a hollow coconut knock (*BOK!*), bouncing Phoe Htaung onto his back on the safe left ledge while the block permanently materializes.
-* **Trap: The "Khwa-Khyet" Teeter-Totter Half-Bridge:** Mounting only the cog without the locking pin drops the bridge halfway. Walking past the pivot point tilts it into an $80^\circ$ wooden slide into the abyss.
-* **Path B (The Burmese Troll Solution):** Execute the "Snip, Pry & Lubricate" loop:
-  1. Snip tied `bamboo_pole` using starting heirloom `betel_cutter`.
-  2. Use `bamboo_pole` to heave up fallen boulder and collect `rusty_cog`.
-  3. Mount Cog and Pole into winch chassis.
-  4. Press Universal Mouth Verb <kbd>E</kbd> near the winch to spit red betel juice (*"စွပ်"*) into gear teeth (or apply harvested `beeswax`) $\rightarrow$ drawbridge slams down safely with heavy bass rumble.
-* **Path C (The Athletic Bypass):** Sprint right with `bamboo_pole` and jump at the cliff threshold $\rightarrow$ frame-perfect village pole-vault clearing the entire chasm and invisible block.
-* **Secret Bonus (The "အောက်လမ်း"):** Push against the starting left wall for 1.0s $\rightarrow$ hidden dungeon door opens directly into Chapter 2.
+
+* **Spatial Architecture ($1280 \times 720$):**
+  * **Left Puzzle-Solving Platform:** 60% Screen Width ($x = 0 \dots 768\text{px}$). Features Secret Wall ($x \le 35$), Mud Patch Sanctuary ($x = 180$), Floating Stone Platform ($x = 340, y = 466$), Formula Stele ($x = 640, y = 190$, centered horizontally), Wedged Cog Boulder ($x = 580$), and Winch Assembly ($x = 723$).
+  * **Pit Chasm Void:** 15% Screen Width ($x = 768 \dots 960\text{px}$). Spanned by $218\text{px}$ drawbridge resting $28\text{px}$ onto right shelf.
+  * **Right Exit Platform:** 25% Screen Width ($x = 960 \dots 1280\text{px}$). Features Safe Landing Shelf ($960 \dots 1030$), Collapsible Trapdoor Void ($1030 \dots 1120$), and Safe Exit Ledge ($1120 \dots 1280$) leading into the Cave Portal ($x \ge 1180$).
+* **The Sucker Trap (Greedy Gold Coin Collapsible Ground):**
+  * On the right ledge ($x = 960 \dots 1280$), the ground appears 100% like normal, seamless stone flagstones (no pre-cut opening visible).
+  * A glittering Pyu gold coin floats enticingly at $x = 1075$.
+  * **Trigger:** The moment Phoe Htaung grabs or touches the coin ($|x - 1075| \le 22$ or clicking the coin):
+    1. Stone fracturing SFX (`playShatter()`) plays with dust bursts at $x = 1030$ and $x = 1120$.
+    2. The $90\text{px}$ ground chunk beneath the coin breaks away, tilts, and plummets $360\text{px}$ into the abyss along with the gold coin.
+    3. The floor collider disappears; Phoe Htaung plummets into the newly opened chasm gap, dying a hilarious slapstick death.
+    4. U Gyi roasts the player's greed: *"ဟားဟားဟား! လောဘဇောနဲ့ ရွှေပြေးကောက်တာ ကြမ်းပေါက်ကျွံကျသွားပြီ! အလကားရတဲ့ ရွှေဆိုတာ ထောင်ချောက်ပဲ ဖိုးထောင်ရေ!"*
+* **Secondary Traps:**
+  * *High-Torque Winch Backfire Catapult:* Cranking dry unlubricated winch snaps the bamboo lever backward (*KAPOW!*), launching Phoe Htaung 400px across the cavern.
+  * *Stupa Hornet Hive:* Dropping beehive releases an aggressive bee swarm (chase speed 140 px/s; 320 px/s if angered with brick). Submerging into the Mud Patch (<kbd>S</kbd>) repels bees and leaves behind Beeswax (`beeswax`).
+  * *Invisible Sky Block:* Mid-air head bonk at $x = 567$ during premature jump attempts.
+* **Winning Conditions & Exit Routes:**
+  * **Winning Condition 1: Canonical Mechanical Route (The Engineer's Way):**
+    1. Snip tied `bamboo_pole` on floating platform ($x = 340$) using starting heirloom `betel_cutter`.
+    2. Pry wedged `rusty_cog` from boulder crevice ($x = 580$) using `bamboo_pole` lever.
+    3. Mount Cog and Pole into winch chassis at cliff edge ($x = 723$).
+    4. Press Mouth Verb <kbd>E</kbd> near winch to spit red betel juice (*"စွပ်"*) or apply harvested `beeswax` as lubricant $\rightarrow$ drawbridge lowers across the 192px chasm.
+    5. Walk across bridge onto landing shelf ($x = 960 \dots 1030$), jump over the bait coin / trapdoor gap to the exit ledge ($x \ge 1125$), and enter the cave portal ($x \ge 1180$).
+  * **Winning Condition 2: Athletic Village Pole-Vault Bypass (The Athlete's Way):**
+    1. Collect `bamboo_pole` from floating platform.
+    2. Sprint rightward toward cliff edge with <kbd>D</kbd> ($v_x > 150\text{ px/s}$).
+    3. Press Jump (<kbd>Space</kbd>) at cliff threshold ($x \in [658, 798]$).
+    4. Phoe Htaung plants the bamboo cane and vaults clean over the 192px chasm and invisible block, landing directly at $x = 1005$ on the right shelf! Jump past the coin into the exit cave without ever touching the winch.
+  * **Winning Condition 3: Secret Troll / "အောက်လမ်း" Dungeon Door (The Trickster's Way):**
+    1. Turn left at spawn and push continuously against the cavern wall ($x \le 35$) for $1.0\text{s}$ (`pushTimer >= 1000ms`).
+    2. Ancient secret dungeon door slides open with grinding stone foley.
+    3. Step left into the secret doorway ($x \le 35$) to trigger immediate chapter settlement, skipping the entire bridge puzzle!
+  * **Winning Condition 4: Remote Disarmed Coin Heist (The Thief's Way):**
+    1. Catch the dropped `ancient_brick` from the ceiling.
+    2. Throw brick across pit at gold coin; brick triggers floor collapse remotely from safety.
+    3. Lower bridge or pole-vault across; clear the exposed gap and enter Chapter 2 with the satisfaction of outsmarting the trap!
+* **Domain Verification Contract (`src/domain/bridge.ts`):**
+  $$\text{bridgeExit}(s) \iff s.\text{alive} \land s.\text{grounded} \land (|s.\text{feetY} - s.\text{groundY}| \le 1) \land ((s.x \ge 1280 \times 0.78) \lor (s.\text{tunnelOpened} \land s.x \le 35))$$
 
 ---
 
 #### 6.2 Chapter 2: Action Stone-Dropping Machine (ကျောက်တုံးချစက်)
-* **Path A (The Sucker):** Try to dash under the tracking crusher along the floor $\rightarrow$ crushed flat into a comic pancake.
-* **Trap: The False Gold Shelf Collapse:** An elevated wooden shelf holds tempting bonus gold coins. Jumping onto the shelf without testing causes the rusty iron brackets to snap with a dry splintering crack, dropping Phoe Htaung directly into the crusher's drop zone.
-* **Trap: Scalding Steam Nozzle Soot Blast:** Approaching the steam bypass valve bare-handed triggers a high-pressure soot burst, blasting Phoe Htaung's hair back and covering him in black soot ash (`triggerSootPuff`).
-* **Path B (The Troll / Emergent Solution):** 
-  1. Combine `betel_cutter` + `torn_bottle` in inventory to craft `half_bottle`.
-  2. Clamp `half_bottle` over the scalding steam nozzle to redirect the blast.
-  3. Stand in front of the fortified iron gate or pressure plate and press Mouth Verb <kbd>E</kbd> to taunt the machine (*"ဟေ့ကောင်! ဒီမှာကွ!"*).
-  4. The machine locks onto Phoe Htaung; dodge on Beat 3 $\rightarrow$ falling stone crushes the plate or shatters the gate wide open!
-* **Path C (The Athletic Bypass):** Jump off falling boulders mid-air with frame-tight jump buffering to reach the elevated shelf and slide through the exit gap before the gate closes.
+
+* **Spatial Architecture ($1280 \times 720$):**
+  * Subterranean quarry chamber. Overhead pneumatic crusher moves along ceiling rail track. Fortified iron portcullis gate blocks right exit ($x = 1120$). Stone pressure plate on floor at $x = 420$. Sludge drainage grate at $x = 180$. Elevated wooden ventilation shelf at $x = 880, y = 320$.
+* **The Sucker Trap (Floor Dash Flattening):**
+  * Trying to sprint under the tracking crusher across the open floor results in instant accordion pancake flattening.
+* **The Greed Trap (False Gold Shelf Collapse):**
+  * Jumping onto elevated wooden shelf to grab bonus gold coins snaps rusty iron brackets, dropping Phoe Htaung directly into crusher drop zone.
+* **Secondary Traps:**
+  * *Scalding Steam Nozzle Soot Blast:* Approaching steam valve bare-handed triggers high-pressure soot blast, covering Phoe Htaung in black ash (`triggerSootPuff`).
+* **Winning Conditions & Exit Routes:**
+  * **Winning Condition 1: Canonical Steam-Redirect & Counterweight Drop (The Engineer's Way):**
+    1. Combine `betel_cutter` + `torn_bottle` in shoulder bag to craft `half_bottle` cowl.
+    2. Clamp `half_bottle` over scalding steam nozzle to redirect exhaust onto crusher tracking sensor.
+    3. Lure crusher over floor pressure plate ($x = 420$); taunt with <kbd>E</kbd> (*"ဒီမှာကွ ဦးကြီး!"*).
+    4. Dodge on Beat 3; falling stone crushes plate, counterweight lifts iron portcullis, exit opens.
+  * **Winning Condition 2: Athletic Boulder-Hop Ventilation Bypass (The Athlete's Way):**
+    1. Taunt machine to discharge boulder at $x = 600$.
+    2. Jump on top of descending boulder mid-air with frame-tight jump buffer, bouncing up to elevated ventilation ledge ($y = 240$).
+    3. Belly-crawl (<kbd>S</kbd>) through narrow ventilation flue, dropping down behind the locked gate to exit into Chapter 3!
+  * **Winning Condition 3: Secret "အောက်လမ်း" Sludge Drain Acid Flume (The Trickster's Way):**
+    1. Prone crawl (<kbd>S</kbd>) into floor drainage basin at $x = 180$.
+    2. Press Mouth Verb <kbd>E</kbd> three times to spit concentrated dark red betel nut juice onto rusted iron grate bars.
+    3. Acidic betel juice corrodes rusted welds (*Hiss!*), opening sewer grate. Phoe Htaung slides down the subterranean drainage flume directly into Chapter 3!
+  * **Winning Condition 4: Brute Force Gate Shatter (The Destroyer's Way):**
+    1. Lure crusher flush against iron portcullis ($x = 1100$).
+    2. Provoke two consecutive boulder drops onto gate hinges; second boulder shatters iron bars into twisted scrap, allowing immediate exit without touching pressure plate!
+* **Domain Verification Contract (`actionExit`):**
+  $$\text{actionExit}(s) \iff s.\text{alive} \land s.\text{grounded} \land ((s.x \ge 1150 \land s.\text{gateOpen}) \lor s.\text{flueCrawled} \lor s.\text{drainFlushed})$$
 
 ---
 
 #### 6.3 Chapter 3: The Scale & Relic Chamber (ချိန်ခွင်ခန်း)
-* **Path A (The Sucker - The Self-Righteous Deity Trap):** Calculate weights mathematically ($3 + 7 = 10\text{ viss}$) to achieve perfect balance $\rightarrow$ a giant stone deity relief on the back wall frowns; its carved hand springs forward and slaps Phoe Htaung flat against the screen like a mosquito.
-* **Trap: The "Too-Greedy Relic Snatch":** Grabbing the 7-viss golden Buddha relic directly off the pan without latching the mechanism triggers an immediate portcullis guillotine that slams shut across the exit.
-* **Path B (The Troll Solution):**
-  1. Deface the stone inscription: Use the `betel_cutter` (or white chalk) to scratch the ancient Burmese numeral from $10$ to $0$ ($၁၀ \rightarrow ၀$).
-  2. Alternatively, kick the counterweight basket off the pivot entirely ($0 = 0$).
-  3. The temple mechanism registers balance, and the exit doors swing wide open.
-* **Path C (The Heist Brace):** Insert the heavy iron spike (`pin`) into the gate latch hole to physically wedge the drive gear open. Steal the 7-viss golden relic and stroll through the jammed gate with full loot!
+
+* **Spatial Architecture ($1280 \times 720$):**
+  * Ancient Pyu ceremonial vault. Massive double-pan bronze scale suspended from ceiling timber. Left pan holds 10-viss stone counterweight; right pan holds sacred 7-viss Golden Buddha Relic. A stone deity wall relief watches with glowing gemstone eyes.
+* **The Sucker Trap (Self-Righteous Deity Mosquito Slap):**
+  * Calculating weights mathematically ($3 + 7 = 10\text{ viss}$) and placing 3-viss stones to balance scale causes stone deity relief to frown; carved stone hand springs forward, swatting Phoe Htaung flat against the camera screen like a mosquito.
+* **The Greed Trap (Guillotine Relic Snatch):**
+  * Grabbing 7-viss Golden Buddha relic directly off pan without locking drive triggers an overhead portcullis guillotine dropping in 80ms.
+* **Winning Conditions & Exit Routes:**
+  * **Winning Condition 1: Canonical Mathematical Defacement (The Engineer's Way):**
+    1. Inspect ancient Pyu chalk stele.
+    2. Equip `betel_cutter` (or stone chisel) and click inscription tablet to scrape ancient numeral from $10$ to $0$ ($၁၀ \rightarrow ၀$).
+    3. With both sides reading $0$ viss, scale registers cosmic balance; central temple doors swing open peacefully.
+  * **Winning Condition 2: Athletic Scale-Pan Ceiling Transom Vault (The Athlete's Way):**
+    1. Jump onto right scale pan, causing left pan to surge upward.
+    2. Sprint along tipping beam, wall-kick off deity relief's ear, grab ceiling prayer ropes, and fling Phoe Htaung through upper transom window into sky gardens!
+  * **Winning Condition 3: Secret "အောက်လမ်း" Counterweight Catapult (The Trickster's Way):**
+    1. Crawl under left scale pivot (<kbd>S</kbd>) and kick retaining cotter pin out (<kbd>E</kbd>).
+    2. 10-viss basket detaches, swinging beam like medieval trebuchet and launching Phoe Htaung through cracked roof skylight directly into Chapter 4!
+  * **Winning Condition 4: The Master Heist (Pin-Wedge Relic Theft):**
+    1. Insert heavy iron pin (`iron_pin`) into guillotine drop track, physically jamming blade.
+    2. Snatch 7-viss Golden Buddha Relic safely into shoulder bag, strolling through exit holding royal treasure for max pawnshop resale!
+* **Domain Verification Contract (`scaleExit`):**
+  $$\text{scaleExit}(s) \iff s.\text{alive} \land ((s.x \ge 1180 \land s.\text{doorsOpen}) \lor s.\text{transomVaulted} \lor s.\text{catapultLaunched})$$
 
 ---
 
 #### 6.4 Chapter 4: Safe & Riddle Chamber / Vault Guardian (သော့တိုက်ခန်းနှင့် အစောင့်နတ်ရုပ်)
-* **Path A (The Sucker / Sphinx Trap):** Blindly turn the vault dials without inspecting clues $\rightarrow$ concealed mechanical scissor blades snap out from the floor, slicing Phoe Htaung's flip-flops and launching him ceiling-ward.
-* **Trap: The False Painted Exit Door:** An obvious exit lever stands beside a heavy wooden door. Pulling the lever causes the "door" (a painted wooden folding screen) to fall forward flat onto Phoe Htaung with a cartoon wooden *FLUMP!*.
-* **Trap: The Vault Guardian's Sweeping Club:** The chamber is guarded by a massive mechanical guardian automaton (*နတ်ဘီလူးရုပ်တု*). Running directly at it results in Phoe Htaung getting batted like a cricket ball into the far wall.
-* **Path B (The Troll Solution - The "Spicy Sneezing Safe"):**
-  1. Stuff fiery dried Burmese chili (`dried_chili`) into the safe's keyhole.
-  2. The ancient bronze safe turns glowing cherry-red, shudders violently, sneezes explosively (*"ဟတ်ချိုး!"*), and blows its heavy steel vault door clean off its hinges!
-  3. **Puzzle-Action Boss Entrapment:** Taunt the Vault Guardian with <kbd>E</kbd> near the bubbling tree sap / water buffalo mud basin. When the guardian swings its heavy club, dodge under a low stone arch using <kbd>S</kbd> (belly-crawl); the guardian's club wedges permanently into the sticky sap, leaving it helpless as Phoe Htaung slips behind it.
-* **Path C (The Codebreaker):** Open the engineer's blueprint diagram (`engineer_note`) $\rightarrow$ decipher the cryptic astrological animal glyph riddle (Tiger, Garuda, Chinthe zodiac alignments) $\rightarrow$ rotate dials safely without waking the guardian.
+
+* **Spatial Architecture ($1280 \times 720$):**
+  * Deep treasury vault guarded by mechanical **Nat-Balu Guardian** automaton (*နတ်ဘီလူးရုပ်တု*). A colossal three-dial bronze safe sits embedded in vault wall. Sticky tree sap mud basin in arena center.
+* **The Sucker Trap (Blind Dial Spin & Guardian Club Batting):**
+  * Randomly turning vault dials triggers pop-up floor scissor blades; running directly at guardian results in Phoe Htaung being batted like a cricket ball into the far wall.
+* **The Greed Trap (False Painted Exit Door):**
+  * Pulling obvious exit lever beside heavy door causes painted wooden screen to fall flat forward onto Phoe Htaung with cartoon *FLUMP!*.
+* **Winning Conditions & Exit Routes:**
+  * **Winning Condition 1: Canonical Spicy Sneezing Safe & Boss Sap Trap (The Engineer's Way):**
+    1. Insert dried fiery Burmese chili (`dried_chili`) into safe keyhole.
+    2. Bronze safe turns cherry-red, shudders, and sneezes explosively (*"ဟတ်ချိုး!"*), blasting 2-ton steel door off hinges.
+    3. Taunt Guardian with <kbd>E</kbd> near tree sap basin; duck under club with <kbd>S</kbd> (belly-crawl). Guardian's club sticks permanently in sap, allowing Phoe Htaung to slip past into vault.
+  * **Winning Condition 2: Athletic Astrological Stealth Codebreaker (The Athlete's Way):**
+    1. Open engineer's blueprint diagram (`engineer_note`), decipher astrological zodiac sequence (Garuda $\rightarrow$ Tiger $\rightarrow$ Chinthe).
+    2. Spin dials in rapid succession while dodge-rolling under Guardian's sweeping patrol. Safe unlocks silently without waking or alerting guardian!
+  * **Winning Condition 3: Secret "အောက်လမ်း" Brass Mirror Superstition Chute (The Trickster's Way):**
+    1. Equip polished brass tray (`brass_tray`) and stand in torchlight beam.
+    2. Reflect bright glare directly into Guardian's ruby gemstone eye. Superstitious mechanical guardian shrieks in terror and smashes massive fissure into rear wall, revealing underground aqueduct slide into Chapter 5!
+  * **Winning Condition 4: The Royal Diadem Heist (The Master Thief):**
+    1. While Guardian's club is stuck in tree sap, climb onto his shoulder and helmet.
+    2. Use `betel_cutter` to pry priceless Royal Emerald Diadem from his crest before sliding into treasury!
+* **Domain Verification Contract (`safeExit`):**
+  $$\text{safeExit}(s) \iff s.\text{alive} \land ((s.x \ge 1200 \land s.\text{vaultUnlocked}) \lor s.\text{stealthUnlocked} \lor s.\text{mirrorFissureOpened})$$
 
 ---
 
-#### 6.5 Chapter 5: The Sunken Treasury & Escape (ရွှေမြို့တော် မြေအောက်လှေဆိပ်)
-* **Path A (The Sucker - The Unplugged Gilded Canoe):** Board a lavishly gilded ancient royal canoe without inspecting its hull $\rightarrow$ canoe glides 15 feet into the underground river, pops its missing drain cork, and submarines straight down with comic bubble foley (*bloop bloop bloop*).
-* **Trap: The Creditor Shadow / Loan Shark Mirages:** Eerie flickering torches cast ominous moving shadows on the cave walls resembling the village loan sharks (*"ငွေတိုးပေး ဦးမောင်"*). Panicking and running backward triggers a hidden trapdoor slide back into the dungeon.
-* **Path B (The Troll Escape - The Runaway Ore Cart):**
-  1. Load heavy gold sacks onto an ancient rusted mine cart with broken brakes.
-  2. Jump into the cart with U Gyi holding his cheroot in terror.
-  3. Barrel down subterranean aqueduct tracks, ducking under low stalactites (<kbd>S</kbd>) and spitting betel juice onto track switches (<kbd>E</kbd>) to steer toward the sunlight.
-  4. The cart crashes into a Bagan haystack on the dusty plains at high noon.
-* **Path C (The Master Collector):** Recovered all optional chapter relics (Golden Buddha, Ancient Cog, Royal Rubies) $\rightarrow$ unlocks the ultimate viral **Pawnshop Settlement Receipt** with maximum resale value!
+#### 6.5 Chapter 5: Sunken Treasury & Escape (ရွှေမြို့တော် မြေအောက်လှေဆိပ်)
+
+* **Spatial Architecture ($1280 \times 720$):**
+  * Vast subterranean grotto with roaring aqueduct rapids, mining cart tracks, and sunlit exit tunnel leading to dusty Bagan plains.
+* **The Sucker Trap (The Unplugged Gilded Royal Canoe):**
+  * Boarding gilded royal canoe without inspecting hull causes canoe to glide 15 feet out, pop missing cork, and submarine straight down with comic bubble foley (*bloop bloop bloop*).
+* **The Greed Trap (Loan Shark Shadow Mirages):**
+  * Torches cast shadows resembling village loan sharks; panicking and running backward triggers trapdoor slide into dungeon.
+* **Winning Conditions & Exit Routes:**
+  * **Winning Condition 1: Canonical Runaway Ore-Cart Track Switch (The Engineer's Way):**
+    1. Load heavy gold sacks onto rusted ore-cart with broken handbrake.
+    2. Jump aboard with U Gyi; barrel down aqueduct tracks, ducking stalactites (<kbd>S</kbd>) and spitting betel juice (<kbd>E</kbd>) onto track switches to steer into sunlight.
+    3. Cart crashes into Bagan haystack on dusty plains at high noon.
+  * **Winning Condition 2: Athletic Rapids Door-Surfing (The Athlete's Way):**
+    1. Tear ancient teak temple door off rotten leather hinges; toss onto roaring river rapids.
+    2. Jump aboard to surf the torrent! Execute frame-tight jumps over rock needles and whirlpools to ride out into Irrawaddy riverbank!
+  * **Winning Condition 3: Secret "အောက်လမ်း" Monastic Well Bucket Hoist (The Trickster's Way):**
+    1. Behind stacked treasure crates, discover ancient monastery well rope and wooden bucket.
+    2. Sit in bucket and crank wooden windlass, ascending quietly through stone well shaft into a peaceful Bagan monastery pagoda courtyard during evening prayer!
+  * **Winning Condition 4: The Legendary 4-Relic Viral Pawnshop Settlement (The Grand Master Thief):**
+    1. Escape carrying all 4 optional chapter treasures: *Ancient Bronze Cog* (Ch1), *Pyu Silver Ingot* (Ch2), *7-Viss Golden Buddha* (Ch3), and *Royal Emerald Diadem* (Ch4).
+    2. Unlocks ultimate viral Pawnshop Receipt: Maximum resale value (999,999 Kyats), Master Thief Badge, and U Gyi proclaiming Phoe Htaung the King of Village Scoundrels!
+* **Domain Verification Contract (`escapeExit`):**
+  $$\text{escapeExit}(s) \iff s.\text{alive} \land (s.\text{cartEscaped} \lor s.\text{rapidsSurfed} \lor s.\text{wellAscended})$$
 
 ---
 
@@ -318,3 +441,30 @@ Every single-screen room is engineered around three distinct resolution pathways
    - **Death Tolerance Quotient (DTQ):** Target of 14–22 deaths per session before victory.
    - **Route Distribution:** 70% of players experience Path A (Sucker Trap) on attempt 1; 60% clear via Path B (Troll Solution); 20% clear via Path C (Athletic Bypass).
    - If player churn exceeds 15% at any room transition, U Gyi's third death roast automatically hints at the solution.
+
+---
+
+### 8.1 Universal Multi-Winning Conditions Matrix Across All Chapters
+
+| Chapter | Exit Route / Winning Condition | Primary Mechanics Required | Earned Badge / Honor | Viral Pawnshop Receipt Quip |
+| :--- | :--- | :--- | :--- | :--- |
+| **Ch 1: Bridge & Winch** | **Win 1: Canonical Win** | Snip rope $\rightarrow$ pry cog $\rightarrow$ assemble winch $\rightarrow$ betel spit lubricate $\rightarrow$ lower bridge $\rightarrow$ jump coin gap. | 🛠️ *Bridge Master* | *"ဦးကြီးပြောတဲ့အတိုင်း ကွမ်းတံတွေးနဲ့ စက်ဆီထိုးပြီး တံတားဆင်းသွားတယ်! တောတွင်းနည်းပညာ အောင်မြင်ခြင်း!"* |
+| **Ch 1: Bridge & Winch** | **Win 2: Athletic Bypass** | Equip bamboo stick, sprint right, jump at cliff edge to pole-vault $192\text{px}$ pit directly. | 🎋 *Village Olympian* | *"စက်သီးလည်း မလှည့်ဘူး၊ တံတားလည်း မချဘူး... ဝါးလုံးထောက်ပြီး ခုန်ကူးသွားပါလား! အပြေးချန်ပီယံ ဖိုးထောင်!"* |
+| **Ch 1: Bridge & Winch** | **Win 3: Secret 'အောက်လမ်း'** | Push against spawn left wall ($x \le 35$) continuously for $1.0\text{s}$, opening hidden passage. | 🕳️ *Mole Rat King* | *"ရှေ့မသွားဘဲ နောက်ပြန်ဆုတ်ပြီး နံရံတိုက်တယ်! မင်းလိုကောင်မျိုးက အောက်လမ်းနဲ့ပဲ တန်တယ် ဖိုးထောင်ရေ!"* |
+| **Ch 1: Bridge & Winch** | **Win 4: Remote Heist** | Throw dropped brick across pit to trigger coin trap remotely; vault over gap cleanly. | 🧱 *Brick Sniper* | *"ခဲနဲ့လှမ်းပေါက်ပြီး ထောင်ချောက်ဖြုတ်သွားတယ်! ငကြောင်ဆိုပေမဲ့ ဉာဏ်တော့ နည်းနည်းရှိသားပဲ။"* |
+| **Ch 2: Crusher & Gate** | **Win 1: Canonical Win** | Craft `half_bottle`, redirect steam nozzle, taunt crusher onto pressure plate to lift gate. | 🧴 *Steam Mechanic* | *"ရေဗူးခွံနဲ့ ရေနွေးငွေ့လှည့်ပြီး ကျောက်တုံးဖိခိုင်းသွားတယ်! အင်ဂျင်နီယာကြီး ဖိုးထောင်!"* |
+| **Ch 2: Crusher & Gate** | **Win 2: Athletic Bypass** | Mid-air jump off falling boulder, bounce to upper vent ledge, crawl through exhaust flue. | 🧗 *Chimney Sweep* | *"ကျောက်တုံးပေါ် ခုန်တက်ပြီး လေဝင်ပေါက်ကနေ တွားထွက်သွားတယ်! မျောက်လိုပဲ ငကြောင်ရေ့!"* |
+| **Ch 2: Crusher & Gate** | **Win 3: Secret 'အောက်လမ်း'** | Belly-crawl into sludge drain, spit betel juice 3 times to corrode rusted grate bars. | 🩸 *Acid Spitter* | *"ကွမ်းတံတွေးနဲ့ သံတိုင်ဖျော်ပြီး မြောင်းထဲ လျှောဆင်းသွားတယ်! ကွမ်းစားတဲ့ပါးစပ် ဆေးမလိုဘူးဟေ့!"* |
+| **Ch 2: Crusher & Gate** | **Win 4: Brute Shatter** | Taunt crusher to drop two consecutive boulders directly onto the iron gate portcullis. | 💥 *Gate Smasher* | *"ခေါင်းမာတာတော့ မင်းနဲ့တူတယ်! သံတံခါးကို ကျောက်တုံးနဲ့ ထုခွဲပစ်လိုက်တယ်တဲ့ဗျာ!"* |
+| **Ch 3: Sacred Scale** | **Win 1: Canonical Win** | Scrape stone inscription from $10$ to $0$ ($၁၀ \rightarrow ၀$) with cutter to equalize balance. | ✏️ *Mathematician* | *"ဂဏန်းပြင်ပြီး ချိန်ခွင်ညှိသွားတယ်! စာမတတ်ပေမဲ့ ကိန်းဂဏန်းတော့ လိမ်တတ်သားပဲ!"* |
+| **Ch 3: Sacred Scale** | **Win 2: Athletic Bypass** | Pan surge jump, wall-kick off deity ear, swing from prayer rope through transom clerestory. | 🎪 *Temple Acrobat* | *"ချိန်ခွင်တန်းပေါ် ပြေးတက်ပြီး ပြတင်းပေါက်ကနေ ခုန်ထွက်သွားတယ်! ကာယဗလ မောင်ဖိုးထောင်!"* |
+| **Ch 3: Sacred Scale** | **Win 3: Secret 'အောက်လမ်း'** | Kick retaining pin out of left counterweight, catapulting Phoe Htaung through roof skylight. | 🚀 *Human Trebuchet* | *"ချိန်သီးဖြုတ်ချပြီး အမိုးပေါက်ကနေ လွင့်ထွက်သွားတယ်! ကောင်းကင်ပျံ ငကြောင်ဖိုးထောင်!"* |
+| **Ch 3: Sacred Scale** | **Win 4: Relic Heist** | Wedge guillotine track with iron pin, snatch 7-viss Golden Buddha relic, stroll out. | 🏆 *Relic Raider* | *"ရွှေဆင်းတုတော်ကြီး ပိုက်ပြီး ထွက်လာတယ်! ပေါင်နှံတန်ဖိုး အမြင့်ဆုံး ရမယ့် လူလည်ကြီး!"* |
+| **Ch 4: Safe & Guardian** | **Win 1: Canonical Win** | Dried chili in safe keyhole causes explosive sneeze; taunt Guardian club into tree sap. | 🌶️ *Chili Saboteur* | *"ငရုတ်သီးနဲ့ နှာစေးခိုင်းပြီး ဘီလူးကို သစ်စေးကပ်သွားတယ်! မြန်မာ့ရိုးရာ ကလိမ်ကကျစ် ထိပ်တန်းပဲ!"* |
+| **Ch 4: Safe & Guardian** | **Win 2: Athletic Bypass** | Decipher blueprint zodiac sequence; rapid-spin dials while dodge-rolling under club sweeps. | 🕵️ *Silent Burglar* | *"ဘီလူးကို မျက်လှည့်ပြပြီး သော့ကုဒ် အသာလေး ဖွင့်သွားတယ်! ခြေသံလုံတဲ့ သူခိုးကြီး ဖိုးထောင်!"* |
+| **Ch 4: Safe & Guardian** | **Win 3: Secret 'အောက်လမ်း'** | Reflect torch glare with brass tray into Guardian's eye; frightened boss breaks wall chute. | 🪞 *Ghost Whisperer* | *"ကြေးလင်ဗန်းနဲ့ မျက်လုံးထိုးတော့ ဘီလူးက သရဲထင်ပြီး နံရံထုခွဲပစ်တယ်! ရယ်ရလွန်းလို့ ဗိုက်နာတယ်!"* |
+| **Ch 4: Safe & Guardian** | **Win 4: Diadem Heist** | Climb stuck Guardian's helmet, pry Royal Emerald Diadem from crest, slide into treasury. | 👑 *Crown Plunderer* | *"ဘီလူးခေါင်းပေါ်တက်ပြီး မြကျောက်သရဖူ ဖြုတ်ခိုးလာတယ်! ရွာပြန်ရင် သူကြီးတောင် အရိုအသေပေးရမယ်!"* |
+| **Ch 5: Treasury Escape** | **Win 1: Canonical Win** | Load ore-cart, duck stalactites, spit betel juice onto rail switches to steer into daylight. | 🚂 *Mine-Cart Pilot* | *"ဘရိတ်ပေါက်နေတဲ့ တွန်းလှည်းပေါ်ကနေ ကွမ်းတံတွေးနဲ့ လမ်းကြောင်းရွေးပြီး လွတ်မြောက်သွားပြီဟေ့!"* |
+| **Ch 5: Treasury Escape** | **Win 2: Athletic Bypass** | Tear temple door plank, surf roaring river rapids, jump rock needles out to Irrawaddy. | 🏄 *Tsunami Surfer* | *"တံခါးရွက်ခွာစီးပြီး ရေစီးကြမ်းထဲ လျှောဆင်းသွားတယ်! ဧရာဝတီ လှိုင်းစီးချန်ပီယံ ဖိုးထောင်!"* |
+| **Ch 5: Treasury Escape** | **Win 3: Secret 'အောက်လမ်း'** | Climb into monastery well bucket behind crates; crank windlass up to pagoda courtyard. | 🔔 *Monastery Hermit* | *"ဘုန်းကြီးကျောင်း ရေတွင်းပုံးထဲ ဝင်ထိုင်ပြီး အသာလေး အပေါ်ရောက်သွားတယ်! ဥာဏ်နီဥာဏ်နက် အထွတ်အထိပ်!"* |
+| **Ch 5: Treasury Escape** | **Win 4: Grand Heist** | Escape carrying all 4 chapter relics (Bronze Cog, Silver Ingot, Golden Buddha, Emerald Diadem). | 💰 *Legendary King of Scoundrels* | *"ရွှေမြို့တော် ရတနာအကုန် ပြောင်အောင် သိမ်းလာတယ်! အပေါင်ဆိုင်တစ်ဆိုင်လုံး ဝယ်ပစ်လို့ရပြီ ဖိုးထောင်ရေ!"* |

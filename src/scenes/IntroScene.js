@@ -35,14 +35,15 @@ export default class IntroScene extends Phaser.Scene {
     // T = 2.5s: Dialogue ducking applied when VO begins
     audioDirector.initScene0Timeline(this);
 
-    // 1. High-End 5-Layer Machinarium Parallax Background
+    // 1. High-End 5-Layer Machinarium Static Background (Zero drift, Zero breathing)
     this.parallax = new ParallaxBackground(this, {
-      enableMouseParallax: true,
-      enableBreathing: true,
+      enableMouseParallax: false,
+      enableBreathing: false,
       depthBase: 0
     });
 
-    const groundY = this.parallax.getWalkableGroundY();
+    const groundY = Math.round(this.parallax.getWalkableGroundY());
+    this.groundY = groundY;
 
     // 2. Volumetric Morning God Rays (ရွှေရောင် နေခြည်အလင်းတန်းများ) - Soft & Moody
     this.cityGlow = this.add.graphics().setDepth(25);

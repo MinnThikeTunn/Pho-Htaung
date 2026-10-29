@@ -14,5 +14,14 @@ export function createAttempt(preset: Preset, id: string): Attempt {
     stones: preset === 'B' ? [stone('initial_1', 256, 640, 'ground')] : preset === 'C'
       ? [stone('initial_1', 400, 640, 'ground'), stone('initial_2', 704, 424, 'lift')] : [],
     pickups: [...COINS, POUCH].map(v => ({ ...v, collected: false, vy: 0 })),
+    hasCog: false,
+    hasPole: false,
+    gearBoxActive: false,
+    platformsRevealed: false,
+    hasSlingshot: false,
+    beehiveTriggered: false,
+    beehiveX: 0,
+    beehiveY: 0,
+    trapFloorOpen: false,
   };
 }

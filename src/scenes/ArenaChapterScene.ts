@@ -7,11 +7,14 @@ import { ArenaSession } from '../services/ArenaSession';
 import { store } from '../services/adventure';
 import { SAVE_KEY } from '../services/CampaignStore';
 import { ArenaView } from '../view/ArenaView';
+import InventoryBar from '../ui/InventoryBar.js';
+import { ensureBridgeTextures } from '../view/BridgeView';
 
 const ui = () => document.querySelector<HTMLDivElement>('#interface')!;
 const button = (id: string, text: string, primary = false) => `<button type="button" id="${id}" class="${primary ? 'primary' : 'secondary'}">${text}</button>`;
 export default class ArenaChapterScene extends Phaser.Scene {
   private session!: ArenaSession; private view!: ArenaView;
+  public inventoryBar!: InventoryBar;
   private held = new Set<string>(); private edges = { jump: false, punch: false, dodge: false };
   private finished = false; private failureShown = false; private messageUntil = 0;
   private bagOpen = false;
@@ -38,6 +41,45 @@ export default class ArenaChapterScene extends Phaser.Scene {
   }
   create() {
     this.view = new ArenaView(this);
+    ensureBridgeTextures(this);
+
+    // Standardized Bottom-Left Hover Myanmar Traditional Bag (Lwe-Ait)
+    this.inventoryBar = new InventoryBar(this, {
+      getItems: () => {
+        const a = this.session?.attempt;
+        if (!a) return [];
+        const items = [
+          {
+            key: 'FISTS',
+            id: 'FISTS',
+            name: 'လက်သီး (Bare Fists)',
+            selected: a.weapon === 'FISTS',
+            texture: 'ch1_vector_bamboo_icon'
+          }
+        ];
+        if (a.hasSling) {
+          items.push({
+            key: 'SLING',
+            id: 'SLING',
+            name: 'လောက်လေးခွ (Slingshot)',
+            selected: a.weapon === 'SLING',
+            texture: 'ch1_vector_cog'
+          });
+        }
+        return items;
+      },
+      onItemClick: (item: any) => {
+        if (item.id === 'FISTS' || item.id === 'SLING') {
+          const weapon = item.id as ArenaWeapon;
+          if (this.session.equipWeapon(weapon)) {
+            this.speak(weapon === 'SLING' ? 'လောက်လေးခွ ထုတ်ပြီးပြီ — K ဖိဆွဲ၊ လွှတ်ပစ်။' : 'လက်ချည်းပဲ — J နဲ့ချ၊ L နဲ့ရှောင်။');
+            this.sync();
+            this.focusGame();
+          }
+        }
+      }
+    });
+
     ui().innerHTML = `<div class="hud"><div class="stage-title"><span class="eyebrow">အခန်း ၄ / ACTION</span><strong>လူဝံအစောင့်နှစ်ကောင်</strong></div><div class="arena-player-health"><span>ဖိုးထောင် <b id="arena-hp-label">100 / 100</b></span><progress id="arena-hp" max="100" value="100" aria-label="ဖိုးထောင် သွေးတန်း"></progress></div><div class="ledger"><div><span>တံခါးမပိတ်မီ</span><b id="arena-time">75<small>s</small></b></div><div><span>ကျောက်ခဲ</span><b id="arena-ammo">12</b></div></div><button id="arena-pause" class="icon-button" aria-label="Pause">Ⅱ</button></div>
       <div class="arena-enemies">${['brown', 'silver'].map((id, i) => `<div><span>${i ? 'မီးခိုးလူဝံ · ကျောက်ခဲပစ်' : 'အညိုလူဝံ · လက်သီးထိုး'} <b id="${id}-hp-label">150 / 150</b></span><progress id="${id}-hp" max="150" value="150" aria-label="${id} သွေးတန်း"></progress><small id="${id}-state"></small></div>`).join('')}</div>
       <div class="arena-speech" id="arena-message" aria-live="polite"></div><div class="arena-charge"><span id="arena-charge-label">K ဖိပြီး ဆွဲ → လွှတ်ပြီးပစ်</span><progress id="arena-charge" max="1" value="0" aria-label="လောက်လေးခွ ဆွဲအား"></progress><small id="arena-dodge"></small><small id="arena-punch"></small></div>
@@ -51,8 +93,23 @@ export default class ArenaChapterScene extends Phaser.Scene {
     const onDown = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
       const key = event.key.toLowerCase();
-      if (key === 'b' && !event.repeat && !this.finished && !this.failureShown) { event.preventDefault(); if (this.bagOpen) this.pause(false); else this.openBag(); return; }
-      if (key === 'escape' && !event.repeat && !this.finished) { event.preventDefault(); if (!this.failureShown) this.pause(!this.session.paused); return; }
+      if (key === 'b' && !event.repeat && !this.finished && !this.failureShown) {
+        event.preventDefault();
+        this.inventoryBar?.toggleReveal();
+        return;
+      }
+      if (key === 'escape' && !event.repeat && !this.finished) {
+        event.preventDefault();
+        if (this.inventoryBar?.isRevealed) {
+          this.inventoryBar.hide();
+          return;
+        }
+        if (!this.failureShown) this.pause(!this.session.paused);
+        return;
+      }
+      if (['a','d','arrowleft','arrowright',' '].includes(key) && this.inventoryBar?.isRevealed) {
+        this.inventoryBar.hide();
+      }
       if (this.finished || this.session.paused || !['a','d','arrowleft','arrowright',' ','j','k','l','r'].includes(key)) return;
       event.preventDefault();
       if (event.repeat) return;
@@ -79,6 +136,7 @@ export default class ArenaChapterScene extends Phaser.Scene {
   }
   private openBag() {
     if (this.finished || this.failureShown || store.conflict) return;
+    this.inventoryBar?.reveal();
     this.pause(true); this.bagOpen = true;
     const a = this.session.attempt, el = ui().querySelector<HTMLDivElement>('#arena-modal')!;
     el.innerHTML = `<section class="dialog arena-bag-panel" role="dialog" aria-modal="true" aria-labelledby="arena-bag-title"><h2 id="arena-bag-title">လွယ်အိတ်</h2><p>အိတ်ဖွင့်ထားချိန် တိုက်ပွဲရပ်ထားသည်။ သုံးမယ့်အရာကို ရွေးပါ။</p><div class="actions"><button type="button" id="arena-bag-fists" class="secondary" aria-pressed="${a.weapon === 'FISTS'}">လက်ချည်းသုံးမယ်</button>${a.hasSling ? `<button type="button" id="arena-bag-sling" class="primary" aria-pressed="${a.weapon === 'SLING'}">လောက်လေးခွ ထုတ်သုံးမယ်</button>` : ''}</div>${a.hasSling ? '' : '<p id="arena-bag-empty">အိတ်ထဲမှာ လောက်လေးခွ မပါလာဘူး။ လက်ချည်းနဲ့ ဆက်ချနိုင်သည်။</p>'}<div class="actions">${button('arena-bag-close','အိတ်ပိတ်မယ်')}</div></section>`;
@@ -142,7 +200,9 @@ export default class ArenaChapterScene extends Phaser.Scene {
     text('arena-punch', a.punchLeft > 0 ? `J ပြန်အဆင်သင့် ${a.punchLeft.toFixed(1)} s` : 'J · ခွာထုတ်နိုင်ပြီ');
     ui().querySelector<HTMLElement>('#arena-message')!.hidden = a.elapsed >= this.messageUntil;
     for (const el of ui().querySelectorAll<HTMLElement>('.arena-refill')) el.hidden = !a.hasSling;
-    ui().querySelector<HTMLElement>('#arena-unsaved')!.hidden = !store.unsaved; this.view.render(a, this.bagOpen);
+    ui().querySelector<HTMLElement>('#arena-unsaved')!.hidden = !store.unsaved;
+    this.view.render(a, this.bagOpen);
+    this.inventoryBar?.refresh();
   }
   update(_time: number, ms: number) {
     if (this.finished) return;

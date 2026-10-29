@@ -7,6 +7,8 @@ export const METAL = 0x839b8b;
 export const WOOD = 0x9d7047;
 export const STONE = 0x3b4b3d;
 export const STEP_STONE = 0x6e7c66;
+export const SHAN_RED = 0x8b1e28;
+export const SHAN_DARK = 0x5a1219;
 export const BETEL_RED = 0x9b111e;
 export const BETEL_DARK = 0x5a0808;
 export const ROPE = 0xc4a364;
@@ -175,7 +177,7 @@ export function drawStuckRockCrevice(g: Phaser.GameObjects.Graphics, x: number, 
  * Updates both dedicated ch1_* keys and global item-* keys so the bag and all UI
  * display the clean vector art style.
  */
-export function ensureBridgeTextures(scene: Phaser.Scene, bridgeLength: number) {
+export function ensureBridgeTextures(scene: Phaser.Scene, bridgeLength: number = 218) {
   const textures = scene.textures;
   const bridgeH = Math.max(120, Math.round(bridgeLength));
 
@@ -285,6 +287,24 @@ export function ensureBridgeTextures(scene: Phaser.Scene, bridgeLength: number) 
 
   registerTexture('ch1_vector_bamboo_icon', 44, 44, drawBambooDiagonal);
   registerTexture('item-bamboo-pole', 44, 44, drawBambooDiagonal);
+
+  const drawSlingshot = (g: Phaser.GameObjects.Graphics) => {
+    const cx = 22, cy = 24;
+    g.lineStyle(6, INK, 1).lineBetween(cx, cy + 16, cx, cy);
+    g.lineStyle(4, WOOD, 1).lineBetween(cx, cy + 16, cx, cy);
+    g.lineStyle(1.5, CREAM, 0.4).lineBetween(cx - 1, cy + 16, cx - 1, cy);
+    g.lineStyle(5, INK, 1).lineBetween(cx, cy, cx - 11, cy - 12);
+    g.lineStyle(3.5, WOOD, 1).lineBetween(cx, cy, cx - 11, cy - 12);
+    g.lineStyle(5, INK, 1).lineBetween(cx, cy, cx + 11, cy - 12);
+    g.lineStyle(3.5, WOOD, 1).lineBetween(cx, cy, cx + 11, cy - 12);
+    g.lineStyle(2, 0x8b1e28, 1).lineBetween(cx - 11, cy - 12, cx, cy - 4);
+    g.lineStyle(2, 0x8b1e28, 1).lineBetween(cx + 11, cy - 12, cx, cy - 4);
+    g.fillStyle(INK, 1).fillCircle(cx, cy - 4, 4);
+    g.fillStyle(0x6e7c66, 1).fillCircle(cx, cy - 4, 3);
+    g.fillStyle(CREAM, 0.6).fillCircle(cx - 1, cy - 5, 1);
+  };
+  registerTexture('ch2_vector_slingshot', 44, 44, drawSlingshot);
+  registerTexture('item-slingshot', 44, 44, drawSlingshot);
 
   // 5. Procedural Clue Stele (Dark sandstone with cream chalk diagram)
   if (!textures.exists('ch1_vector_stele')) {
@@ -484,6 +504,11 @@ export function ensureBridgeTextures(scene: Phaser.Scene, bridgeLength: number) 
   registerTexture('ch1_vector_trap_floor', 90, 24, (g) => {
     drawTrapFloor(g, 2, 2, 86, 20);
   });
+
+  // 19. Procedural Myanmar Traditional Bag (Lwe-Ait) (64x80)
+  registerTexture('myanmar_traditional_bag', 64, 80, (g) => {
+    drawMyanmarTraditionalBag(g, 7, 2, 50, 76);
+  });
 }
 
 /**
@@ -644,4 +669,186 @@ export function drawBridgeTerrain(
     .lineBetween(1230, groundY - 60, 1261, groundY - 60)
     .lineBetween(1252, groundY - 69, 1261, groundY - 60)
     .lineBetween(1252, groundY - 51, 1261, groundY - 60);
+}
+
+/**
+ * Authentic Myanmar / Kachin-Naga Traditional Bag (Lwe-Ait - လွယ်အိတ်)
+ * Faithful to reference/images.jpg:
+ * - Broad charcoal-black woven strap loop
+ * - Deep crimson 3-panel pouch body
+ * - Upper multi-color embroidered cross-stitches (green, gold, cyan, magenta)
+ * - Golden zigzag wave chevron band with cream tracking lines
+ * - 3 rows of polished silver dome conchos (ခလုတ် / ငွေကြယ်သီး) with specular gleams
+ * - 5 dangling clusters of metallic silver tube bells / cone pendants (ငွေခေါင်းလောင်းသီးများ)
+ * - Black-and-white woven striped lower trim on left & right flanks
+ * - Twin bunches of fine black thread tassels (ချည်မြိတ်) hanging from bottom corners
+ */
+export function drawMyanmarTraditionalBag(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  w: number,
+  h: number
+) {
+  const strapH = Math.round(h * 0.28);
+  const bagY = y + strapH;
+  const bagH = Math.round(h * 0.52);
+  const tasselBottomY = y + h;
+
+  // 1. Broad Charcoal-Black Woven Shoulder Strap Loop
+  const strapLeft = x + Math.round(w * 0.08);
+  const strapRight = x + w - Math.round(w * 0.08);
+  const strapW = Math.round(w * 0.20);
+  const strapTopY = y + 2;
+
+  // Outer ink outline for strap
+  g.fillStyle(INK, 1);
+  g.fillRect(strapLeft - 1.5, strapTopY - 1, strapW + 3, strapH + 4);
+  g.fillRect(strapRight - strapW - 1.5, strapTopY - 1, strapW + 3, strapH + 4);
+  g.fillRect(strapLeft - 1.5, strapTopY - 1.5, strapRight - strapLeft + 3, 7);
+
+  // Black strap body
+  g.fillStyle(0x22201e, 1);
+  g.fillRect(strapLeft, strapTopY, strapW, strapH + 2);
+  g.fillRect(strapRight - strapW, strapTopY, strapW, strapH + 2);
+  g.fillRect(strapLeft, strapTopY, strapRight - strapLeft, 5);
+
+  // Subtle woven weave stitch on strap
+  g.fillStyle(CREAM, 0.35);
+  for (let sx = strapLeft + 2; sx < strapRight - 2; sx += 4) {
+    g.fillRect(sx, strapTopY + 1.5, 2, 1);
+  }
+
+  // 2. Main Crimson Pouch Body (3-Column Vertical Construction)
+  g.fillStyle(INK, 1).fillRoundedRect(x - 2, bagY - 2, w + 4, bagH + 4, 4);
+  g.fillStyle(0xba1e2d, 1).fillRoundedRect(x, bagY, w, bagH, 2);
+
+  // Vertical Panel Divisions (Left Flank, Center Panel, Right Flank)
+  const flankW = Math.round(w * 0.28);
+  // Left flank subtle shadow
+  g.fillStyle(0x5a1219, 0.25).fillRect(x, bagY, flankW, bagH);
+  // Right flank subtle shadow
+  g.fillStyle(0x5a1219, 0.25).fillRect(x + w - flankW, bagY, flankW, bagH);
+  // Seam lines
+  g.lineStyle(1.2, INK, 0.7);
+  g.lineBetween(x + flankW, bagY, x + flankW, bagY + bagH);
+  g.lineBetween(x + w - flankW, bagY, x + w - flankW, bagY + bagH);
+
+  // 3. Traditional Multi-Colored Cross-Stitches at Top
+  const stitchY = bagY + 4;
+  const stitchColors = [0x228b4c, 0xebb336, 0x2d78c4, 0xdb3d6b];
+  const stitchCount = 6;
+  const stitchStep = (w - 8) / (stitchCount - 1);
+  for (let i = 0; i < stitchCount; i++) {
+    const sx = x + 4 + i * stitchStep;
+    const col = stitchColors[i % stitchColors.length] ?? GOLD;
+    g.lineStyle(1.2, col, 1);
+    g.lineBetween(sx - 1.5, stitchY - 1.5, sx + 1.5, stitchY + 1.5);
+    g.lineBetween(sx + 1.5, stitchY - 1.5, sx - 1.5, stitchY + 1.5);
+  }
+
+  // 4. Golden Zigzag Wave Chevron Band
+  const zigzagY = bagY + Math.round(bagH * 0.22);
+  g.lineStyle(0.8, CREAM, 0.5);
+  g.lineBetween(x + 2, zigzagY - 3, x + w - 2, zigzagY - 3);
+  g.lineBetween(x + 2, zigzagY + 3, x + w - 2, zigzagY + 3);
+
+  g.lineStyle(1.6, GOLD, 1);
+  g.beginPath();
+  const zigSteps = 10;
+  const zigStepW = (w - 6) / zigSteps;
+  for (let i = 0; i <= zigSteps; i++) {
+    const zx = x + 3 + i * zigStepW;
+    const zy = i % 2 === 0 ? zigzagY - 2.5 : zigzagY + 2.5;
+    if (i === 0) g.moveTo(zx, zy);
+    else g.lineTo(zx, zy);
+  }
+  g.strokePath();
+
+  // Helper to draw shiny silver dome concho button
+  const drawConcho = (cx: number, cy: number, r: number) => {
+    g.fillStyle(INK, 1).fillCircle(cx, cy, r + 0.8);
+    g.fillStyle(0xd5dcde, 1).fillCircle(cx, cy, r);
+    g.fillStyle(0x485257, 0.5).fillCircle(cx + 0.4, cy + 0.4, r * 0.65);
+    g.fillStyle(0xffffff, 1).fillCircle(cx - r * 0.35, cy - r * 0.35, Math.max(0.6, r * 0.35));
+  };
+
+  // Row 1: 3 Conchos (Left, Center, Right)
+  drawConcho(x + flankW / 2, bagY + Math.round(bagH * 0.14), 2.8);
+  drawConcho(x + w / 2, bagY + Math.round(bagH * 0.14), 2.8);
+  drawConcho(x + w - flankW / 2, bagY + Math.round(bagH * 0.14), 2.8);
+
+  // Row 2: 2 Conchos (Mid-Left, Mid-Right)
+  drawConcho(x + w * 0.38, bagY + Math.round(bagH * 0.34), 2.6);
+  drawConcho(x + w * 0.62, bagY + Math.round(bagH * 0.34), 2.6);
+
+  // Row 3: 5 Conchos + Dangling Silver Bell Pendant Clusters
+  const pendantXs = [
+    x + flankW * 0.5,
+    x + w * 0.38,
+    x + w * 0.50,
+    x + w * 0.62,
+    x + w - flankW * 0.5
+  ];
+  const pendantYs = [
+    bagY + Math.round(bagH * 0.50),
+    bagY + Math.round(bagH * 0.62),
+    bagY + Math.round(bagH * 0.45),
+    bagY + Math.round(bagH * 0.62),
+    bagY + Math.round(bagH * 0.50)
+  ];
+
+  for (let i = 0; i < 5; i++) {
+    const px = pendantXs[i] ?? x;
+    const py = pendantYs[i] ?? bagY;
+    drawConcho(px, py, 2.5);
+
+    // Suspension link thread
+    g.lineStyle(1.0, 0xa0adb2, 1);
+    g.lineBetween(px, py + 2.5, px, py + 6);
+
+    // 2-3 Dangling Metallic Silver Bell / Tube Pendants
+    const tubeLengths = [9, 12, 8];
+    const offsets = [-2.2, 0, 2.2];
+    for (let t = 0; t < 3; t++) {
+      const tx = px + (offsets[t] ?? 0);
+      const ty = py + 6 + (t === 1 ? 1 : 0);
+      const tLen = tubeLengths[t] ?? 8;
+      // Tube body
+      g.fillStyle(INK, 1).fillRect(tx - 1.2, ty, 2.4, tLen + 1);
+      g.fillStyle(0xd5dcde, 1).fillRect(tx - 0.8, ty + 0.5, 1.6, tLen);
+      // Metallic shine highlight
+      g.fillStyle(0xffffff, 0.9).fillRect(tx - 0.4, ty + 1, 0.8, tLen - 2);
+    }
+  }
+
+  // 5. Lower Hem Borders (Black & White Woven Trims on Left & Right Flanks)
+  const hemH = 3;
+  const hemY = bagY + bagH - hemH;
+  // Left hem
+  g.fillStyle(INK, 1).fillRect(x, hemY, flankW, hemH);
+  for (let bx = x + 2; bx < x + flankW - 2; bx += 3) {
+    g.fillStyle(0xffffff, 1).fillRect(bx, hemY + 0.5, 1.5, hemH - 1);
+  }
+  // Right hem
+  g.fillStyle(INK, 1).fillRect(x + w - flankW, hemY, flankW, hemH);
+  for (let bx = x + w - flankW + 2; bx < x + w - 2; bx += 3) {
+    g.fillStyle(0xffffff, 1).fillRect(bx, hemY + 0.5, 1.5, hemH - 1);
+  }
+
+  // 6. Twin Bunches of Black Fringe Tassels (ချည်မြိတ်)
+  const drawTasselBunch = (startX: number, endX: number) => {
+    const strands = 6;
+    const step = (endX - startX) / (strands - 1);
+    for (let s = 0; s < strands; s++) {
+      const tx = startX + s * step;
+      const sway = (s % 2 === 0 ? 1 : -1) * 1.2;
+      g.lineStyle(1.2, 0x141312, 1);
+      g.lineBetween(tx, bagY + bagH, tx + sway, tasselBottomY - 1);
+      g.fillStyle(0x141312, 1).fillCircle(tx + sway, tasselBottomY - 1, 0.8);
+    }
+  };
+
+  drawTasselBunch(x + 2, x + flankW - 2);
+  drawTasselBunch(x + w - flankW + 2, x + w - 2);
 }

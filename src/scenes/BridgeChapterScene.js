@@ -2542,4 +2542,35 @@ export default class BridgeChapterScene extends LegacyBridge {
     this.physics.world.pause();
     this.scene.start('BRIDGE_EXIT_LINK', { replay: this.replay });
   }
+
+  snapshot() {
+    return {
+      player: {
+        x: this.player ? this.player.x : 0,
+        y: this.player ? this.player.y : 0,
+        vx: this.player?.body ? this.player.body.velocity.x : 0,
+        vy: this.player?.body ? this.player.body.velocity.y : 0,
+        grounded: this.player?.body ? Boolean(this.player.body.blocked.down || this.player.body.touching.down) : false,
+        isLaying: Boolean(this.isLaying),
+        isVaulting: Boolean(this.isVaulting)
+      },
+      inventory: [...(gameState?.state?.inventory || [])],
+      hasCog: Boolean(this.hasCog),
+      hasLever: Boolean(this.hasLever),
+      winchJammed: Boolean(this.winchJammed),
+      winchLubricated: Boolean(this.winchLubricated),
+      bridgeLowered: Boolean(this.bridgeLowered),
+      poleTied: Boolean(this.poleTied),
+      cogWedged: Boolean(this.cogWedged),
+      tunnelOpened: Boolean(this.tunnelOpened),
+      trapTriggered: Boolean(this.trapTriggered),
+      firstHazardTriggered: Boolean(this.firstHazardTriggered),
+      isDead: Boolean(this.isDead),
+      deathType: this.deathType,
+      activeTime: this.activeTime,
+      coyote: this.coyote,
+      jumpBuffer: this.jumpBuffer,
+      selectedItem: this.inventoryBar?.getSelected() || null
+    };
+  }
 }

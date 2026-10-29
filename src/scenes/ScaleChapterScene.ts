@@ -8,12 +8,15 @@ import { ScaleSession } from '../services/ScaleSession';
 import { store } from '../services/adventure';
 import { SAVE_KEY } from '../services/CampaignStore';
 import { ScaleView } from '../view/ScaleView';
+import InventoryBar from '../ui/InventoryBar.js';
+import { ensureBridgeTextures } from '../view/BridgeView';
 
 const ui = () => document.querySelector<HTMLDivElement>('#interface')!;
 const button = (id: string, text: string, primary = false) => `<button type="button" id="${id}" class="${primary ? 'primary' : 'secondary'}">${text}</button>`;
 export default class ScaleChapterScene extends Phaser.Scene {
   private session!: ScaleSession;
   private view!: ScaleView;
+  public inventoryBar!: InventoryBar;
   private held = new Set<string>();
   private jumpEdge = false;
   private selected: ScaleItemId | null = null;
@@ -39,6 +42,39 @@ export default class ScaleChapterScene extends Phaser.Scene {
   }
   create() {
     this.view = new ScaleView(this);
+    ensureBridgeTextures(this);
+
+    // Standardized Bottom-Left Hover Myanmar Traditional Bag (Lwe-Ait)
+    this.inventoryBar = new InventoryBar(this, {
+      getItems: () => {
+        const a = this.session?.attempt;
+        if (!a) return [];
+        const items = [];
+        for (const id of SCALE_IDS) {
+          if (a.locations[id] === 'BAG') {
+            const itemDef = SCALE_ITEMS[id];
+            items.push({
+              key: id,
+              id,
+              name: `${itemDef.name}${itemDef.weight ? ` · ${itemDef.weight}` : ''}`,
+              selected: this.selected === id,
+              texture: 'scale_props_v1',
+              frame: id === 'pin' ? undefined : id
+            });
+          }
+        }
+        return items;
+      },
+      onItemClick: (item: any) => {
+        if (!this.session.paused && !this.finished) {
+          this.session.attempt.command = null;
+          this.selected = this.selected === item.id ? null : item.id;
+          this.sync();
+          this.focusGame();
+        }
+      }
+    });
+
     ui().innerHTML = `<div class="hud"><div class="stage-title"><span class="eyebrow">အခန်း ၃ / PUZZLE</span><strong>ချိန်ခွင်နှင့် ရွှေရုပ်</strong></div><div class="ledger"><div><span>သိမ်းပြီးရွှေ</span><b id="scale-wallet"></b></div><div><span>သေဆုံး</span><b id="scale-deaths"></b></div><div><span>ကစားချိန်</span><b id="scale-time">0.00</b></div></div><button id="scale-journal" class="icon-button" aria-label="ပြောပြီးသောစကားများ ပြန်ဖတ်">စာ</button><button id="scale-pause" class="icon-button" aria-label="Pause">Ⅱ</button></div>
       <div class="scale-controls"><kbd>A</kbd><kbd>D</kbd> ရွေ့ · <kbd>SPACE</kbd> ခုန် · နှိပ်ပြီး ကောက် / သုံး · <kbd>H</kbd> ပစ္စည်းအမည် · <kbd>R</kbd> ဖိထားပြီးပြန်စ · <kbd>ESC</kbd> နား</div>
       <div class="scale-speech"><p id="scale-message" aria-live="polite"></p></div>
@@ -71,7 +107,23 @@ export default class ScaleChapterScene extends Phaser.Scene {
     const onDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
-      if (key === 'escape' && !event.repeat && !this.finished) { event.preventDefault(); this.pause(!this.session.paused); return; }
+      if (key === 'escape' && !event.repeat && !this.finished) {
+        event.preventDefault();
+        if (this.inventoryBar?.isRevealed) {
+          this.inventoryBar.hide();
+          return;
+        }
+        this.pause(!this.session.paused);
+        return;
+      }
+      if ((key === 'b' || key === 'tab') && !event.repeat && !this.finished) {
+        event.preventDefault();
+        this.inventoryBar?.toggleReveal();
+        return;
+      }
+      if (['a', 'd', 'arrowleft', 'arrowright', ' '].includes(key) && this.inventoryBar?.isRevealed) {
+        this.inventoryBar.hide();
+      }
       if (this.session.paused || this.finished || !['a', 'd', 'arrowleft', 'arrowright', ' ', 'r', 'h'].includes(key)) return;
       event.preventDefault();
       if (key === ' ' && !event.repeat) this.jumpEdge = true;
@@ -182,6 +234,12 @@ export default class ScaleChapterScene extends Phaser.Scene {
     ui().querySelector<HTMLElement>('#scale-bag-empty')!.hidden = bagCount > 0;
     ui().querySelector<HTMLElement>('#scale-unsaved')!.hidden = !store.unsaved;
     this.view.render(a, this.hotspots);
+    this.inventoryBar?.refresh();
+    if (this.selected) {
+      this.inventoryBar?.setSelected(this.selected);
+    } else {
+      this.inventoryBar?.clearSelected();
+    }
   }
   update(_time: number, milliseconds: number) {
     if (this.finished) return;

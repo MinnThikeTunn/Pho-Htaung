@@ -28,7 +28,9 @@ export default class Chapter5Scene extends Phaser.Scene {
 
     this.createGoldenHall(width, height);
 
-    const groundY = height - 120;
+    // Ground line - Unified exact Chapter 1 Baseline (576px on 1280x720)
+    const groundY = Math.round(height * 0.80);
+    this.groundY = groundY;
     const ground = this.add.rectangle(width / 2, groundY + 60, width, 120, 0x451a03);
     this.physics.add.existing(ground, true);
 
@@ -88,31 +90,32 @@ export default class Chapter5Scene extends Phaser.Scene {
   createGoldenHall(width, height) {
     const decor = this.add.graphics();
 
+    const wallGroundY = this.groundY || Math.round(height * 0.80);
     // 1. Gilded Royal Palace Wall & Kanok Floral Arches
     decor.fillStyle(0x451a03, 0.95);
-    decor.fillRect(0, 0, width, height - 120);
+    decor.fillRect(0, 0, width, wallGroundY);
 
     // Gilded Wall Panels & Trim
     decor.lineStyle(2, 0xd97706, 0.8);
     for (let px = 60; px < width - 60; px += 100) {
-      decor.strokeRect(px, 30, 96, height - 180);
+      decor.strokeRect(px, 30, 96, wallGroundY - 60);
       decor.fillStyle(0xf59e0b, 0.15);
-      decor.fillRect(px + 4, 34, 88, height - 188);
+      decor.fillRect(px + 4, 34, 88, wallGroundY - 68);
     }
 
     // Grand Gilded Royal Pillars
     const drawGoldPillar = (px) => {
       decor.fillStyle(0xb45309, 1);
-      decor.fillRect(px - 25, 0, 50, height - 120);
+      decor.fillRect(px - 25, 0, 50, wallGroundY);
       decor.fillStyle(0xf59e0b, 0.95);
-      decor.fillRect(px - 20, 0, 40, height - 120);
+      decor.fillRect(px - 20, 0, 40, wallGroundY);
       decor.fillStyle(0xfef08a, 0.8);
-      decor.fillRect(px - 8, 0, 16, height - 120); // gleaming specular streak
+      decor.fillRect(px - 8, 0, 16, wallGroundY); // gleaming specular streak
 
       // Pillar capital & base
       decor.fillStyle(0xd97706, 1);
       decor.fillRect(px - 32, 0, 64, 25);
-      decor.fillRect(px - 30, height - 150, 60, 30);
+      decor.fillRect(px - 30, wallGroundY - 30, 60, 30);
       decor.lineStyle(2, 0x78350f, 1);
       decor.strokeRect(px - 32, 0, 64, 25);
       decor.strokeRect(px - 30, height - 150, 60, 30);
@@ -173,8 +176,8 @@ export default class Chapter5Scene extends Phaser.Scene {
     rays.fillStyle(0xfde047, 0.09);
     rays.beginPath();
     rays.moveTo(width / 2, 0);
-    rays.lineTo(width * 0.45, height - 120);
-    rays.lineTo(width * 0.85, height - 120);
+    rays.lineTo(width * 0.45, wallGroundY);
+    rays.lineTo(width * 0.85, wallGroundY);
     rays.closePath();
     rays.fill();
 

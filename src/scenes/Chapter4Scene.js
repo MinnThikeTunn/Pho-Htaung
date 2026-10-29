@@ -35,7 +35,8 @@ export default class Chapter4Scene extends Phaser.Scene {
 
     this.createChamberDecor(width, height);
 
-    const groundY = height - 120;
+    // Ground line - Unified exact Chapter 1 Baseline (576px on 1280x720)
+    const groundY = Math.round(height * 0.80);
     this.groundY = groundY;
     const ground = this.add.rectangle(width / 2, groundY + 60, width, 120, 0x18120e);
     this.physics.add.existing(ground, true);
@@ -103,18 +104,19 @@ export default class Chapter4Scene extends Phaser.Scene {
   createChamberDecor(width, height) {
     const decor = this.add.graphics();
 
+    const wallGroundY = this.groundY || Math.round(height * 0.80);
     // 1. Bolted Iron Bulkhead Walls with Rust Streaks
     decor.fillStyle(0x191410, 0.98);
-    decor.fillRect(0, 0, width, height - 120);
+    decor.fillRect(0, 0, width, wallGroundY);
 
     // Bulkhead seams
     decor.lineStyle(2, 0x334155, 0.85);
     for (let bx = 0; bx < width; bx += 110) {
-      decor.strokeRect(bx, 0, 108, height - 120);
+      decor.strokeRect(bx, 0, 108, wallGroundY);
 
       // Industrial hex bolts along seams
       decor.fillStyle(0x475569, 1);
-      for (let by = 30; by < height - 120; by += 40) {
+      for (let by = 30; by < wallGroundY; by += 40) {
         decor.fillCircle(bx + 4, by, 3);
         decor.fillCircle(bx + 104, by, 3);
       }
@@ -207,7 +209,7 @@ export default class Chapter4Scene extends Phaser.Scene {
     });
 
     // 5. Diamond-Plate Steel Industrial Decking Floor
-    const groundY = height - 120;
+    const groundY = this.groundY || Math.round(height * 0.80);
     const floorDetail = this.add.graphics().setDepth(3);
     floorDetail.fillStyle(0x241d18, 1);
     floorDetail.fillRect(0, groundY, width, 18);
