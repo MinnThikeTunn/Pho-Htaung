@@ -324,12 +324,7 @@ export class MicroInteractions {
       });
     }
 
-    // Show Machinarium Thought Bubble with requested item
-    if (thought && hintItemKey && player) {
-      thought.show(player.x, player.y, hintItemKey);
-    }
-
-    // Subtitle reaction
+    // Direct Narrator voiceover delivery (zero thought bubbles)
     if (subtitle && message) {
       subtitle.say(message);
     }

@@ -138,6 +138,19 @@ export default class InventoryBar {
       }
     });
 
+    this.keyHandler = (e) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (['1', '2', '3'].includes(e.key)) {
+        const idx = parseInt(e.key, 10) - 1;
+        if (idx >= 0 && idx < this.slotImages.length) {
+          this.handleClickSlot(idx);
+        }
+      }
+    };
+    window.addEventListener('keydown', this.keyHandler);
+    this.scene.events.once('shutdown', () => {
+      window.removeEventListener('keydown', this.keyHandler);
+    });
     this.refresh();
   }
 

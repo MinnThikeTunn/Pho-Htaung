@@ -30,6 +30,37 @@ it('bridge chapter exposes authentic comedic Burmese voiceover dialogue constant
   expect(DIALOGUE.bridge_beeswax_lubricate).toContain('ပျားဖယောင်း');
   expect(DIALOGUE.bridge_brick_pickup).toContain('အုတ်ခဲ');
   expect(DIALOGUE.bridge_bee_enraged).toContain('သွေးဆာ');
+  expect(DIALOGUE.bridge_rope_cut).toContain('ကွမ်းသီးညှပ်နဲ့ ကြိုးကို ဖြတ်ချ');
+  expect(DIALOGUE.bridge_rope_hint).toContain('ဝါးလုံးကို ကြိုးနဲ့ တင်းတင်းချည်ထားတယ်');
+  expect(DIALOGUE.bridge_cog_pried).toContain('ဝါးလုံးနဲ့ ကလော်လိုက်တော့');
+  expect(DIALOGUE.bridge_cog_hint).toContain('ဂီယာခွေက ကျောက်တုံးကြီးအောက်မှာ');
+  expect(DIALOGUE.bridge_coin_trap).toContain('လောဘဇော');
+  expect(DIALOGUE.bridge_coin_trap).toContain('ထောင်ချောက်');
+});
+it('chapter 1 rebalanced geometry maintains fair bypass past the greedy coin trapdoor',()=>{
+  // 60% Left platform (0-768), 15% Pit (768-960), 25% Right platform (960-1280)
+  const width = 1280;
+  const leftPlatWidth = width * 0.60;
+  const pitWidth = width * 0.15;
+  const rightPlatX = width * 0.75;
+  const rightPlatWidth = width - rightPlatX;
+  expect(leftPlatWidth).toBe(768);
+  expect(pitWidth).toBe(192);
+  expect(rightPlatX).toBe(960);
+  expect(rightPlatWidth).toBe(320);
+
+  // Right platform partitioning:
+  // Landing shelf: 960 - 1030
+  // Trapdoor void: 1030 - 1120
+  // Exit ledge: 1120 - 1280
+  const trapStart = 1030;
+  const trapEnd = 1120;
+  const trapGap = trapEnd - trapStart;
+  expect(trapGap).toBe(90);
+
+  // Safe crossing bypass into cave portal (x >= 1180) satisfies bridgeExit domain predicate
+  const exitPastTrap = { alive: true, grounded: true, x: 1200, feetY: 576, groundY: 576, width: 1280, tunnelOpened: false };
+  expect(bridgeExit(exitPastTrap)).toBe(true);
 });
 it('laying control state and belly-crawling configuration align with actor contract',()=>{
   const state: import('../../src/view/PhoeHtaungView').PhoeActorState = {

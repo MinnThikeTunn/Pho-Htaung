@@ -63,9 +63,9 @@ export default class Chapter1Scene extends Phaser.Scene {
     });
 
     const groundY = this.parallax.getWalkableGroundY();
-    const leftPlatWidth = width * 0.443;
-    const pitWidth = width * 0.204;
-    const rightPlatX = width * 0.647;
+    const leftPlatWidth = width * 0.60;
+    const pitWidth = width * 0.15;
+    const rightPlatX = width * 0.75;
     const rightPlatWidth = width - rightPlatX;
 
     this.groundY = groundY;
@@ -120,7 +120,7 @@ export default class Chapter1Scene extends Phaser.Scene {
     this.createDrawbridgeAssembly(leftPlatWidth, groundY, pitWidth);
 
     // 6. Wall Chalk Diagram (Machinarium Clue)
-    this.createWallChalkDiagram(leftPlatWidth * 0.45, groundY - 110);
+    this.createWallChalkDiagram(640, 190);
 
     // 7. Phoe Htaung Player Character (Top Z-Index Depth: 150)
     this.playerBaseScale = 1.42;
@@ -514,8 +514,8 @@ export default class Chapter1Scene extends Phaser.Scene {
                 if (this.bridgeWalkPlat) {
                   this.bridgeWalkPlat.destroy();
                 }
-                const pitWidth = this.pitWidth || this.scale.width * 0.204;
-                const leftPlatWidth = this.leftPlatWidth || this.scale.width * 0.443;
+                const pitWidth = this.pitWidth || this.scale.width * 0.15;
+                const leftPlatWidth = this.leftPlatWidth || this.scale.width * 0.60;
                 const groundY = this.groundY;
 
                 this.bridgeWalkPlat = this.add.rectangle(leftPlatWidth + pitWidth / 2, groundY + 10, pitWidth + 30, 20, 0x000000).setVisible(false);
@@ -541,7 +541,6 @@ export default class Chapter1Scene extends Phaser.Scene {
     hit.on('pointerdown', () => {
       this.interactWithProximity(x, () => {
         soundEngine.playPaper();
-        this.thought.show(this.player.x, this.player.y, 'item-bamboo-pole', 'တံတားယန္တရား ပုံကြမ်း');
         this.subtitle.say('ကျောက်နံရံပေါ်မှာ ထုံးဖြူနဲ့ ဆွဲထားတဲ့ ပုံကြမ်းပဲ... စက်သီးကို ဂီယာတပ်ပြီး လှည့်ရမယ်တဲ့။ ပြီးတော့ ဘယ်ဘက်နံရံဆီ မျှားထိုးပြထားသေးတယ်!');
       });
     });
@@ -684,7 +683,7 @@ export default class Chapter1Scene extends Phaser.Scene {
     const canJump = onGround && !this.isDead && !this.isInteracting;
 
     // Prevent walking off the cliff edge into the pit when bridge is not lowered
-    const leftPlatWidth = this.leftPlatWidth || this.scale.width * 0.443;
+    const leftPlatWidth = this.leftPlatWidth || this.scale.width * 0.60;
     if (!this.bridgeLowered && !jumpDown && onGround) {
       if (this.player.x > leftPlatWidth - 16 && vx > 0) {
         this.player.x = leftPlatWidth - 16;

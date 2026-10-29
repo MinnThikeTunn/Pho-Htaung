@@ -93,7 +93,6 @@ export default class Chapter2Scene extends Phaser.Scene {
     this.thought = new ThoughtBubble(this);
 
     this.inventoryBar = new InventoryBar(this, (combined) => {
-      this.thought.show(this.player.x, this.player.y, 'item-half-bottle', 'ရေဗူးခြမ်း ရရှိပြီ!');
       this.subtitle.say('အံမယ်... ကွမ်းသီးညှပ်နဲ့ ရေဗူးစုတ်ကို ထက်ခြမ်း လှီးချလိုက်တယ်ဟေ့! ရေဗူးခြမ်းလေး ရသွားပြီ။ ပိုက်ခေါင်းမှာ သွားစွပ်ကြည့်မလား?');
     });
 
@@ -375,7 +374,6 @@ export default class Chapter2Scene extends Phaser.Scene {
             this.subtitle.say('ဟားဟား! ဒီပစ္စည်းက ရေနွေးငွေ့ပိုက်ဝနဲ့ အံမဝင်ဘူးဗျ! မီးခိုးတွေ ပန်းထွက်လာပြီ!');
           });
         } else {
-          this.thought.show(this.player.x, this.player.y, 'item-half-bottle', 'ပိုက်ခေါင်းဝ စွပ်ရန် လိုသည်');
           this.subtitle.say('ရေနွေးငွေ့ထွက်မယ့် ခေါင်းပေါက်ကြီးပဲ... အပေါက်ကို ကာမထားရင် ရေနွေးငွေ့က ငါ့ဆီ တည့်တည့်လာမှန်လိမ့်မယ်!');
         }
       });

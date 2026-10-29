@@ -9,6 +9,8 @@ export const STONE = 0x3b4b3d;
 export const STEP_STONE = 0x6e7c66;
 export const BETEL_RED = 0x9b111e;
 export const BETEL_DARK = 0x5a0808;
+export const ROPE = 0xc4a364;
+export const ROPE_DARK = 0x8c6d3b;
 
 /**
  * Chapter 2 Signature Block Drawing Function
@@ -131,6 +133,41 @@ export function createBrickTexture(scene: Phaser.Scene, key = 'ch1_vector_brick'
   drawFallingBrick(g, 2, 2, width - 4, height - 4);
   g.generateTexture(key, width, height);
   g.destroy();
+}
+
+/**
+ * Draws a tightly wound hemp rope knot with diagonal fibers and frayed tail.
+ */
+export function drawRopeKnot(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+  // 3 Horizontal bound loops
+  for (let i = 0; i < 3; i++) {
+    const ly = y + i * 7;
+    g.fillStyle(INK, 1).fillRoundedRect(x - 1, ly - 1, 18, 7, 2);
+    g.fillStyle(ROPE, 1).fillRoundedRect(x, ly, 16, 5, 2);
+    g.fillStyle(CREAM, 0.35).fillRect(x + 2, ly + 1, 12, 1.5);
+    // Dark hemp fiber diagonals
+    g.lineStyle(1, ROPE_DARK, 0.8);
+    g.lineBetween(x + 3, ly + 4, x + 7, ly + 1);
+    g.lineBetween(x + 8, ly + 4, x + 12, ly + 1);
+  }
+  // Hanging frayed tail
+  g.lineStyle(2, ROPE, 1).lineBetween(x + 8, y + 21, x + 11, y + 27);
+  g.lineStyle(1.5, ROPE_DARK, 0.9).lineBetween(x + 7, y + 21, x + 5, y + 26);
+}
+
+/**
+ * Draws a heavy angular boulder matching STEP_STONE palette with deep crevice mouth.
+ */
+export function drawStuckRockCrevice(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+  // Heavy angular boulder matching STEP_STONE palette
+  drawBlock(g, { x: x + 4, y: y + 4, w: 56, h: 34 }, STEP_STONE, false);
+  // Deep dark crevice mouth where cog peeks out
+  g.fillStyle(INK, 1).fillRoundedRect(x + 26, y + 24, 28, 12, 2);
+  g.fillStyle(0x0c1410, 1).fillRect(x + 28, y + 26, 24, 8);
+  // Crack line running up boulder face
+  g.lineStyle(1.8, INK, 0.75);
+  g.lineBetween(x + 32, y + 24, x + 24, y + 12);
+  g.lineBetween(x + 24, y + 12, x + 36, y + 6);
 }
 
 /**
@@ -427,6 +464,89 @@ export function ensureBridgeTextures(scene: Phaser.Scene, bridgeLength: number) 
     hex(24, 16, 4.5);
     hex(19.5, 24, 4.5);
   });
+
+  // 15. Procedural Tied Hemp Rope Knot (24x28)
+  registerTexture('ch1_vector_rope_knot', 24, 28, (g) => {
+    drawRopeKnot(g, 4, 1);
+  });
+
+  // 16. Procedural Wedged Rock Crevice Prop (64x42)
+  registerTexture('ch1_vector_stuck_rock', 64, 42, (g) => {
+    drawStuckRockCrevice(g, 0, 0);
+  });
+
+  // 17. Procedural Floating Stone Platform (120x24)
+  registerTexture('ch1_vector_floating_platform', 120, 24, (g) => {
+    drawFloatingPlatform(g, 2, 2, 116, 20);
+  });
+
+  // 18. Procedural Collapsible Trap Floor Slab (90x24)
+  registerTexture('ch1_vector_trap_floor', 90, 24, (g) => {
+    drawTrapFloor(g, 2, 2, 86, 20);
+  });
+}
+
+/**
+ * Draws a collapsible stone trapdoor slab matching STEP_STONE palette with hairline fractures.
+ */
+export function drawTrapFloor(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  w: number,
+  h: number
+) {
+  // Outer ink border
+  g.fillStyle(INK, 1).fillRoundedRect(x - 2, y - 2, w + 4, h + 4, 3);
+  // Main stone slab body
+  g.fillStyle(STEP_STONE, 1).fillRect(x, y, w, h);
+  // Top bevel highlight in cream
+  g.fillStyle(CREAM, 0.22).fillRect(x + 2, y + 2, w - 4, Math.min(4, h - 2));
+  // Dark bottom shadow bevel
+  if (h > 6) {
+    g.fillStyle(STONE, 0.55).fillRect(x + 2, y + h - 4, w - 4, 2);
+  }
+  // Subtle hairline cracks / fissures indicating a weak collapsible mechanism
+  g.lineStyle(1.2, INK, 0.55);
+  g.lineBetween(x + w * 0.25, y + 3, x + w * 0.32, y + h * 0.6);
+  g.lineBetween(x + w * 0.32, y + h * 0.6, x + w * 0.28, y + h - 3);
+  g.lineBetween(x + w * 0.65, y + 2, x + w * 0.60, y + h * 0.5);
+  g.lineBetween(x + w * 0.60, y + h * 0.5, x + w * 0.72, y + h - 2);
+  // Faint separation seams near the edges
+  g.lineStyle(1, 0x172820, 0.4);
+  g.lineBetween(x + 4, y + 2, x + 4, y + h - 2);
+  g.lineBetween(x + w - 4, y + 2, x + w - 4, y + h - 2);
+}
+
+/**
+ * Draws a floating stone platform aligned with Chapter 2's signature STEP_STONE vector styling.
+ */
+export function drawFloatingPlatform(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  w: number,
+  h: number
+) {
+  // Outer ink border with rounded corners
+  g.fillStyle(INK, 1).fillRoundedRect(x - 2, y - 2, w + 4, h + 4, 4);
+  // Main stone slab body
+  g.fillStyle(STEP_STONE, 1).fillRoundedRect(x, y, w, h, 3);
+  // Top cream bevel highlight
+  g.fillStyle(CREAM, 0.28).fillRect(x + 2, y + 2, w - 4, Math.min(4, Math.max(1, h - 2)));
+  // Left edge highlight
+  g.fillStyle(CREAM, 0.15).fillRect(x + 2, y + 2, Math.min(3, Math.max(1, w - 4)), Math.max(1, h - 4));
+  // Dark bottom shadow bevel
+  if (h > 6) {
+    g.fillStyle(STONE, 0.6).fillRect(x + 2, y + h - 4, w - 4, 2);
+  }
+  // Subtle Bagan stone fissure lines
+  g.lineStyle(1.5, INK, 0.45);
+  g.lineBetween(x + w * 0.28, y + 4, x + w * 0.34, y + h - 6);
+  g.lineBetween(x + w * 0.68, y + 4, x + w * 0.64, y + h - 5);
+  // Subtle ancient Bagan gold glyph / fossil stud
+  g.fillStyle(GOLD, 0.65).fillCircle(x + w * 0.5, y + h * 0.5, 2.5);
+  g.lineStyle(1, INK, 0.7).strokeCircle(x + w * 0.5, y + h * 0.5, 2.5);
 }
 
 /**
@@ -462,7 +582,8 @@ export function drawBridgeTerrain(
   pitWidth: number,
   rightX: number,
   rightWidth: number,
-  groundY: number
+  groundY: number,
+  trap?: { startX: number; endX: number }
 ) {
   g.clear();
 
@@ -473,11 +594,37 @@ export function drawBridgeTerrain(
     g.lineStyle(1, 0x172820, 0.5).lineBetween(x, groundY + 10, x + 12, groundY + 144);
   }
 
-  // 2. Right Platform (rightX to 1280)
-  drawBlock(g, { x: rightX, y: groundY, w: rightWidth, h: 144 }, STONE);
-  g.fillStyle(0x8e9470, 1).fillRect(rightX, groundY, rightWidth, 7);
-  for (let x = rightX; x < 1280; x += 92) {
-    g.lineStyle(1, 0x172820, 0.5).lineBetween(x, groundY + 10, x + 12, groundY + 144);
+  // 2. Right Platform (rightX to rightX + rightWidth)
+  if (trap && trap.startX > rightX && trap.endX < rightX + rightWidth) {
+    // 2a. Landing Shelf: rightX to trap.startX
+    const shelfWidth = trap.startX - rightX;
+    drawBlock(g, { x: rightX, y: groundY, w: shelfWidth, h: 144 }, STONE);
+    g.fillStyle(0x8e9470, 1).fillRect(rightX, groundY, shelfWidth, 7);
+    for (let x = rightX; x < trap.startX; x += 92) {
+      g.lineStyle(1, 0x172820, 0.5).lineBetween(x, groundY + 10, x + 12, groundY + 144);
+    }
+
+    // 2b. Trap Void under trapdoor
+    const trapW = trap.endX - trap.startX;
+    g.fillStyle(0x0e1713, 0.95).fillRect(trap.startX, groundY, trapW, 144);
+    // Beveled inner ledge corners
+    g.fillStyle(INK, 1).fillRect(trap.startX - 2, groundY, 3, 144);
+    g.fillStyle(INK, 1).fillRect(trap.endX - 1, groundY, 3, 144);
+
+    // 2c. Exit Ledge: trap.endX to rightX + rightWidth
+    const exitWidth = rightX + rightWidth - trap.endX;
+    drawBlock(g, { x: trap.endX, y: groundY, w: exitWidth, h: 144 }, STONE);
+    g.fillStyle(0x8e9470, 1).fillRect(trap.endX, groundY, exitWidth, 7);
+    for (let x = trap.endX; x < rightX + rightWidth; x += 92) {
+      g.lineStyle(1, 0x172820, 0.5).lineBetween(x, groundY + 10, x + 12, groundY + 144);
+    }
+  } else {
+    // Default continuous platform
+    drawBlock(g, { x: rightX, y: groundY, w: rightWidth, h: 144 }, STONE);
+    g.fillStyle(0x8e9470, 1).fillRect(rightX, groundY, rightWidth, 7);
+    for (let x = rightX; x < rightX + rightWidth; x += 92) {
+      g.lineStyle(1, 0x172820, 0.5).lineBetween(x, groundY + 10, x + 12, groundY + 144);
+    }
   }
 
   // 3. Pit Chasm Void (Between leftWidth and rightX)

@@ -58,10 +58,16 @@ export default class BridgeChapterScene extends LegacyBridge {
     this.input.enabled = true;
 
     // Ensure our crisp procedural vector textures exist
-    const pitWidth = this.scale.width * 0.204;
+    const pitWidth = this.scale.width * 0.15;
     ensureBridgeTextures(this, pitWidth + 26);
 
     super.create();
+
+    // Ensure clean 60% left platform, 15% pit, 25% right platform proportions
+    this.leftPlatWidth = this.scale.width * 0.60;
+    this.pitWidth = this.scale.width * 0.15;
+    this.rightPlatX = this.scale.width * 0.75;
+    this.rightPlatWidth = this.scale.width - this.rightPlatX;
 
     // 1. Deactivate & destroy moving parallax background
     if (this.parallax) {
@@ -106,17 +112,6 @@ export default class BridgeChapterScene extends LegacyBridge {
     this.leftWall.setAlpha(0.001); // Invisible click collider
     this.secretTunnelDoor.setDepth(17);
 
-    // Left wall secret hint label
-    this.add
-      .text(32, this.groundY - 130, 'နံရံကြောင်း', {
-        fontFamily: 'Noto Sans Myanmar',
-        fontSize: '12px',
-        color: '#e7c27a',
-        backgroundColor: '#182720',
-        padding: { x: 4, y: 2 }
-      })
-      .setDepth(180);
-
     // Authentic U Gyi opening voiceover prompt from narration.txt
     this.time.delayedCall(500, () => {
       this.subtitle.say(
@@ -138,9 +133,20 @@ export default class BridgeChapterScene extends LegacyBridge {
     this.facing = 1;
     this.winchJammed = false;
     this.winchLubricated = false;
+    this.poleTied = true;
+    this.cogWedged = true;
+    this.isPrying = false;
+    this.bambooItem = null;
+    this.cogItem = null;
+    if (!gameState.hasItem('betel_cutter')) {
+      gameState.addItem('betel_cutter');
+    }
+    this.inventoryBar?.refresh();
     this.jamCounter = 0;
-    this.nextBrickTimer = 4.5;
+    this.hazardStarted = false;
+    this.nextBrickTimer = 7.0;
     this.hazardDropIndex = 0;
+    this.firstHazardTriggered = false;
     this.isVaulting = false;
     this.coinYoinked = false;
     this.isLaying = false;
@@ -148,7 +154,7 @@ export default class BridgeChapterScene extends LegacyBridge {
     this.isMudSubmerged = false;
     this.muddyTimer = 0;
     this.hasActiveBees = false;
-    this.beeChaseSpeed = 190;
+    this.beeChaseSpeed = 140;
     this.activeBees = [];
     this.beeswaxItem = null;
     this.mudPatch = null;
@@ -157,13 +163,42 @@ export default class BridgeChapterScene extends LegacyBridge {
     // Procedural Mud Patch on left platform
     this.createMudPatch(this.groundY);
 
-    // Remove legacy instant-rocket collider on right platform so safe landing & coin yoink can occur
+    // Split Right Platform into Safe Landing Shelf, Collapsible Trapdoor Slab, and Safe Exit Ledge
     if (this.rightPlatCollider) {
-      this.rightPlatCollider.destroy();
-      this.rightPlatCollider = this.physics.add.collider(this.player, this.rightPlat);
+      this.physics.world.removeCollider(this.rightPlatCollider);
+      this.rightPlatCollider = null;
+    }
+    if (this.rightPlat) {
+      this.rightPlat.destroy();
+      this.rightPlat = null;
     }
 
-    // Fishing line graphics layer for the coin yoink trap
+    // Safe Landing Shelf (960 to 1030, center 995, width 70)
+    this.rightLandingPlat = this.add
+      .rectangle(995, this.groundY + 60, 70, 120, 0x000000)
+      .setAlpha(0);
+    this.physics.add.existing(this.rightLandingPlat, true);
+    this.physics.add.collider(this.player, this.rightLandingPlat);
+
+    // Collapsible Ground Segment under the Gold Coin (1030 to 1120, center 1075, width 90, height 120)
+    this.trapFloorColliderBody = this.add
+      .rectangle(1075, this.groundY + 60, 90, 120, 0x000000)
+      .setAlpha(0);
+    this.physics.add.existing(this.trapFloorColliderBody, true);
+    this.trapFloorCollider = this.physics.add.collider(
+      this.player,
+      this.trapFloorColliderBody
+    );
+    this.trapTriggered = false;
+
+    // Safe Exit Ledge (1120 to 1280, center 1200, width 160)
+    this.rightExitPlat = this.add
+      .rectangle(1200, this.groundY + 60, 160, 120, 0x000000)
+      .setAlpha(0);
+    this.physics.add.existing(this.rightExitPlat, true);
+    this.physics.add.collider(this.player, this.rightExitPlat);
+
+    // Fishing line graphics layer for legacy coin yoink fallback
     this.fishingLineG = this.add.graphics().setDepth(29);
 
     // Configure Trap 1: Invisible Sky Block (Die Again head-bonk)
@@ -172,29 +207,29 @@ export default class BridgeChapterScene extends LegacyBridge {
       this.invisibleBlock.body?.updateFromGameObject?.();
     }
 
-    // Configure Deceptive Baits: Giant Shiny Gold Coin & Green Checkpoint Flag
+    // Configure Deceptive Bait: Giant Shiny Gold Coin on normal ground
     if (this.coin) {
+      this.coin.setPosition(1075, this.groundY - 24);
       this.coin.setTexture('coin-bait').setScale(0.85).setDepth(28);
+      this.coin.setInteractive({ useHandCursor: true });
+      this.coin.on('pointerdown', (_p, _x, _y, event) => {
+        event?.stopPropagation();
+        this.interactWithProximity(1075, () => {
+          this.triggerGreedyCoinTrap();
+        });
+      });
     }
+
+    // Clean up checkpoint flag text sticker
     if (this.flag) {
-      this.flag
-        .setStyle({
-          fontFamily: 'Noto Sans Myanmar',
-          fontSize: '13px',
-          fontStyle: 'bold',
-          color: '#22c55e',
-          backgroundColor: '#182720',
-          padding: { x: 6, y: 3 }
-        })
-        .setDepth(28);
+      this.flag.setVisible(false);
+      this.flag.destroy();
+      this.flag = null;
     }
 
     // Tantalizing ambient gold aura under the coin bait
     this.baitGlow = this.add.graphics().setDepth(27);
-    this.baitGlow.fillStyle(GOLD, 0.15).fillCircle(this.rightPlatX + 70, this.groundY - 26, 28);
-
-    this.rightPlat.body.setVelocity(0, 0);
-    this.rightPlat.body.setImmovable(true);
+    this.baitGlow.fillStyle(GOLD, 0.15).fillCircle(1075, this.groundY - 26, 28);
 
     // Character setup
     this.playerBaseScale = 1;
@@ -258,7 +293,7 @@ export default class BridgeChapterScene extends LegacyBridge {
   }
 
   createMudPatch(groundY) {
-    const mx = 150;
+    const mx = 180;
     const my = groundY - 6;
     this.mudPatch = this.add.image(mx, my, 'ch1_vector_mud_patch').setDepth(22);
     this.mudBounds = { minX: mx - 55, maxX: mx + 55, y: my };
@@ -283,8 +318,11 @@ export default class BridgeChapterScene extends LegacyBridge {
     });
   }
 
-  createWallChalkDiagram(x, y) {
-    this.chalkContainer = this.add.container(x, y).setDepth(20);
+  createWallChalkDiagram(_x, _y) {
+    // Horizontally centered in the middle of the screen (x = 640) and safely below the HUD (clueY = 190)
+    const clueX = 640;
+    const clueY = 190;
+    this.chalkContainer = this.add.container(clueX, clueY).setDepth(20);
     const diagram = this.add.image(0, 0, 'ch1_vector_stele');
 
     const hit = this.add
@@ -292,9 +330,8 @@ export default class BridgeChapterScene extends LegacyBridge {
       .setInteractive({ useHandCursor: true });
 
     hit.on('pointerdown', () => {
-      this.interactWithProximity(x, () => {
+      this.interactWithProximity(clueX, () => {
         soundEngine.playPaper();
-        this.thought.show(this.player.x, this.player.y, 'ch1_vector_bamboo', 'တံတားယန္တရား ပုံကြမ်း');
         this.subtitle.say(
           'ကျောက်နံရံပေါ်က ပုံကြမ်းပဲ... စက်သီးမှာ ဂီယာနဲ့ ဝါးလုံးတပ်ပြီး လှည့်ရမယ်။ ဘယ်ဘက်နံရံကိုလည်း မျှားပြထားတယ်။'
         );
@@ -424,87 +461,324 @@ export default class BridgeChapterScene extends LegacyBridge {
 
   createToolPickups(groundY) {
     this.pickupHalos = [];
-    const pickupDefs = [
-      ['bambooItem', 'bamboo_pole', 0.18, 'ch1_vector_bamboo', 0.65],
-      ['cogItem', 'rusty_cog', 0.28, 'ch1_vector_cog', 0.75]
-    ];
+    this.bambooItem = null;
+    this.cogItem = null;
 
-    for (const [field, id, ratio, key, scale] of pickupDefs) {
-      const px = 1280 * ratio;
-      const py = groundY - 14;
+    // 1. Floating Stone Platform in the former stele location (x ≈ 340, y = groundY - 110)
+    const platX = 340;
+    const platY = groundY - 110;
+    this.floatingPlat = this.add
+      .image(platX, platY, 'ch1_vector_floating_platform')
+      .setDepth(22);
+    this.physics.add.existing(this.floatingPlat, true);
+    this.physics.add.collider(this.player, this.floatingPlat);
 
-      // Chapter 2 subtle ambient gold halo
-      const halo = this.add.graphics().setDepth(28);
-      halo.fillStyle(GOLD, 0.12).fillCircle(px, py, 18);
-      this.pickupHalos.push({ halo, field });
+    // Support bracket & Tied Bamboo Pole on Floating Platform
+    this.scaffoldG = this.add.graphics().setDepth(23);
+    drawBlock(this.scaffoldG, { x: platX - 9, y: platY - 68, w: 18, h: 56 }, WOOD, true);
+    this.scaffoldG.fillStyle(INK, 1).fillCircle(platX, platY - 58, 3);
+    this.scaffoldG.fillStyle(GOLD, 1).fillCircle(platX, platY - 58, 1.8);
 
-      const item = this.add
-        .image(px, py, key)
-        .setScale(scale)
-        .setDepth(30)
-        .setInteractive({ useHandCursor: true });
+    // Bamboo pole standing upright against bracket on floating platform
+    this.tiedPoleSprite = this.add
+      .image(platX, platY - 48, 'ch1_vector_bamboo')
+      .setDepth(28)
+      .setInteractive({ useHandCursor: true });
 
-      this[field] = item;
+    // Coiled hemp rope knot bound over pole
+    this.ropeKnotSprite = this.add
+      .image(platX, platY - 45, 'ch1_vector_rope_knot')
+      .setDepth(30)
+      .setInteractive({ useHandCursor: true });
 
-      // Hover micro-interaction
-      item.on('pointerover', () => item.setScale(scale * 1.15));
-      item.on('pointerout', () => item.setScale(scale));
+    const onPoleClick = (_p, _x, _y, event) => {
+      event?.stopPropagation();
+      this.interactWithProximity(platX, () => this.handleTiedPoleInteraction());
+    };
+    this.tiedPoleSprite.on('pointerdown', onPoleClick);
+    this.ropeKnotSprite.on('pointerdown', onPoleClick);
 
-      item.on('pointerdown', (_p, _x, _y, event) => {
-        event?.stopPropagation();
-        this.interactWithProximity(item.x, () => {
-          if (!item.active || this.isInteracting) return;
-          this.isInteracting = true;
-          this.pickupState = 'PICKUP';
-          soundEngine.playWoosh();
+    const onPoleOver = () => {
+      if (this.tiedPoleSprite) this.tiedPoleSprite.setScale(1.08);
+      if (this.ropeKnotSprite) this.ropeKnotSprite.setScale(1.08);
+    };
+    const onPoleOut = () => {
+      if (this.tiedPoleSprite) this.tiedPoleSprite.setScale(1.0);
+      if (this.ropeKnotSprite) this.ropeKnotSprite.setScale(1.0);
+    };
+    this.tiedPoleSprite.on('pointerover', onPoleOver);
+    this.tiedPoleSprite.on('pointerout', onPoleOut);
+    this.ropeKnotSprite.on('pointerover', onPoleOver);
+    this.ropeKnotSprite.on('pointerout', onPoleOut);
 
-          // Remove halo
-          halo.destroy();
+    // 2. Wedged Cog in Fallen Rock Crevice (x = 580)
+    // Heavy angular boulder matching STEP_STONE palette
+    this.stuckRockSprite = this.add
+      .image(580, groundY - 21, 'ch1_vector_stuck_rock')
+      .setDepth(28)
+      .setInteractive({ useHandCursor: true });
 
-          const handX = this.player.body.center.x + this.facing * 18;
-          const handY = this.groundY - 20;
+    // Cog teeth peeking out from boulder crevice at 20 deg
+    this.wedgedCogSprite = this.add
+      .image(592, groundY - 14, 'ch1_vector_cog')
+      .setScale(0.55)
+      .setAngle(20)
+      .setDepth(29)
+      .setInteractive({ useHandCursor: true });
 
-          this.tweens.add({
-            targets: item,
-            x: handX,
-            y: handY,
-            scale: 0.4,
-            duration: 220,
-            ease: 'Quad.Out',
-            onComplete: () => {
-              soundEngine.playPickup();
-              this.pickupState = 'RUMMAGE';
-              soundEngine.playBagRustle();
+    const onRockClick = (_p, _x, _y, event) => {
+      event?.stopPropagation();
+      this.interactWithProximity(580, () => this.handleStuckCogInteraction());
+    };
+    this.stuckRockSprite.on('pointerdown', onRockClick);
+    this.wedgedCogSprite.on('pointerdown', onRockClick);
 
-              const bagX = this.player.body.center.x - this.facing * 10;
-              const bagY = this.groundY - 45;
+    const onRockOver = () => {
+      if (this.stuckRockSprite) this.stuckRockSprite.setScale(1.06);
+      if (this.wedgedCogSprite) this.wedgedCogSprite.setScale(0.55 * 1.1);
+    };
+    const onRockOut = () => {
+      if (this.stuckRockSprite) this.stuckRockSprite.setScale(1.0);
+      if (this.wedgedCogSprite) this.wedgedCogSprite.setScale(0.55);
+    };
+    this.stuckRockSprite.on('pointerover', onRockOver);
+    this.stuckRockSprite.on('pointerout', onRockOut);
+    this.wedgedCogSprite.on('pointerover', onRockOver);
+    this.wedgedCogSprite.on('pointerout', onRockOut);
+  }
 
-              this.tweens.add({
-                targets: item,
-                x: bagX,
-                y: bagY,
-                scale: 0.1,
-                alpha: 0.3,
-                duration: 260,
-                ease: 'Cubic.In',
-                onComplete: () => {
-                  gameState.addItem(id);
-                  item.destroy();
-                  this.inventoryBar.refresh();
-                  this.pickupState = null;
-                  this.isInteracting = false;
-                  this.subtitle.say(
-                    id === 'rusty_cog'
-                      ? 'ဂီယာခွေ ရပြီ။ လွယ်အိတ်က ရွေးပြီး စက်သီးမှာ တပ်ပါ။'
-                      : 'ဝါးလုံး ရပြီ။ လွယ်အိတ်က ရွေးပြီး လီဗာမောင်းတံအဖြစ် သုံးပါ။'
-                  );
-                }
-              });
+  handleTiedPoleInteraction() {
+    if (!this.poleTied || this.isInteracting || this.isDead || this.completing) return;
+    const selected = this.inventoryBar?.getSelected();
+
+    if (selected === 'betel_cutter') {
+      this.isInteracting = true;
+      this.hideHeldItem();
+      soundEngine.playScissors();
+
+      const dropTargetY = this.floatingPlat ? this.floatingPlat.y - 12 : this.groundY;
+
+      // 1. Sever rope knot with drop & fade
+      if (this.ropeKnotSprite) {
+        this.tweens.add({
+          targets: this.ropeKnotSprite,
+          y: dropTargetY,
+          alpha: 0,
+          duration: 320,
+          ease: 'Quad.In',
+          onComplete: () => {
+            if (this.ropeKnotSprite) {
+              this.ropeKnotSprite.destroy();
+              this.ropeKnotSprite = null;
             }
-          });
+          }
+        });
+      }
+
+      // 2. Bamboo pole tilts 0 -> 90 deg and drops into hand/bag
+      if (this.tiedPoleSprite) {
+        this.tweens.add({
+          targets: this.tiedPoleSprite,
+          angle: 90,
+          y: dropTargetY - 4,
+          duration: 260,
+          ease: 'Bounce.Out',
+          onComplete: () => {
+            if (this.tiedPoleSprite) {
+              this.tiedPoleSprite.destroy();
+              this.tiedPoleSprite = null;
+            }
+            gameState.addItem('bamboo_pole');
+            this.inventoryBar?.refresh();
+            this.poleTied = false;
+            this.isInteracting = false;
+            soundEngine.playPickup();
+            this.subtitle.say(DIALOGUE.bridge_rope_cut);
+          }
+        });
+      } else {
+        gameState.addItem('bamboo_pole');
+        this.inventoryBar?.refresh();
+        this.poleTied = false;
+        this.isInteracting = false;
+        soundEngine.playPickup();
+        this.subtitle.say(DIALOGUE.bridge_rope_cut);
+      }
+      return;
+    }
+
+    // Bare-handed click: Narrator speaks clue directly
+    soundEngine.playPing();
+    this.subtitle.say(DIALOGUE.bridge_rope_hint);
+  }
+
+  handleStuckCogInteraction() {
+    if (!this.cogWedged || this.isInteracting || this.isDead || this.completing) return;
+    const selected = this.inventoryBar?.getSelected();
+
+    if (selected === 'bamboo_pole') {
+      this.isInteracting = true;
+      this.isPrying = true;
+      this.hideHeldItem();
+      soundEngine.playStoneGrind();
+
+      const rockX = this.stuckRockSprite ? this.stuckRockSprite.x : 580;
+      const targetLandX = rockX + 37;
+      // Temporary prying lever sprite
+      const pryLever = this.add
+        .image(rockX + 10, this.groundY - 18, 'ch1_vector_bamboo')
+        .setOrigin(0.1, 0.9)
+        .setAngle(40)
+        .setDepth(34);
+
+      // Rock tilt shift
+      if (this.stuckRockSprite) {
+        this.tweens.add({
+          targets: this.stuckRockSprite,
+          y: this.groundY - 26,
+          duration: 220,
+          yoyo: true,
+          ease: 'Sine.InOut'
+        });
+      }
+
+      // Lever prying motion + Cog launch
+      this.tweens.add({
+        targets: pryLever,
+        angle: 65,
+        duration: 220,
+        yoyo: true,
+        onYoyo: () => {
+          soundEngine.playClang();
+          MicroInteractions.spawnFootstepDust(this, rockX + 20, this.groundY, 1);
+
+          if (this.wedgedCogSprite) {
+            // Parabolic arc launch: X: rockX -> targetLandX, Y: arc up to groundY - 55 then land at groundY - 14
+            this.tweens.add({
+              targets: this.wedgedCogSprite,
+              x: targetLandX,
+              duration: 360,
+              ease: 'Linear'
+            });
+            this.tweens.add({
+              targets: this.wedgedCogSprite,
+              y: this.groundY - 55,
+              duration: 180,
+              ease: 'Quad.Out',
+              yoyo: true,
+              easeYoyo: 'Quad.In',
+              onComplete: () => {
+                soundEngine.playClang();
+                MicroInteractions.spawnFootstepDust(this, targetLandX, this.groundY, 1);
+                if (this.wedgedCogSprite) {
+                  this.wedgedCogSprite.destroy();
+                  this.wedgedCogSprite = null;
+                }
+                this.cogWedged = false;
+                this.isPrying = false;
+                pryLever.destroy();
+                this.isInteracting = false;
+                this.spawnCogPickup(targetLandX, this.groundY - 14);
+                this.subtitle.say(DIALOGUE.bridge_cog_pried);
+              }
+            });
+            this.tweens.add({
+              targets: this.wedgedCogSprite,
+              angle: 180,
+              duration: 360,
+              ease: 'Quad.Out'
+            });
+          } else {
+            this.cogWedged = false;
+            this.isPrying = false;
+            pryLever.destroy();
+            this.isInteracting = false;
+            this.spawnCogPickup(targetLandX, this.groundY - 14);
+            this.subtitle.say(DIALOGUE.bridge_cog_pried);
+          }
+        }
+      });
+      return;
+    }
+
+    // Bare-handed click: Narrator speaks clue directly
+    soundEngine.playPing();
+    this.subtitle.say(DIALOGUE.bridge_cog_hint);
+  }
+
+  spawnCogPickup(px, py) {
+    if (this.cogItem) {
+      this.cogItem.destroy();
+    }
+    const halo = this.add.graphics().setDepth(28);
+    halo.fillStyle(GOLD, 0.16).fillCircle(px, py, 18);
+    this.cogPickupHalo = halo;
+
+    const item = this.add
+      .image(px, py, 'ch1_vector_cog')
+      .setScale(0.75)
+      .setDepth(30)
+      .setInteractive({ useHandCursor: true });
+
+    this.cogItem = item;
+
+    // Hover micro-interaction
+    item.on('pointerover', () => item.setScale(0.75 * 1.15));
+    item.on('pointerout', () => item.setScale(0.75));
+
+    item.on('pointerdown', (_p, _x, _y, event) => {
+      event?.stopPropagation();
+      this.interactWithProximity(item.x, () => {
+        if (!item.active || this.isInteracting) return;
+        this.isInteracting = true;
+        this.pickupState = 'PICKUP';
+        soundEngine.playWoosh();
+
+        if (this.cogPickupHalo) {
+          this.cogPickupHalo.destroy();
+          this.cogPickupHalo = null;
+        }
+
+        const handX = this.player.body.center.x + this.facing * 18;
+        const handY = this.groundY - 20;
+
+        this.tweens.add({
+          targets: item,
+          x: handX,
+          y: handY,
+          scale: 0.4,
+          duration: 220,
+          ease: 'Quad.Out',
+          onComplete: () => {
+            soundEngine.playPickup();
+            this.pickupState = 'RUMMAGE';
+            soundEngine.playBagRustle();
+
+            const bagX = this.player.body.center.x - this.facing * 10;
+            const bagY = this.groundY - 45;
+
+            this.tweens.add({
+              targets: item,
+              x: bagX,
+              y: bagY,
+              scale: 0.1,
+              alpha: 0.3,
+              duration: 260,
+              ease: 'Cubic.In',
+              onComplete: () => {
+                gameState.addItem('rusty_cog');
+                item.destroy();
+                this.cogItem = null;
+                this.inventoryBar?.refresh();
+                this.pickupState = null;
+                this.isInteracting = false;
+                this.subtitle.say('ဂီယာခွေ ရပြီ။ လွယ်အိတ်က ရွေးပြီး စက်သီးမှာ တပ်ပါ။');
+              }
+            });
+          }
         });
       });
-    }
+    });
   }
 
   interactWithWinch() {
@@ -600,7 +874,8 @@ export default class BridgeChapterScene extends LegacyBridge {
 
     const nearWinch = Math.abs(this.player.x - this.winchContainer.x) <= 85;
 
-    if (nearWinch && this.winchJammed) {
+    if (nearWinch) {
+      if (this.winchJammed) {
       this.isInteracting = true;
       this.facing = this.winchContainer.x > this.player.x ? 1 : -1;
 
@@ -651,9 +926,42 @@ export default class BridgeChapterScene extends LegacyBridge {
         }
       });
       return;
+      } else if (!this.hasCog && gameState.hasItem('rusty_cog')) {
+        this.inventoryBar?.setSelected('rusty_cog');
+        this.interactWithWinch();
+        return;
+      } else if (!this.hasLever && gameState.hasItem('bamboo_pole')) {
+        this.inventoryBar?.setSelected('bamboo_pole');
+        this.interactWithWinch();
+        return;
+      } else if (this.hasCog && this.hasLever && !this.bridgeLowered) {
+        this.interactWithWinch();
+        return;
+      }
     }
 
-    // Harmless betel spit if not near jammed winch
+    // Check tied pole and stuck rock proximity
+    const poleCheckX = this.floatingPlat ? this.floatingPlat.x : 340;
+    const rockCheckX = this.stuckRockSprite ? this.stuckRockSprite.x : 580;
+    if (this.poleTied && Math.abs(this.player.x - poleCheckX) <= 85) {
+      this.handleTiedPoleInteraction();
+      return;
+    }
+    if (this.cogWedged && Math.abs(this.player.x - rockCheckX) <= 85) {
+      this.handleStuckCogInteraction();
+      return;
+    }
+
+    // Check floor pickups within 85px proximity
+    for (const field of ['cogItem', 'bambooItem', 'beeswaxItem']) {
+      const item = this[field];
+      if (item && item.active && Math.abs(this.player.x - item.x) <= 85) {
+        item.emit('pointerdown');
+        return;
+      }
+    }
+
+    // Harmless betel spit if not near interactive entity
     soundEngine.playWoosh();
     const startX = this.player.x + this.facing * 16;
     const startY = this.player.y - 36;
@@ -831,20 +1139,28 @@ export default class BridgeChapterScene extends LegacyBridge {
     }
 
     // Dynamic Falling Hazards (Bricks & Beehive) on left platform
-    if (!this.isDead && !this.completing && !this.isVaulting && this.player.x < this.leftPlatWidth) {
+    // Per game_mechanic.md: Only begin hazard timer after Phoe Htaung moves >= 150px into the room
+    if (!this.hazardStarted && this.player.x >= 150) {
+      this.hazardStarted = true;
+      this.nextBrickTimer = 7.0; // 7.0s grace period after moving in
+    }
+
+    if (this.hazardStarted && !this.isDead && !this.completing && !this.isVaulting && this.player.x < this.leftPlatWidth) {
       this.nextBrickTimer -= dt;
       if (this.nextBrickTimer <= 0) {
-        this.nextBrickTimer = Phaser.Math.Between(7, 9);
-
-        // Pre-drop rumble and camera shake
-        this.cameras.main.shake(140, 0.003);
-        try { soundEngine.playStoneGrind(); } catch (e) {}
-
-        this.hazardDropIndex = (this.hazardDropIndex || 0) + 1;
-        if (this.hazardDropIndex % 3 === 2 && !this.hasActiveBees) {
-          this.triggerFallingBeehive();
+        // Safe Pockets (The Mud Patch): If submerged, disarm hazard and keep generous safe buffer
+        if (this.isMudSubmerged) {
+          this.nextBrickTimer = 9.0;
         } else {
-          this.triggerFallingBrick();
+          // Predictable discrete rhythm clock: 10-14s breathing room between hazard waves
+          this.nextBrickTimer = Phaser.Math.Between(10, 14);
+
+          this.hazardDropIndex = (this.hazardDropIndex || 0) + 1;
+          if (this.hazardDropIndex % 4 === 3 && !this.hasActiveBees) {
+            this.triggerFallingBeehive();
+          } else {
+            this.triggerFallingBrick();
+          }
         }
       }
     }
@@ -906,7 +1222,10 @@ export default class BridgeChapterScene extends LegacyBridge {
     this.jumpHeld = jump;
 
     let vx = (Number(right) - Number(left)) * C.speed;
-    if (left || right) this.targetX = null;
+    if (left || right || jump || this.jumpBuffer > 0) {
+      this.targetX = null;
+      this.pendingAction = null;
+    }
     if (!left && !right && this.targetX !== null) {
       const gap = this.targetX - this.player.x;
       if (Math.abs(gap) > 8) vx = Math.sign(gap) * C.speed;
@@ -1068,21 +1387,21 @@ export default class BridgeChapterScene extends LegacyBridge {
       soundEngine.playJump();
     }
 
-    // Troll Trap: Fishing-Line Coin Yoink
+    // Troll Trap: Grabbing the Gold Coin triggers the ground collapse
     if (
-      !this.coinYoinked &&
-      this.coin &&
-      this.coin.active &&
-      this.player.x >= this.rightPlatX + 35 &&
-      this.player.x <= this.rightPlatX + 90
+      !this.trapTriggered &&
+      !this.isDead &&
+      !this.completing &&
+      Math.abs(this.player.x - 1075) <= 22 &&
+      this.player.body.bottom >= this.groundY - 12
     ) {
-      this.triggerCoinYoink();
+      this.triggerGreedyCoinTrap();
     }
 
     this.pushTimer = this.player.x <= 35 && left ? this.pushTimer + delta : 0;
     if (this.pushTimer >= 1000 && !this.tunnelOpened) this.openSecretTunnel();
 
-    if (this.player.x >= 1280 * 0.78 || (this.tunnelOpened && this.player.x <= 35)) {
+    if (this.player.x >= 1180 || (this.tunnelOpened && this.player.x <= 35)) {
       this.advanceToChapter2();
     }
 
@@ -1143,68 +1462,145 @@ export default class BridgeChapterScene extends LegacyBridge {
 
     createBrickTexture(this);
 
-    const targetX = Phaser.Math.Clamp(
-      this.player.x + Phaser.Math.Between(-25, 25),
-      50,
+    let targetX = Phaser.Math.Clamp(
+      this.player.x + Phaser.Math.Between(-15, 15),
+      60,
       this.leftPlatWidth - 40
     );
+    let locked = false;
 
-    // Phase 1 (0 - 850ms): Layered warning shadow container at depth 28 cleanly above terrain
+    // =========================================================================
+    // BEAT 1 (0.0s - 1.0s): Visual Windup (Machinery ticks, ceiling creaks, shadow forms)
+    // =========================================================================
+    this.cameras.main.shake(120, 0.002);
+    try { soundEngine.playStoneGrind(); } catch (e) {}
+
+    // Warning shadow container at depth 28 cleanly above terrain
     const shadow = this.add.container(targetX, this.groundY - 2).setDepth(28);
-    const halo = this.add.ellipse(0, 0, 52, 16, 0xe7bb55, 0.25);
-    const core = this.add.ellipse(0, 0, 44, 12, 0x070503, 0.35);
-    shadow.add([halo, core]);
+    const halo = this.add.ellipse(0, 0, 56, 18, 0xe7bb55, 0.20);
+    const core = this.add.ellipse(0, 0, 44, 12, 0x070503, 0.30);
+    const reticle = this.add.ellipse(0, 0, 48, 14, 0xd97706, 0);
+    reticle.setStrokeStyle(1.5, 0xe7bb55, 0);
+    shadow.add([halo, core, reticle]);
 
-    // Outer warning ring pulsing alpha
+    // Outer warning ring pulsing softly
     this.tweens.add({
       targets: halo,
-      alpha: { from: 0.2, to: 0.55 },
+      alpha: { from: 0.15, to: 0.45 },
       scaleX: 1.15,
       scaleY: 1.15,
-      duration: 400,
+      duration: 500,
       yoyo: true,
-      repeat: 1
+      repeat: 2
     });
 
-    // Inner dense dark core growing to full ground footprint
-    core.setScale(0.4, 0.4);
+    // Core starts subtle and breathes
+    core.setScale(0.45, 0.45);
     this.tweens.add({
       targets: core,
-      scaleX: 1.0,
-      scaleY: 1.0,
-      alpha: { from: 0.35, to: 0.75 },
-      duration: 850,
+      scaleX: 0.65,
+      scaleY: 0.65,
+      alpha: 0.50,
+      duration: 1000,
       ease: 'Quad.Out'
     });
 
-    // Drop 2-3 tiny falling stone chips / mortar dust particles from ceiling
-    for (let i = 0; i < 3; i++) {
-      this.time.delayedCall(120 + i * 220, () => {
-        if (this.isDead || this.completing) return;
-        const chipX = targetX + Phaser.Math.Between(-10, 10);
-        const chip = this.add.circle(chipX, 20 + i * 15, Phaser.Math.Between(1.5, 2.5), 0x839b8b).setDepth(30);
-        this.tweens.add({
-          targets: chip,
-          y: this.groundY - 2,
-          duration: 320,
-          ease: 'Quad.In',
-          onComplete: () => {
-            try {
-              MicroInteractions.spawnFootstepDust(this, chipX, this.groundY, 1);
-            } catch (e) {}
-            chip.destroy();
-          }
-        });
-      });
-    }
+    // Gentle tracking of player during Beat 1 & 2 (0ms - 1900ms)
+    const trackTimer = this.time.addEvent({
+      delay: 50,
+      repeat: 38,
+      callback: () => {
+        if (locked || !shadow.active || this.isDead || this.completing) return;
+        const desiredX = Phaser.Math.Clamp(this.player.x, 60, this.leftPlatWidth - 40);
+        targetX = Phaser.Math.Linear(targetX, desiredX, 0.12);
+        shadow.x = targetX;
+      }
+    });
 
-    this.time.delayedCall(850, () => {
+    // =========================================================================
+    // BEAT 2 (1.0s - 2.0s): Acoustic Warning (Acoustic click, ceiling dust/mortar chips drop)
+    // =========================================================================
+    this.time.delayedCall(1000, () => {
+      if (this.isDead || this.completing || !shadow.active) return;
+      try { soundEngine.playBrickRattle(); } catch (e) {}
+
+      // Trickle 3-4 small falling stone chips / mortar dust particles from ceiling
+      for (let i = 0; i < 4; i++) {
+        this.time.delayedCall(i * 200, () => {
+          if (this.isDead || this.completing || !shadow.active) return;
+          const chipX = targetX + Phaser.Math.Between(-14, 14);
+          const chip = this.add.circle(chipX, 22 + i * 12, Phaser.Math.Between(1.5, 2.5), 0x839b8b).setDepth(30);
+          this.tweens.add({
+            targets: chip,
+            y: this.groundY - 2,
+            duration: 320,
+            ease: 'Quad.In',
+            onComplete: () => {
+              try { MicroInteractions.spawnFootstepDust(this, chipX, this.groundY, 1); } catch (e) {}
+              chip.destroy();
+            }
+          });
+        });
+      }
+
+      this.tweens.add({
+        targets: core,
+        scaleX: 0.85,
+        scaleY: 0.85,
+        alpha: 0.70,
+        duration: 900,
+        ease: 'Quad.Out'
+      });
+    });
+
+    // =========================================================================
+    // BEAT 3 (2.0s - 3.0s): Target Lock (Telegraphed trajectory fixed; safe to inspect clues & react)
+    // =========================================================================
+    this.time.delayedCall(2000, () => {
+      if (this.isDead || this.completing || !shadow.active) return;
+      locked = true;
+      trackTimer.remove();
+      shadow.x = targetX;
+
+      try { soundEngine.playGearClick(); } catch (e) {}
+
+      // Flash crisp locked target reticle
+      reticle.setStrokeStyle(2, 0xe7bb55, 0.95);
+      this.tweens.add({
+        targets: reticle,
+        scaleX: { from: 1.25, to: 1.0 },
+        scaleY: { from: 1.25, to: 1.0 },
+        alpha: { from: 0.95, to: 0.45 },
+        duration: 450,
+        yoyo: true,
+        repeat: 1
+      });
+
+      this.tweens.add({
+        targets: core,
+        scaleX: 1.0,
+        scaleY: 1.0,
+        alpha: 0.90,
+        duration: 300,
+        ease: 'Back.Out'
+      });
+    });
+
+    // =========================================================================
+    // BEAT 4 (3.0s - 3.8s): HAZARD DISCHARGE (Falling stone discharge)
+    // =========================================================================
+    this.time.delayedCall(3000, () => {
       if (this.isDead || this.completing) {
         shadow.destroy();
         return;
       }
+      locked = true;
+      trackTimer.remove();
 
-      const brick = this.add.sprite(targetX, 10, 'ch1_vector_brick').setDepth(32);
+      try { soundEngine.playWoosh(); } catch (e) {}
+
+      const lockedX = targetX;
+      const brick = this.add.sprite(lockedX, 10, 'ch1_vector_brick').setDepth(32);
       let hitPlayer = false;
       const startY = 10;
       const targetY = this.groundY - 14;
@@ -1215,21 +1611,19 @@ export default class BridgeChapterScene extends LegacyBridge {
         duration: 380,
         ease: 'Quad.In',
         onUpdate: () => {
-          // Phase 2: Altitude-tracking shadow scaling & dynamic darkening
           const progress = Phaser.Math.Clamp((brick.y - startY) / (targetY - startY), 0, 1);
-
           if (shadow && shadow.active) {
-            shadow.setAlpha(Phaser.Math.Linear(0.5, 0.95, progress));
+            shadow.setAlpha(Phaser.Math.Linear(0.85, 1.0, progress));
             shadow.setScale(
-              Phaser.Math.Linear(1.35, 1.0, progress),
-              Phaser.Math.Linear(1.2, 0.9, progress)
+              Phaser.Math.Linear(1.0, 1.25, progress),
+              Phaser.Math.Linear(1.0, 1.15, progress)
             );
-            if (progress > 0.82) {
-              shadow.x = targetX + (Math.random() - 0.5) * 2;
-            }
           }
 
           if (!hitPlayer && !this.isDead && !this.completing) {
+            // Mud Patch: Complete immunity while submerged
+            if (this.isMudSubmerged) return;
+
             const dx = Math.abs(brick.x - this.player.x);
             const playerTargetY = this.isLaying ? this.player.y - 8 : this.player.y - 25;
             const reachY = this.isLaying ? 15 : 32;
@@ -1246,9 +1640,14 @@ export default class BridgeChapterScene extends LegacyBridge {
             MicroInteractions.spawnFootstepDust(this, brick.x, this.groundY, 1);
             MicroInteractions.spawnFootstepDust(this, brick.x, this.groundY, -1);
           } catch (e) {}
-          soundEngine.playStoneGrind();
-          soundEngine.playClang();
-          this.cameras.main.shake(100, 0.005);
+
+          if (this.isMudSubmerged && Math.abs(brick.x - this.player.x) < 40) {
+            try { soundEngine.playBubblePop(); } catch (e) {}
+          } else {
+            soundEngine.playStoneGrind();
+            soundEngine.playClang();
+            this.cameras.main.shake(110, 0.006);
+          }
 
           this.makeBrickCollectible(brick);
         }
@@ -1258,6 +1657,40 @@ export default class BridgeChapterScene extends LegacyBridge {
 
   hitByFallingBrick() {
     if (this.isDead || this.completing) return;
+
+    if (!this.firstHazardTriggered) {
+      this.firstHazardTriggered = true;
+      // Slapstick cushion ("First Hit is Cartoon, Not Death") per game_mechanic.md
+      soundEngine.playClang();
+      this.cameras.main.shake(180, 0.015);
+
+      const stars = this.add
+        .text(this.player.x, this.player.y - 30, '💫', { fontSize: '24px' })
+        .setDepth(190);
+      this.tweens.add({
+        targets: stars,
+        y: stars.y - 35,
+        alpha: 0,
+        duration: 1200,
+        onComplete: () => stars.destroy()
+      });
+
+      if (this.phoe) {
+        this.tweens.add({
+          targets: this.phoe,
+          scaleY: 0.4,
+          scaleX: 1.3,
+          duration: 150,
+          yoyo: true,
+          repeat: 1,
+          ease: 'Quad.InOut'
+        });
+      }
+
+      this.subtitle.say(DIALOGUE.bridge_hazard_cushion);
+      return;
+    }
+
     this.isDead = true;
     this.deathType = 'FALLING_BRICK';
     this.deathClock = 0;
@@ -1286,65 +1719,136 @@ export default class BridgeChapterScene extends LegacyBridge {
   triggerFallingBeehive() {
     if (this.isDead || this.completing || this.player.x >= this.leftPlatWidth) return;
 
-    const targetX = Phaser.Math.Clamp(
-      this.player.x + Phaser.Math.Between(-25, 25),
+    let targetX = Phaser.Math.Clamp(
+      this.player.x + Phaser.Math.Between(-15, 15),
       80,
       this.leftPlatWidth - 40
     );
+    let locked = false;
 
-    // Phase 1 (0 - 850ms): Layered warning amber shadow container at depth 28 above terrain
-    const shadow = this.add.container(targetX, this.groundY - 2).setDepth(28);
-    const halo = this.add.ellipse(0, 0, 52, 16, 0xd97706, 0.25);
-    const core = this.add.ellipse(0, 0, 44, 12, 0x271306, 0.4);
-    shadow.add([halo, core]);
-
-    // Outer amber warning ring pulsing
-    this.tweens.add({
-      targets: halo,
-      alpha: { from: 0.25, to: 0.6 },
-      scaleX: 1.15,
-      scaleY: 1.15,
-      duration: 400,
-      yoyo: true,
-      repeat: 1
-    });
-
-    // Inner dark amber core expanding
-    core.setScale(0.4, 0.4);
-    this.tweens.add({
-      targets: core,
-      scaleX: 1.0,
-      scaleY: 1.0,
-      alpha: { from: 0.4, to: 0.8 },
-      duration: 850,
-      ease: 'Quad.Out'
-    });
-
+    // =========================================================================
+    // BEAT 1 (0.0s - 1.0s): Visual Windup & Buzzing Scuttle
+    // =========================================================================
     try { soundEngine.playInsectScuttle(); } catch (e) {}
     this.subtitle.say(DIALOGUE.bridge_hive_drop);
 
-    // Honey dripping visual cue
-    for (let i = 0; i < 2; i++) {
-      this.time.delayedCall(200 + i * 250, () => {
-        if (this.isDead || this.completing) return;
-        const drip = this.add.circle(targetX + Phaser.Math.Between(-8, 8), 35, 2.5, 0xd97706).setDepth(30);
-        this.tweens.add({
-          targets: drip,
-          y: this.groundY - 2,
-          duration: 350,
-          ease: 'Quad.In',
-          onComplete: () => drip.destroy()
-        });
-      });
-    }
+    const shadow = this.add.container(targetX, this.groundY - 2).setDepth(28);
+    const halo = this.add.ellipse(0, 0, 56, 18, 0xd97706, 0.25);
+    const core = this.add.ellipse(0, 0, 44, 12, 0x271306, 0.35);
+    const reticle = this.add.ellipse(0, 0, 48, 14, 0xf59e0b, 0);
+    reticle.setStrokeStyle(1.5, 0xf59e0b, 0);
+    shadow.add([halo, core, reticle]);
 
-    this.time.delayedCall(850, () => {
+    this.tweens.add({
+      targets: halo,
+      alpha: { from: 0.20, to: 0.55 },
+      scaleX: 1.15,
+      scaleY: 1.15,
+      duration: 500,
+      yoyo: true,
+      repeat: 2
+    });
+
+    core.setScale(0.45, 0.45);
+    this.tweens.add({
+      targets: core,
+      scaleX: 0.65,
+      scaleY: 0.65,
+      alpha: 0.55,
+      duration: 1000,
+      ease: 'Quad.Out'
+    });
+
+    // Tracking loop during Beats 1 & 2
+    const trackTimer = this.time.addEvent({
+      delay: 50,
+      repeat: 38,
+      callback: () => {
+        if (locked || !shadow.active || this.isDead || this.completing) return;
+        const desiredX = Phaser.Math.Clamp(this.player.x, 80, this.leftPlatWidth - 40);
+        targetX = Phaser.Math.Linear(targetX, desiredX, 0.12);
+        shadow.x = targetX;
+      }
+    });
+
+    // =========================================================================
+    // BEAT 2 (1.0s - 2.0s): Acoustic Warning & Honey Drips
+    // =========================================================================
+    this.time.delayedCall(1000, () => {
+      if (this.isDead || this.completing || !shadow.active) return;
+      try { soundEngine.playInsectScuttle(); } catch (e) {}
+
+      for (let i = 0; i < 3; i++) {
+        this.time.delayedCall(i * 240, () => {
+          if (this.isDead || this.completing || !shadow.active) return;
+          const drip = this.add.circle(targetX + Phaser.Math.Between(-8, 8), 35, 2.5, 0xd97706).setDepth(30);
+          this.tweens.add({
+            targets: drip,
+            y: this.groundY - 2,
+            duration: 350,
+            ease: 'Quad.In',
+            onComplete: () => drip.destroy()
+          });
+        });
+      }
+
+      this.tweens.add({
+        targets: core,
+        scaleX: 0.85,
+        scaleY: 0.85,
+        alpha: 0.70,
+        duration: 900,
+        ease: 'Quad.Out'
+      });
+    });
+
+    // =========================================================================
+    // BEAT 3 (2.0s - 3.0s): Target Lock
+    // =========================================================================
+    this.time.delayedCall(2000, () => {
+      if (this.isDead || this.completing || !shadow.active) return;
+      locked = true;
+      trackTimer.remove();
+      shadow.x = targetX;
+
+      try { soundEngine.playGearClick(); } catch (e) {}
+
+      reticle.setStrokeStyle(2, 0xf59e0b, 0.95);
+      this.tweens.add({
+        targets: reticle,
+        scaleX: { from: 1.25, to: 1.0 },
+        scaleY: { from: 1.25, to: 1.0 },
+        alpha: { from: 0.95, to: 0.45 },
+        duration: 450,
+        yoyo: true,
+        repeat: 1
+      });
+
+      this.tweens.add({
+        targets: core,
+        scaleX: 1.0,
+        scaleY: 1.0,
+        alpha: 0.90,
+        duration: 300,
+        ease: 'Back.Out'
+      });
+    });
+
+    // =========================================================================
+    // BEAT 4 (3.0s - 3.8s): HAZARD DISCHARGE (Beehive Drop)
+    // =========================================================================
+    this.time.delayedCall(3000, () => {
       if (this.isDead || this.completing) {
         shadow.destroy();
         return;
       }
+      locked = true;
+      trackTimer.remove();
 
-      const hive = this.add.sprite(targetX, 10, 'ch1_vector_beehive').setDepth(32);
+      try { soundEngine.playWoosh(); } catch (e) {}
+
+      const lockedX = targetX;
+      const hive = this.add.sprite(lockedX, 10, 'ch1_vector_beehive').setDepth(32);
       const startY = 10;
       const targetY = this.groundY - 14;
 
@@ -1354,18 +1858,13 @@ export default class BridgeChapterScene extends LegacyBridge {
         duration: 380,
         ease: 'Quad.In',
         onUpdate: () => {
-          // Phase 2: Altitude-tracking shadow scaling & dynamic darkening
           const progress = Phaser.Math.Clamp((hive.y - startY) / (targetY - startY), 0, 1);
-
           if (shadow && shadow.active) {
-            shadow.setAlpha(Phaser.Math.Linear(0.5, 0.95, progress));
+            shadow.setAlpha(Phaser.Math.Linear(0.85, 1.0, progress));
             shadow.setScale(
-              Phaser.Math.Linear(1.35, 1.0, progress),
-              Phaser.Math.Linear(1.2, 0.9, progress)
+              Phaser.Math.Linear(1.0, 1.25, progress),
+              Phaser.Math.Linear(1.0, 1.15, progress)
             );
-            if (progress > 0.82) {
-              shadow.x = targetX + (Math.random() - 0.5) * 2;
-            }
           }
         },
         onComplete: () => {
@@ -1832,39 +2331,94 @@ export default class BridgeChapterScene extends LegacyBridge {
     });
   }
 
-  triggerCoinYoink() {
-    if (this.coinYoinked) return;
-    this.coinYoinked = true;
+  triggerGreedyCoinTrap() {
+    if (this.trapTriggered || this.isDead || this.completing) return;
+    this.trapTriggered = true;
 
     if (this.baitGlow) {
       this.baitGlow.destroy();
       this.baitGlow = null;
     }
 
-    soundEngine.playWoosh();
+    try {
+      soundEngine.playShatter();
+    } catch (e) {}
 
-    const coinX = this.coin.x;
+    try {
+      MicroInteractions.spawnFootstepDust(this, 1030, this.groundY, 1);
+      MicroInteractions.spawnFootstepDust(this, 1120, this.groundY, -1);
+    } catch (e) {}
 
-    this.tweens.killTweensOf(this.coin);
+    // Disable player collider with the trap floor segment immediately
+    if (this.trapFloorCollider) {
+      this.physics.world.removeCollider(this.trapFloorCollider);
+      this.trapFloorCollider = null;
+    }
+    if (this.trapFloorColliderBody) {
+      this.trapFloorColliderBody.destroy();
+      this.trapFloorColliderBody = null;
+    }
+
+    // Redraw the terrain with the newly opened chasm gap
+    drawBridgeTerrain(
+      this.terrainG,
+      this.leftPlatWidth,
+      this.pitWidth,
+      this.rightPlatX,
+      this.rightPlatWidth,
+      this.groundY,
+      { startX: 1030, endX: 1120 }
+    );
+
+    // Spawn the falling chunk of ground matching normal ground block that just broke away
+    const fallingChunk = this.add.graphics().setDepth(20);
+    drawBlock(fallingChunk, { x: 0, y: 0, w: 90, h: 144 }, STONE);
+    fallingChunk.fillStyle(0x8e9470, 1).fillRect(0, 0, 90, 7);
+    fallingChunk.setPosition(1030, this.groundY);
 
     this.tweens.add({
-      targets: this.coin,
-      y: -50,
-      duration: 300,
-      ease: 'Back.In',
-      onUpdate: () => {
-        if (this.fishingLineG && this.coin?.active) {
-          this.fishingLineG.clear();
-          drawFishingLine(this.fishingLineG, coinX, 0, coinX, this.coin.y - 12, true);
-        }
-      },
+      targets: fallingChunk,
+      y: this.groundY + 360,
+      angle: 25,
+      alpha: 0.6,
+      duration: 450,
+      ease: 'Quad.easeIn',
       onComplete: () => {
-        if (this.fishingLineG) this.fishingLineG.clear();
-        this.coin?.destroy();
+        fallingChunk.destroy();
       }
     });
 
-    this.subtitle.say(DIALOGUE.bridge_coin_yoink);
+    // Set custom death quote for when Phoe falls into the pit
+    this.customPitDeathQuote = DIALOGUE.bridge_coin_trap;
+
+    // The greedy bait coin plunges down with the falling ground chunk
+    if (this.coin && this.coin.active) {
+      this.tweens.killTweensOf(this.coin);
+      this.tweens.add({
+        targets: this.coin,
+        y: this.groundY + 340,
+        angle: 45,
+        alpha: 0.5,
+        duration: 420,
+        ease: 'Quad.easeIn',
+        onComplete: () => {
+          this.coin?.destroy();
+          this.coin = null;
+        }
+      });
+    }
+
+    // Accelerate player downward into the abyss
+    if (this.player.x >= 1020 && this.player.x <= 1125) {
+      this.targetX = null;
+      this.pendingAction = null;
+      this.player.setVelocityX(0);
+      this.player.setVelocityY(Math.max(180, this.player.body.velocity.y));
+    }
+  }
+
+  triggerCoinYoink() {
+    this.triggerGreedyCoinTrap();
   }
 
   triggerRocketTrap() {
@@ -1932,7 +2486,7 @@ export default class BridgeChapterScene extends LegacyBridge {
     }
   }
 
-  fallIntoPit() {
+  fallIntoPit(customQuote) {
     if (this.isDead || this.completing || this.isVaulting) return;
     this.isDead = true;
     this.deathType = 'PIT';
@@ -1943,7 +2497,9 @@ export default class BridgeChapterScene extends LegacyBridge {
     gameState.addDeath();
     this.hud?.updateDeathCount();
     this.subtitle.say(
-      'ဟားဟားဟား! တွင်းထဲ ဇောက်ထိုးကျသွားပြန်ပြီ! မြေကြီးကို ကြည့်မလျှောက်ဘဲ ဇွတ်ပြေးတာကိုး။'
+      customQuote ||
+        this.customPitDeathQuote ||
+        'ဟားဟားဟား! တွင်းထဲ ဇောက်ထိုးကျသွားပြန်ပြီ! မြေကြီးကို ကြည့်မလျှောက်ဘဲ ဇွတ်ပြေးတာကိုး။'
     );
   }
 

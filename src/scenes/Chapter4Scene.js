@@ -461,7 +461,6 @@ export default class Chapter4Scene extends Phaser.Scene {
         this.subtitle.say('ဒါကို သော့ပေါက်ထဲ ထိုးထည့်လို့ မရဘူးဟေ့! မီးခိုးတွေ မင်းမျက်နှာထဲ မှုတ်ထုတ်လိုက်ပြီ!');
       });
     } else {
-      this.thought.show(this.player.x, this.player.y, 'item-chili', 'ငရုတ်သီး ထိုးထည့်ရန်');
       this.subtitle.say('သော့ပေါက်ကြီး ဟောင်းလောင်း ဖြစ်နေတယ်။ ပုံကြမ်းထဲကလို ငရုတ်သီးနဲ့ စမ်းသပ်ကြည့်ရင် ကောင်းမလား?');
     }
   }

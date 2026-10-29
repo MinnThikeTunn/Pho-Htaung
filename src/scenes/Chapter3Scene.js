@@ -291,7 +291,6 @@ export default class Chapter3Scene extends Phaser.Scene {
             this.subtitle.say('ဒီပစ္စည်းနဲ့ ကျောက်စာကို ခြစ်ပြင်လို့ မရဘူးဗျာ!');
           });
         } else {
-          this.thought.show(this.player.x, this.player.y, 'item-betel-cutter', 'ကျောက်စာ ဂဏန်း ပြင်ဆင်ရန်');
           this.subtitle.say('ကျောက်စာပေါ်မှာ "၁၀ ပိဿာ ညီမျှလျှင် တံခါးပွင့်အံ့" လို့ ရေးထားတယ်။ ချွန်ထက်တဲ့ ကွမ်းသီးညှပ် ဒါမှမဟုတ် ကျောက်ဖြူတုံးနဲ့ ဂဏန်းကို ခြစ်ပြင်လို့ ရနိုင်မလား?');
         }
       });
