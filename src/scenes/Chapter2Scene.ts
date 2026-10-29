@@ -9,10 +9,12 @@ import { Session } from '../services/Session';
 import { WorldView } from '../view/WorldView';
 import { store } from '../services/adventure';
 import InventoryBar from '../ui/InventoryBar.js';
+import DiegeticGrab from '../ui/DiegeticGrab';
 import { ensureBridgeTextures } from '../view/BridgeView';
 import { soundEngine } from '../utils/SoundEngine.js';
 import { gameState } from '../utils/AdventureState.js';
 import { ITEM_TEXTURE_KEYS } from '../utils/GameState.js';
+import { MicroInteractions } from '../utils/MicroInteractions.js';
 
 const uid = () => crypto.randomUUID();
 const ui = () => document.querySelector<HTMLDivElement>('#interface')!;
@@ -27,6 +29,7 @@ export default class Chapter2Scene extends Phaser.Scene {
   private world!: WorldView;
   private audio!: AudioController;
   public inventoryBar!: InventoryBar;
+  public diegeticGrab!: DiegeticGrab;
   private held = new Set<string>();
   private jumpEdge = false;
   private tauntEdge = false;
@@ -38,13 +41,19 @@ export default class Chapter2Scene extends Phaser.Scene {
   private shade = true;
   private showHints = true;
   private debug = false;
+
   private bambooItem: Phaser.GameObjects.Image | null = null;
   private cogItem: Phaser.GameObjects.Image | null = null;
-  private gearBoxItem: Phaser.GameObjects.Container | null = null;
+  private gearBoxItem: Phaser.GameObjects.GameObject | null = null;
   private slingshotItem: Phaser.GameObjects.Image | null = null;
   private heldItemSprite: Phaser.GameObjects.Image | null = null;
   private targetX: number | null = null;
   private pendingAction: (() => void) | null = null;
+  private isCollectingBamboo = false;
+  private isCollectingCog = false;
+  private isCollectingSlingshot = false;
+  private isLaying = false;
+  private crawlDustTimer = 0;
 
   constructor() {
     super('CHAPTER_2');
@@ -74,6 +83,11 @@ export default class Chapter2Scene extends Phaser.Scene {
     this.waitingForSave = false;
     this.speechLeft = 0;
     this.voiceCooldown = 0;
+    this.isCollectingBamboo = false;
+    this.isCollectingCog = false;
+    this.isCollectingSlingshot = false;
+    this.isLaying = false;
+    this.crawlDustTimer = 0;
     this.clearKeys();
   }
 
@@ -81,6 +95,9 @@ export default class Chapter2Scene extends Phaser.Scene {
     this.held.clear();
     this.jumpEdge = false;
     this.tauntEdge = false;
+    this.targetX = null;
+    this.pendingAction = null;
+    this.isLaying = false;
   }
 
   private speak(text: string, duration: number, who = 'ဦးကြီး') {
@@ -94,8 +111,6 @@ export default class Chapter2Scene extends Phaser.Scene {
 
   private hint(id: 'lock' | 'land' | 'shatter') {
     if (!this.showHints || !store.hint(id)) return;
-    // Core Design System Standard: U Gyi is the sole clue and hint vehicle.
-    // Hints are delivered diegetically via overhead speech rather than artificial floating boxes.
     this.speak(DIALOGUE[`hint_${id}`], 2.5, 'ဦးကြီး');
   }
 
@@ -170,8 +185,50 @@ export default class Chapter2Scene extends Phaser.Scene {
     // Register crisp procedural textures (including myanmar_traditional_bag)
     ensureBridgeTextures(this);
 
+    // Synchronize campaign inventory into gameState so items carry over cleanly into the bag
+    for (const item of store.campaign.inventory) {
+      gameState.addItem(item);
+    }
+    if (!gameState.hasItem('betel_cutter')) {
+      gameState.addItem('betel_cutter');
+    }
+
     // Permanent Bottom-Docked Myanmar Traditional Bag (Lwe-Ait)
     this.inventoryBar = new InventoryBar(this);
+    this.inventoryBar.refresh();
+
+    // Standardized Diegetic Grab Component
+    this.diegeticGrab = new DiegeticGrab(this, {
+      inventoryBar: this.inventoryBar,
+      getActor: () => {
+        const p = this.session?.attempt?.player;
+        if (!p) return null;
+        const visualFeetY = p.feetY - 64;
+        return {
+          x: p.centerX,
+          y: visualFeetY - 40,
+          facing: p.facing,
+          setControl: (ctrl: string) => {
+            p.control = ctrl as any;
+          },
+          bounce: () => {
+            const actor = (this.world as any)?.actor;
+            if (actor) {
+              this.tweens.add({
+                targets: actor,
+                scaleY: 1.08,
+                scaleX: p.facing * 0.94,
+                duration: 120,
+                yoyo: true,
+                ease: 'Back.Out'
+              });
+            }
+          }
+        };
+      },
+      speak: (text, duration, who) => this.speak(text, duration ?? 2.2, who),
+      onAutoWalk: (targetX, onReach) => this.interactWithProximity(targetX, onReach)
+    });
 
     // HUD: Standardized with 🎒 Bag Toggle, zero on-screen keyboard shortcut strips
     ui().innerHTML = `<div class="hud"><div class="stage-title"><span class="eyebrow">အခန်း ၂ / ${
@@ -202,6 +259,8 @@ export default class Chapter2Scene extends Phaser.Scene {
       });
     }
 
+    this.createInteractivePickups();
+
     const onDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
       if (key === 'escape') {
@@ -225,18 +284,33 @@ export default class Chapter2Scene extends Phaser.Scene {
         return;
       }
 
-      if (!['a', 'd', 'arrowleft', 'arrowright', ' ', 'e', 'r', 'f3'].includes(key)) return;
+      if (!['a', 'd', 's', 'arrowleft', 'arrowright', 'arrowdown', ' ', 'e', 'r', 'f3'].includes(key)) return;
       event.preventDefault();
       this.audio.unlock();
 
       // Norman's Law: Instant action canceling on locomotion
-      if (['a', 'd', 'arrowleft', 'arrowright', ' '].includes(key) && this.inventoryBar?.isRevealed) {
-        this.inventoryBar.hide();
+      if (['a', 'd', 's', 'arrowleft', 'arrowright', 'arrowdown', ' '].includes(key)) {
+        this.targetX = null;
+        this.pendingAction = null;
+        if (this.inventoryBar?.isRevealed) {
+          this.inventoryBar.hide();
+        }
       }
 
       if (!this.held.has(key) && !event.repeat) {
         if (key === ' ') this.jumpEdge = true;
-        if (key === 'e') this.tauntEdge = true;
+        if (key === 's' || key === 'arrowdown') {
+          try { soundEngine.playLongyiRustle(); } catch {}
+        }
+        if (key === 'e') {
+          this.tauntEdge = true;
+          const px = this.session?.attempt?.player?.centerX ?? 0;
+          const py = (this.session?.attempt?.player?.feetY ?? 576) - 40;
+          const grabbed = this.diegeticGrab.handleProximityVerb(px, py);
+          if (!grabbed && Math.abs(px - 1108) <= 85) {
+            this.interactWithGearBox();
+          }
+        }
         if (key === 'f3') this.debug = !this.debug;
       }
       this.held.add(key);
@@ -279,9 +353,203 @@ export default class Chapter2Scene extends Phaser.Scene {
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('storage', onStorage);
       this.clearKeys();
+      this.diegeticGrab?.clear();
+      this.bambooItem = null;
+      this.cogItem = null;
+      this.slingshotItem = null;
+      if (this.gearBoxItem) { this.gearBoxItem.destroy(); this.gearBoxItem = null; }
+      this.hideHeldItem();
     });
 
     focusGame(this);
+  }
+
+  private createInteractivePickups() {
+    if (!this.session?.attempt) return;
+    const a = this.session.attempt;
+
+    // 1. Bamboo Pole on STEP (536, 470)
+    if (!a.hasPole && !this.bambooItem) {
+      this.bambooItem = this.diegeticGrab.createPickup({
+        id: 'bamboo_pole',
+        x: 536,
+        y: 470,
+        textureKey: 'item-bamboo-pole',
+        scale: 0.72,
+        hoverScale: 0.82,
+        bobRange: 4,
+        bobDuration: 1200,
+        voiceoverText: 'ခိုင်မာတဲ့ ဝါးလုံးတုတ်တစ်ချောင်း ရပြီ! လွယ်အိတ်ထဲ ထည့်ထားလိုက်တယ်။',
+        voiceoverDuration: 2.0,
+        campaignKey: 'bamboo_pole',
+        onBagged: () => {
+          if (this.session?.attempt) {
+            this.session.attempt.hasPole = true;
+          }
+          this.bambooItem = null;
+        }
+      });
+    }
+
+    // 2. Rusty Cog on SHELF (860, 250)
+    if (!a.hasCog && !this.cogItem) {
+      this.cogItem = this.diegeticGrab.createPickup({
+        id: 'rusty_cog',
+        x: 860,
+        y: 250,
+        textureKey: 'ch1_vector_cog',
+        scale: 0.65,
+        hoverScale: 0.75,
+        bobRange: 4,
+        bobDuration: 1100,
+        voiceoverText: 'သံချေးတက် ဂီယာခွေ ကောက်ရလိုက်ပြီ! စက်ယန္တရားတစ်ခုခုမှာ တပ်ဆင်ရမလား?',
+        voiceoverDuration: 2.2,
+        campaignKey: 'cog',
+        onBagged: () => {
+          if (this.session?.attempt) {
+            this.session.attempt.hasCog = true;
+          }
+          gameState.addItem('cog');
+          this.cogItem = null;
+        }
+      });
+    }
+
+    // 3. Door Gear Box Interactive Zone (1108, 324, 64x64)
+    if (!this.gearBoxItem) {
+      const zone = this.add.zone(1108, 324, 64, 64).setInteractive({ useHandCursor: true });
+      zone.on('pointerdown', (_p: Phaser.Input.Pointer, _lx: number, _ly: number, event?: Event) => {
+        event?.stopPropagation();
+        this.audio.unlock();
+        this.interactWithProximity(1060, () => this.interactWithGearBox());
+      });
+      this.gearBoxItem = zone;
+    }
+
+    // 4. Slingshot on high platform if platforms revealed
+    if (a.platformsRevealed && !a.hasSlingshot && !this.slingshotItem) {
+      this.spawnSlingshotPickup();
+    }
+  }
+
+  private resetInteractivePickups() {
+    this.diegeticGrab?.clear();
+    this.bambooItem = null;
+    this.cogItem = null;
+    this.slingshotItem = null;
+    this.hideHeldItem();
+    this.targetX = null;
+    this.pendingAction = null;
+    this.isCollectingBamboo = false;
+    this.isCollectingCog = false;
+    this.isCollectingSlingshot = false;
+    this.isLaying = false;
+    this.createInteractivePickups();
+  }
+
+  private interactWithProximity(targetX: number, onReach: () => void) {
+    if (!this.session?.attempt || this.session.attempt.status !== 'ACTIVE') return;
+    const px = this.session.attempt.player.centerX;
+    if (Math.abs(px - targetX) <= 85) {
+      onReach();
+    } else {
+      this.targetX = targetX;
+      this.pendingAction = onReach;
+    }
+  }
+
+  private collectBamboo() {
+    this.diegeticGrab.executeGrab('bamboo_pole');
+  }
+
+  private collectCog() {
+    this.diegeticGrab.executeGrab('rusty_cog');
+  }
+
+  private spawnSlingshotPickup() {
+    if (this.slingshotItem || this.session?.attempt?.hasSlingshot) return;
+    this.slingshotItem = this.diegeticGrab.createPickup({
+      id: 'slingshot',
+      x: 205,
+      y: 244,
+      textureKey: 'ch2_vector_slingshot',
+      scale: 0.75,
+      hoverScale: 0.85,
+      bobRange: 4,
+      bobDuration: 1000,
+      voiceoverText: 'ရွှေရောင် လေးခွနဲ့ လောက်စာလုံး ရပြီ! အခန်း ၄ မှာ အသုံးဝင်မယ်။',
+      voiceoverDuration: 2.5,
+      campaignKey: 'slingshot',
+      campaignOwnedTool: 'slingshot',
+      onBagged: () => {
+        if (this.session?.attempt) {
+          this.session.attempt.hasSlingshot = true;
+        }
+        this.slingshotItem = null;
+      }
+    });
+  }
+
+  private collectSlingshot() {
+    this.diegeticGrab.executeGrab('slingshot');
+  }
+
+  private interactWithGearBox() {
+    if (!this.session?.attempt) return;
+    const a = this.session.attempt;
+    if (a.gearBoxActive) {
+      this.speak('ဂီယာ box တပ်ဆင်ထားပြီးသားပါ။ စင်တွေ အပေါ်မှာ ရှိနေပြီ!', 1.8);
+      return;
+    }
+    const hasPole = a.hasPole || gameState.hasItem('bamboo_pole') || store.campaign.inventory.includes('bamboo_pole');
+    const hasCog = a.hasCog || gameState.hasItem('rusty_cog') || gameState.hasItem('cog') || store.campaign.inventory.includes('cog');
+
+    if (hasPole && hasCog) {
+      a.hasPole = true;
+      a.hasCog = true;
+      a.gearBoxActive = true;
+      a.platformsRevealed = true;
+      soundEngine.playGearClick();
+      soundEngine.playClang();
+      this.hideHeldItem();
+      this.inventoryBar?.clearSelected();
+      this.inventoryBar?.refresh();
+      this.spawnSlingshotPickup();
+      this.speak('ဟား... ဂီယာ box တပ်ဆင်လိုက်တော့ အပေါ်စင်တွေ ထွက်လာပြီဟေ့! အပေါ်တက်ကြည့်ဦး!', 2.5);
+    } else {
+      soundEngine.playPing();
+      this.speak('တံခါးဖွင့်ဖို့ ဂီယာ box မှာ ဝါးလုံးနဲ့ ဂီယာခွေ တပ်ဆင်ရမယ်။ အရင်ရှာဦး!', 2.2);
+    }
+  }
+
+  public showHeldItem(id: string) {
+    this.hideHeldItem();
+    const key =
+      id === 'bamboo_pole'
+        ? 'ch1_vector_bamboo'
+        : id === 'rusty_cog' || id === 'cog'
+        ? 'ch1_vector_cog'
+        : id === 'slingshot'
+        ? 'ch2_vector_slingshot'
+        : (ITEM_TEXTURE_KEYS as Record<string, string>)[id];
+    if (key && this.session?.attempt?.player) {
+      const p = this.session.attempt.player;
+      const visualFeetY = p.feetY - 64;
+      const visualCenterY = visualFeetY - 40;
+      const handX = p.centerX + p.facing * 20;
+      const handY = visualCenterY - 12;
+      this.heldItemSprite = this.add
+        .image(handX, handY, key)
+        .setScale(p.facing * 0.38, 0.38)
+        .setDepth(200);
+    }
+  }
+
+  public hideHeldItem() {
+    if (this.heldItemSprite) {
+      this.heldItemSprite.destroy();
+      this.heldItemSprite = null;
+    }
   }
 
   private savePanel() {
@@ -315,8 +583,49 @@ export default class Chapter2Scene extends Phaser.Scene {
         left: this.held.has('a') || this.held.has('arrowleft'),
         right: this.held.has('d') || this.held.has('arrowright'),
         jump: this.jumpEdge,
-        taunt: this.tauntEdge
+        taunt: this.tauntEdge,
+        down: this.held.has('s') || this.held.has('arrowdown')
       };
+
+      // Handle click-to-walk proximity pathfinding
+      if (this.targetX !== null && s.attempt.status === 'ACTIVE') {
+        const px = s.attempt.player.centerX;
+        const diff = this.targetX - px;
+        if (Math.abs(diff) <= 24) {
+          this.targetX = null;
+          const fn = this.pendingAction;
+          this.pendingAction = null;
+          if (fn) fn();
+        } else {
+          if (!this.held.has('a') && !this.held.has('d') && !this.held.has('arrowleft') && !this.held.has('arrowright')) {
+            input.left = diff < 0;
+            input.right = diff > 0;
+          } else {
+            this.targetX = null;
+            this.pendingAction = null;
+          }
+        }
+      }
+
+      // Track laying transition and dust
+      const currentLaying = s.attempt.player.control === 'LAYING';
+      if (currentLaying && !this.isLaying) {
+        this.isLaying = true;
+        try { soundEngine.playLongyiRustle(); } catch {}
+      } else if (!currentLaying && this.isLaying) {
+        this.isLaying = false;
+      }
+
+      if (currentLaying && (input.left || input.right)) {
+        if (_time > this.crawlDustTimer) {
+          const dir = Number(input.right) - Number(input.left);
+          try {
+            MicroInteractions.spawnFootstepDust(this, s.attempt.player.centerX, 576, Math.sign(dir));
+          } catch {}
+          this.crawlDustTimer = _time + 280;
+        }
+      }
+
       const willStep = s.accumulator + dt + 1e-9 >= C.dt;
       const events = s.tick(dt, input, this.held.has('r'));
       if (willStep) {
@@ -326,6 +635,7 @@ export default class Chapter2Scene extends Phaser.Scene {
       if (s.generation !== before) {
         this.clearKeys();
         ui().querySelector('#death-vignette')?.classList.remove('visible');
+        this.resetInteractivePickups();
       }
       this.voiceCooldown = Math.max(0, this.voiceCooldown - dt);
       for (const event of events) {
@@ -343,25 +653,13 @@ export default class Chapter2Scene extends Phaser.Scene {
           this.speak(DIALOGUE.taunt, 0.8, 'ဖိုးထောင်');
           this.voiceCooldown = 3;
         }
-        if (event.kind === 'puzzle_item') {
-          if (s.attempt.hasPole && !store.campaign.inventory.includes('bamboo_pole')) {
-            store.campaign.inventory.push('bamboo_pole');
-          }
-          if (s.attempt.hasCog && !store.campaign.inventory.includes('cog')) {
-            store.campaign.inventory.push('cog');
-          }
-          this.inventoryBar?.refresh();
-          this.speak('ပစ္စည်းကောက်လိုက်ပြီ! လွယ်အိတ်ထဲ ထည့်ထားလိုက်တယ်။', 1.8);
+        if (event.kind === 'puzzle_item' || event.kind === 'slingshot') {
+          const px = s.attempt.player.centerX;
+          const py = s.attempt.player.feetY - 40;
+          this.diegeticGrab.handleProximityVerb(px, py);
         }
         if (event.kind === 'gear_box') {
-          this.speak('ဟား... ဂီယာ box တပ်လိုက်တော့ စင်တွေ ထွက်လာပြီဟေ့!', 2.2);
-        }
-        if (event.kind === 'slingshot') {
-          if (!store.campaign.inventory.includes('slingshot')) store.campaign.inventory.push('slingshot');
-          if (!store.campaign.ownedTools.includes('slingshot')) store.campaign.ownedTools.push('slingshot');
-          store.save();
-          this.inventoryBar?.refresh();
-          this.speak('ရွှေရောင် လေးခွနဲ့ လောက်စာလုံး ရပြီ! အခန်း ၄ မှာ အသုံးဝင်မယ်။', 2.5);
+          this.interactWithGearBox();
         }
         if (event.kind === 'beehive') {
           this.speak('အမယ်လေး ပျားအုံကျလာပြီဟေ့! ရှောင်ပြေးတော့ ဖိုးထောင်ရေ!', 2.0);
@@ -391,6 +689,28 @@ export default class Chapter2Scene extends Phaser.Scene {
           return;
         }
       }
+    }
+
+    // Drop cog if shelf shatters
+    if (!s.attempt.shelfIntact && this.cogItem && this.cogItem.active && this.cogItem.y < 536) {
+      this.tweens.killTweensOf(this.cogItem);
+      this.tweens.add({
+        targets: this.cogItem,
+        y: 546,
+        duration: 350,
+        ease: 'Bounce.Out'
+      });
+    }
+
+    // Update held item position with player
+    if (this.heldItemSprite && s.attempt?.player) {
+      const p = s.attempt.player;
+      const visualFeetY = p.feetY - 64;
+      const visualCenterY = visualFeetY - 40;
+      const handX = p.centerX + p.facing * 20;
+      const handY = visualCenterY - 12;
+      this.heldItemSprite.setPosition(handX, handY);
+      this.heldItemSprite.setScale(p.facing * 0.38, 0.38);
     }
 
     this.world.render(s.attempt, s.paused ? 0 : dt, this.debug, this.shade);

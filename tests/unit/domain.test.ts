@@ -3,7 +3,7 @@ import { C, STEP } from '../../src/content/chapter1';
 import { createAttempt } from '../../src/domain/createAttempt';
 import { NO_INPUT } from '../../src/domain/types';
 import type { Attempt, Input, Stone } from '../../src/domain/types';
-import { preview, step, weighted } from '../../src/domain/step';
+import { playerRect, preview, step, weighted } from '../../src/domain/step';
 import { newCampaign, settle, validateCampaign } from '../../src/domain/settlement';
 import { CampaignStore } from '../../src/services/CampaignStore';
 import { Session } from '../../src/services/Session';
@@ -164,23 +164,34 @@ describe('Lifecycle', () => {
 });
 
 describe('Chapter 2 enhancements (Pho-Htaung-Safe.docx specifications)', () => {
-  it('collects bamboo pole and cog, activates door gear box to reveal platforms', () => {
+  it('does NOT automatically collect items on simple walk-over without grab input', () => {
     const a = active();
     a.player.centerX = 536; a.player.feetY = 544;
     step(a, NO_INPUT);
-    expect(a.hasPole).toBe(true);
+    expect(a.hasPole).toBe(false);
 
     a.player.centerX = 860; a.player.feetY = 320;
     step(a, NO_INPUT);
+    expect(a.hasCog).toBe(false);
+  });
+
+  it('collects bamboo pole and cog, activates door gear box to reveal platforms on explicit grab (E)', () => {
+    const a = active();
+    a.player.centerX = 536; a.player.feetY = 544;
+    step(a, { ...NO_INPUT, taunt: true });
+    expect(a.hasPole).toBe(true);
+
+    a.player.centerX = 860; a.player.feetY = 320;
+    step(a, { ...NO_INPUT, taunt: true });
     expect(a.hasCog).toBe(true);
 
     a.player.centerX = 1104; a.player.feetY = 640;
-    step(a, NO_INPUT);
+    step(a, { ...NO_INPUT, taunt: true });
     expect(a.gearBoxActive).toBe(true);
     expect(a.platformsRevealed).toBe(true);
 
     a.player.centerX = 205; a.player.feetY = 304;
-    step(a, NO_INPUT);
+    step(a, { ...NO_INPUT, taunt: true });
     expect(a.hasSlingshot).toBe(true);
   });
 
@@ -211,5 +222,26 @@ describe('Chapter 2 enhancements (Pho-Htaung-Safe.docx specifications)', () => {
     a.player.centerX = 1235; a.player.feetY = 640; a.player.vy = 0; a.player.grounded = true;
     step(a, NO_INPUT);
     expect(a.status).toBe('COMPLETE');
+  });
+
+  it('switches to LAYING when down is pressed while grounded, reducing height by 55% and speed to 40%', () => {
+    const a = active();
+    a.player.centerX = 100; a.player.feetY = 640; a.player.grounded = true;
+    expect(a.player.control).toBe('FREE');
+    expect(playerRect(a.player).h).toBe(C.playerH);
+
+    // Press down
+    step(a, { left: false, right: false, jump: false, taunt: false, down: true });
+    expect(a.player.control).toBe('LAYING');
+    expect(playerRect(a.player).h).toBe(Math.round(C.playerH * 0.45));
+
+    // Crawl forward (right) while holding down
+    step(a, { left: false, right: true, jump: false, taunt: false, down: true });
+    expect(a.player.vx).toBeCloseTo(C.speed * 0.40);
+
+    // Releasing down restores FREE control and full height
+    step(a, { left: false, right: false, jump: false, taunt: false, down: false });
+    expect(a.player.control).toBe('FREE');
+    expect(playerRect(a.player).h).toBe(C.playerH);
   });
 });

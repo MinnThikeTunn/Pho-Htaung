@@ -154,7 +154,7 @@ export class WorldView {
     }
     g.fillStyle(0x07140d, .22).fillEllipse(p.centerX, vy(p.feetY) + 1, 43, 9);
     if (this.actor) {
-      renderPhoe(this.actor, { ...p, feetY: vy(p.feetY) }, this.clock);
+      renderPhoe(this.actor, { ...p, feetY: vy(p.feetY), holding: Boolean((this.scene as any).heldItemSprite), control: p.control }, this.clock);
     } else {
       g.fillStyle(0xdbc6a1).fillCircle(p.centerX, vy(p.feetY) - 52, 13);
       g.fillStyle(0xafa77e).fillRect(p.centerX - 12, vy(p.feetY) - 41, 24, 26);

@@ -343,13 +343,13 @@ test.describe('Chapter 2 Enhanced Mechanics Playtests', () => {
       const ch2 = (window as any).__PHOE_GAME__.scene.getScene('CHAPTER_2');
       const att = ch2.session.attempt;
       att.player.centerX = 536; att.player.feetY = 544;
-      ch2.session.tick(1/60, { left: false, right: false, jump: false, taunt: false });
+      ch2.session.tick(1/60, { left: false, right: false, jump: false, taunt: true });
       att.player.centerX = 860; att.player.feetY = 320;
-      ch2.session.tick(1/60, { left: false, right: false, jump: false, taunt: false });
+      ch2.session.tick(1/60, { left: false, right: false, jump: false, taunt: true });
       att.player.centerX = 1104; att.player.feetY = 640;
-      ch2.session.tick(1/60, { left: false, right: false, jump: false, taunt: false });
+      ch2.session.tick(1/60, { left: false, right: false, jump: false, taunt: true });
       att.player.centerX = 205; att.player.feetY = 304;
-      ch2.session.tick(1/60, { left: false, right: false, jump: false, taunt: false });
+      ch2.session.tick(1/60, { left: false, right: false, jump: false, taunt: true });
     });
 
     const snapshot = await page.evaluate(() => (window as any).__PHOE_TEST__?.snapshot());

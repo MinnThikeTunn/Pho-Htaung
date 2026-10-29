@@ -52,7 +52,12 @@ export const ITEM_TEXTURE_KEYS = {
   beeswax: 'ch1_vector_beeswax',
   ancient_brick: 'ch1_vector_brick',
   chalk: 'item-chalk',
-  engineer_note: 'item-engineer-note'
+  engineer_note: 'item-engineer-note',
+  pin: 'ch3_icon_pin',
+  stone: 'ch3_icon_stone',
+  crate: 'ch3_icon_crate',
+  sandbag: 'ch3_icon_sandbag',
+  treasure: 'ch3_icon_treasure'
 };
 
 export const ALL_STARTING_ITEMS = [

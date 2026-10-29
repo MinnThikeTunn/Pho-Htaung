@@ -4,7 +4,7 @@ export interface Rect { id: string; x: number; y: number; w: number; h: number }
 export interface Player {
   centerX: number; feetY: number; vx: number; vy: number;
   grounded: boolean; support: string | null; coyote: number; jumpBuffer: number;
-  control: 'FREE' | 'TAUNTING' | 'DEAD' | 'EXITING'; tauntLeft: number;
+  control: 'FREE' | 'TAUNTING' | 'DEAD' | 'EXITING' | 'LAYING' | 'PICKUP' | 'RUMMAGE'; tauntLeft: number;
   facing: -1 | 1; pushing: boolean;
 }
 export interface Stone {
@@ -33,8 +33,8 @@ export interface Attempt {
   beehiveY: number;
   trapFloorOpen: boolean;
 }
-export interface Input { left: boolean; right: boolean; jump: boolean; taunt: boolean }
-export const NO_INPUT: Readonly<Input> = { left: false, right: false, jump: false, taunt: false };
+export interface Input { left: boolean; right: boolean; jump: boolean; taunt: boolean; down?: boolean }
+export const NO_INPUT: Readonly<Input> = { left: false, right: false, jump: false, taunt: false, down: false };
 export interface ChapterResult {
   attemptId: string; mode: Mode; presetId: Preset; collectedCoins: number;
   creditedCoins: number; activeSeconds: number; sessionDeaths: number;

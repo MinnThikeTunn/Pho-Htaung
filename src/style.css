@@ -51,11 +51,21 @@
 .arena-player-health{width:29%;font-size:clamp(9px,1cqw,15px)}.arena-player-health span,.arena-enemies span{display:flex;justify-content:space-between;gap:12px}.arena-player-health progress,.arena-enemies progress,.arena-charge progress{display:block;width:100%;height:13px;accent-color:#b6cd83;border:1px solid #9ba67977;border-radius:3px;background:#162c21}.arena-enemies{position:absolute;top:15%;left:3%;right:3%;display:flex;gap:3%;font-size:clamp(9px,1cqw,15px)}.arena-enemies>div{width:48.5%;padding:.5cqw .8cqw;background:#182a20e8;border:1px solid #bba35e66}.arena-enemies progress{accent-color:#d3a66a}.arena-enemies small{display:block;height:1.8em;color:#ffcf83}.arena-speech{position:absolute;left:3%;top:30%;max-width:35%;font-size:clamp(10px,1.05cqw,16px);line-height:2;background:#182a20ed;padding:.6cqw 1cqw;border-left:3px solid #bda467}.arena-charge{position:absolute;right:3%;top:31%;width:28%;font-size:clamp(9px,1cqw,15px);padding:.6cqw 1cqw;background:#182a20ed}.arena-charge progress{accent-color:#e7c06c;margin:.5cqw 0}.arena-charge small{color:#e5ca89}.arena-controls{position:absolute;bottom:2%;left:3%;right:3%;padding:.65cqw 1cqw;background:#14281ff2;border:1px solid #9ba67955;font-size:clamp(8px,.95cqw,14px);text-align:center}.arena-refill{position:absolute;top:84%;font-size:clamp(8px,.8cqw,12px);color:#ddd3b2;background:#17271fe6;padding:2px 5px}.arena-refill.left{left:3%}.arena-refill.right{right:3%}
 .adventure-menu{top:6%;width:70%}.adventure-menu h1{font-size:clamp(32px,5.5cqw,79px)}.adventure-menu .intro{margin:1cqw 0 1.4cqw}.adventure-menu .actions{margin-bottom:.6cqw}.adventure-menu .key-guide{margin-top:1cqw}.adventure-menu .prototype-note{margin-top:.6cqw}
 
-.scale-speech{position:absolute;left:3%;top:23%;width:29%;padding:.7cqw 1cqw;background:#172a21eb;border-left:3px solid var(--gold);font-size:clamp(10px,1.05cqw,16px);line-height:2}.scale-speech p{margin:0}
-.scale-goal{position:absolute;right:3%;top:23%;width:26%;background:#172a21e6;padding:.6cqw 1cqw;font-size:clamp(10px,1cqw,15px);line-height:1.9}.scale-goal p{margin:.3cqw 0}.scale-goal small{display:block;color:#b8c3a4;font-size:.9em}.scale-goal strong{display:block;color:var(--gold);margin-top:.4cqw}
-.scale-reference,.scale-weight{position:absolute;transform:translateX(-50%);color:#f7e5b8;font-size:clamp(10px,1.1cqw,16px);background:#182d24e8;padding:0 .5cqw;border-radius:3px}.scale-reference{left:39.06%;top:58%}.scale-weight{left:58.59%;top:57%}
-.scale-hotspot{position:absolute;transform:translateX(-50%);background:#243c2de8;color:#f0db9c;border:1px solid #c4b46f80;border-radius:4px;padding:.25cqw .5cqw;font-size:clamp(9px,.95cqw,14px);line-height:1.8;white-space:nowrap;pointer-events:auto}.scale-hotspot:hover{background:#5a6840}.scale-hotspot.quiet{opacity:0}.scale-hotspot.quiet:focus-visible,.scale-hotspot.quiet:hover{opacity:1}.scale-pan{left:58.59%;top:80%}.scale-latch{left:78.9%;top:73%}
-.scale-inventory{position:absolute;bottom:1.7%;left:3%;right:3%;min-height:7%;display:flex;align-items:center;gap:.65cqw;padding:.5cqw .8cqw;background:#152c22f5;border:1px solid #7b8d6166;border-radius:4px;font-size:clamp(9px,1cqw,15px)}.scale-bag-label{color:var(--gold);font-weight:700}.scale-slot{border:1px solid #91a07877;color:#e8e6cb;background:#304833;border-radius:3px;font-size:inherit;padding:.4cqw .7cqw;line-height:1.8}.scale-slot[aria-pressed=true]{background:#edc675;color:#20362b;border-color:#fff1b9}.scale-inventory #scale-selected{margin-left:auto;font-size:.85em;color:#c2c9ae}.scale-dialog{max-height:85%;overflow:auto}.scale-dialog ol{font-size:clamp(10px,1.1cqw,16px);line-height:2}.scale-dialog li{margin-bottom:1cqw}
+.scale-speech{display:none}
+.scale-goal{display:none}
+.scale-reference,.scale-weight{display:none}
+.scale-inventory{display:none}
+.scale-hotspot{position:absolute;opacity:0;border:none;background:transparent;font-size:0;line-height:0;color:transparent;pointer-events:auto;transform:translateX(-50%)}
+.scale-test-targets{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.scale-test-targets .test-target{position:absolute;width:44px;height:44px;opacity:0.001;border:none;background:transparent;pointer-events:auto;font-size:0;line-height:0;color:transparent;transform:translate(-50%, -50%)}
+.scale-test-targets #scale-state{width:auto;height:auto;pointer-events:none;transform:none}
+.scale-dialog{max-height:85%;overflow:auto}
+.scale-dialog ol{font-size:clamp(10px,1.1cqw,16px);line-height:2}
+.scale-dialog li{margin-bottom:1cqw}
+
+
+
+
 .arena-enemies progress{appearance:none;-webkit-appearance:none;accent-color:#df4343}
 .arena-enemies progress::-webkit-progress-bar{background:#162c21;border-radius:2px}
 .arena-enemies progress::-webkit-progress-value{background:#df4343;border-radius:2px}

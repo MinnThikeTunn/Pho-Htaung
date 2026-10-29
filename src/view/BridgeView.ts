@@ -306,6 +306,70 @@ export function ensureBridgeTextures(scene: Phaser.Scene, bridgeLength: number =
   registerTexture('ch2_vector_slingshot', 44, 44, drawSlingshot);
   registerTexture('item-slingshot', 44, 44, drawSlingshot);
 
+  // 4b. Chapter 3 Scale Puzzle Procedural Icons (44x44px for Shan Bag Tray)
+  // Pin: Drawn diagonally from (8, 36) to (36, 8) per Core Design System
+  registerTexture('ch3_icon_pin', 44, 44, (g) => {
+    g.lineStyle(6, INK, 1).lineBetween(8, 36, 36, 8);
+    g.lineStyle(4, METAL, 1).lineBetween(8, 36, 36, 8);
+    g.lineStyle(1.5, CREAM, 0.9).lineBetween(9, 35, 35, 9);
+    g.fillStyle(GOLD, 1).fillCircle(36, 8, 4);
+    g.fillStyle(INK, 1).fillCircle(36, 8, 2);
+  });
+  registerTexture('item-pin', 44, 44, (g) => {
+    g.lineStyle(6, INK, 1).lineBetween(8, 36, 36, 8);
+    g.lineStyle(4, METAL, 1).lineBetween(8, 36, 36, 8);
+    g.lineStyle(1.5, CREAM, 0.9).lineBetween(9, 35, 35, 9);
+    g.fillStyle(GOLD, 1).fillCircle(36, 8, 4);
+    g.fillStyle(INK, 1).fillCircle(36, 8, 2);
+  });
+
+  // Stone Weight (3 ပိဿာ)
+  registerTexture('ch3_icon_stone', 44, 44, (g) => {
+    drawBlock(g, { x: 4, y: 7, w: 36, h: 30 }, STEP_STONE);
+    g.fillStyle(INK, 1).fillCircle(14, 22, 2.5).fillCircle(22, 22, 2.5).fillCircle(30, 22, 2.5);
+    g.fillStyle(CREAM, 0.9).fillCircle(14, 21.5, 1.2).fillCircle(22, 21.5, 1.2).fillCircle(30, 21.5, 1.2);
+  });
+
+  // Timber Crate (4 ပိဿာ)
+  registerTexture('ch3_icon_crate', 44, 44, (g) => {
+    drawBlock(g, { x: 4, y: 5, w: 36, h: 34 }, WOOD);
+    g.lineStyle(2, INK, 0.7).lineBetween(6, 6, 38, 37).lineBetween(38, 6, 6, 37);
+    g.lineStyle(1, CREAM, 0.4).lineBetween(7, 6, 39, 36);
+    const nails: [number, number][] = [[6, 7], [37, 7], [6, 37], [37, 37]];
+    for (let i = 0; i < nails.length; i++) {
+      const pt = nails[i]!;
+      g.fillStyle(GOLD, 1).fillCircle(pt[0], pt[1], 2);
+    }
+  });
+
+  // Sandbag (3 ပိဿာ)
+  registerTexture('ch3_icon_sandbag', 44, 44, (g) => {
+    g.fillStyle(INK, 1).fillRoundedRect(7, 12, 30, 26, 6);
+    g.fillStyle(0xc0aa76, 1).fillRoundedRect(8, 13, 28, 24, 5);
+    g.fillStyle(CREAM, 0.4).fillRect(10, 14, 6, 20);
+    // Tied neck & knot
+    g.fillStyle(INK, 1).fillEllipse(22, 11, 14, 6);
+    g.fillStyle(0x8c6d3b, 1).fillEllipse(22, 11, 11, 4);
+    g.fillStyle(GOLD, 1).fillCircle(22, 10, 2);
+    g.lineStyle(1.5, INK, 0.8).lineBetween(19, 7, 22, 10).lineBetween(25, 7, 22, 10);
+  });
+
+  // Golden Statue (ရွှေရုပ် 7 ပိဿာ)
+  registerTexture('ch3_icon_treasure', 44, 44, (g) => {
+    // Radiant halo
+    g.fillStyle(GOLD, 0.25).fillCircle(22, 16, 15);
+    // Golden body
+    g.fillStyle(INK, 1).fillCircle(22, 13, 7);
+    g.fillStyle(GOLD, 1).fillCircle(22, 13, 5.5);
+    g.fillStyle(CREAM, 0.6).fillCircle(21, 12, 2);
+    // Torso & crossed lotus legs
+    g.fillStyle(INK, 1).fillRoundedRect(14, 18, 16, 15, 3);
+    g.fillStyle(0xd4af37, 1).fillRoundedRect(15, 19, 14, 13, 2.5);
+    g.fillStyle(CREAM, 0.5).fillRect(16, 20, 3, 10);
+    g.fillStyle(INK, 1).fillRoundedRect(10, 31, 24, 8, 3);
+    g.fillStyle(GOLD, 1).fillRoundedRect(11, 32, 22, 6, 2);
+  });
+
   // 5. Procedural Clue Stele (Dark sandstone with cream chalk diagram)
   if (!textures.exists('ch1_vector_stele')) {
     registerTexture('ch1_vector_stele', 130, 80, (g) => {

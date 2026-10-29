@@ -3,7 +3,12 @@ import { overlaps, overlapX, overlapY, sweep } from './collision';
 import type { Body, Hit } from './collision';
 import type { Attempt, Input, Player, Rect, Stone } from './types';
 
-export const playerRect = (p: Player): Rect => ({ id: 'player', x: p.centerX - C.playerW / 2, y: p.feetY - C.playerH, w: C.playerW, h: C.playerH });
+export const playerRect = (p: Player): Rect => {
+  const isLaying = p.control === 'LAYING';
+  const h = isLaying ? Math.round(C.playerH * 0.45) : C.playerH;
+  const w = isLaying ? Math.round(C.playerW * 1.3) : C.playerW;
+  return { id: 'player', x: p.centerX - w / 2, y: p.feetY - h, w, h };
+};
 export const stoneRect = (s: Stone): Rect => ({ id: s.id, x: s.centerX - C.rock / 2, y: s.bottomY - C.rock, w: C.rock, h: C.rock });
 export function solids(a: Attempt): Rect[] {
   return [GROUND, STEP, liftRect(a.liftY), ...(a.gateIntact ? [GATE] : []), ...(a.shelfIntact ? [SHELF] : []), ...(a.platformsRevealed ? [PLATFORM_MID, PLATFORM_HIGH] : [])];
@@ -178,7 +183,7 @@ function simulate(a: Attempt, dt: number): void {
     }
   }
   const body = bodies[0]!;
-  p.centerX = body.x + C.playerW / 2; p.feetY = body.y + C.playerH; p.vx = body.vx; p.vy = body.vy;
+  p.centerX = body.x + body.w / 2; p.feetY = body.y + body.h; p.vx = body.vx; p.vy = body.vy;
   a.stones = a.stones.filter(s => !removed.has(s.id));
   for (const s of a.stones) {
     const b = bodies.find(v => v.id === s.id)!;
@@ -204,8 +209,21 @@ export function step(a: Attempt, input: Input, dt = C.dt): void {
   updateMachine(a, input, dt);
   const direction = Number(input.right) - Number(input.left);
   p.pushing = false;
-  p.vx = p.control === 'FREE' ? direction * C.speed : 0;
-  if (direction && p.control === 'FREE') p.facing = direction > 0 ? 1 : -1;
+  if (p.control === 'FREE' && input.down && p.grounded) {
+    p.control = 'LAYING';
+  } else if (p.control === 'LAYING') {
+    if (!input.down || !p.grounded || input.jump) {
+      p.control = 'FREE';
+    }
+  }
+  if (p.control === 'LAYING') {
+    p.vx = direction * (C.speed * 0.40);
+  } else if (p.control === 'FREE') {
+    p.vx = direction * C.speed;
+  } else {
+    p.vx = 0;
+  }
+  if (direction && (p.control === 'FREE' || p.control === 'LAYING')) p.facing = direction > 0 ? 1 : -1;
   p.coyote = p.grounded ? C.coyote : Math.max(0, p.coyote - dt);
   p.jumpBuffer = input.jump && p.control === 'FREE' ? C.buffer : Math.max(0, p.jumpBuffer - dt);
   if (p.control === 'FREE' && p.jumpBuffer > 0 && (p.grounded || p.coyote > 0)) {
@@ -232,23 +250,25 @@ export function step(a: Attempt, input: Input, dt = C.dt): void {
       a.events.push({ kind: 'coin', x: pickup.x, y: pickup.y, value: pickup.value });
     }
   }
-  if (!a.hasPole && Math.abs(p.centerX - CH2_POLE_SPAWN.x) <= 36 && Math.abs(p.feetY - STEP.y) <= 16) {
-    a.hasPole = true;
-    a.events.push({ kind: 'puzzle_item', x: CH2_POLE_SPAWN.x, y: CH2_POLE_SPAWN.y });
-  }
-  if (!a.hasCog && Math.abs(p.centerX - CH2_COG_SPAWN.x) <= 36 && Math.abs(p.feetY - SHELF.y) <= 16) {
-    a.hasCog = true;
-    a.events.push({ kind: 'puzzle_item', x: CH2_COG_SPAWN.x, y: CH2_COG_SPAWN.y });
-  }
-  if (!a.gearBoxActive && a.hasPole && a.hasCog && Math.abs(p.centerX - 1104) <= 64) {
-    a.gearBoxActive = true;
-    a.platformsRevealed = true;
-    a.events.push({ kind: 'gear_box', x: 1104, y: 360 });
-    a.events.push({ kind: 'platforms' });
-  }
-  if (a.platformsRevealed && !a.hasSlingshot && Math.abs(p.centerX - CH2_SLINGSHOT_SPAWN.x) <= 36 && Math.abs(p.feetY - PLATFORM_HIGH.y) <= 16) {
-    a.hasSlingshot = true;
-    a.events.push({ kind: 'slingshot', x: CH2_SLINGSHOT_SPAWN.x, y: CH2_SLINGSHOT_SPAWN.y });
+  if (input.taunt) {
+    if (!a.hasPole && Math.abs(p.centerX - CH2_POLE_SPAWN.x) <= 85 && Math.abs(p.feetY - STEP.y) <= 40) {
+      a.hasPole = true;
+      a.events.push({ kind: 'puzzle_item', x: CH2_POLE_SPAWN.x, y: CH2_POLE_SPAWN.y });
+    }
+    if (!a.hasCog && Math.abs(p.centerX - CH2_COG_SPAWN.x) <= 85 && Math.abs(p.feetY - SHELF.y) <= 40) {
+      a.hasCog = true;
+      a.events.push({ kind: 'puzzle_item', x: CH2_COG_SPAWN.x, y: CH2_COG_SPAWN.y });
+    }
+    if (!a.gearBoxActive && a.hasPole && a.hasCog && Math.abs(p.centerX - 1104) <= 85) {
+      a.gearBoxActive = true;
+      a.platformsRevealed = true;
+      a.events.push({ kind: 'gear_box', x: 1104, y: 360 });
+      a.events.push({ kind: 'platforms' });
+    }
+    if (a.platformsRevealed && !a.hasSlingshot && Math.abs(p.centerX - CH2_SLINGSHOT_SPAWN.x) <= 85 && Math.abs(p.feetY - PLATFORM_HIGH.y) <= 40) {
+      a.hasSlingshot = true;
+      a.events.push({ kind: 'slingshot', x: CH2_SLINGSHOT_SPAWN.x, y: CH2_SLINGSHOT_SPAWN.y });
+    }
   }
   if (a.elapsed >= 40.0 && !a.beehiveTriggered) {
     a.beehiveTriggered = true;
