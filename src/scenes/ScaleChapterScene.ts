@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { C } from '../content/chapter1';
 import { S3, SCALE_IDS, SCALE_ITEMS, SCALE_LINES } from '../content/chapter3';
+import { soundEngine } from '../utils/SoundEngine.js';
+import { AudioController } from '../services/AudioController';
 import type { ScaleItemId } from '../content/chapter3';
 import { panWeight, queueScaleCommand } from '../domain/scale';
 import type { ScaleCommand, ScaleEvent } from '../domain/scale';
@@ -21,8 +23,12 @@ const button = (id: string, text: string, primary = false) =>
 export default class ScaleChapterScene extends Phaser.Scene {
   private session!: ScaleSession;
   private view!: ScaleView;
+<<<<<<< HEAD
   public inventoryBar!: InventoryBar;
   public diegeticGrab!: DiegeticGrab;
+=======
+  private audio = new AudioController();
+>>>>>>> 76262a7 (Add Fantasy UI main menu, audio system, and volume control)
   private held = new Set<string>();
   private jumpEdge = false;
   private selected: ScaleItemId | null = null;
@@ -201,9 +207,15 @@ export default class ScaleChapterScene extends Phaser.Scene {
   }
 
   create() {
+<<<<<<< HEAD
     // 1. Ensure procedural vector textures exist FIRST
     ensureBridgeTextures(this);
     // 2. Instantiate ScaleView with procedural textures ready
+=======
+    (this as any).audio = new AudioController();
+    (this as any).audio.attach(this);
+    try { soundEngine.init?.(); if (!(soundEngine as any).muted) soundEngine.startBGM?.(); } catch {}
+>>>>>>> 76262a7 (Add Fantasy UI main menu, audio system, and volume control)
     this.view = new ScaleView(this);
     
     // Set up pan item click handler

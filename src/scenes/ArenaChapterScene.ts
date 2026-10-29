@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { A4, ARENA_ART, ARENA_LINES } from '../content/chapter4';
 import { C } from '../content/chapter1';
+import { soundEngine } from '../utils/SoundEngine.js';
+import { AudioController } from '../services/AudioController';
 import { arenaHasSlingshot } from '../domain/arena';
 import type { ArenaEvent, ArenaWeapon } from '../domain/arena';
 import { ArenaSession } from '../services/ArenaSession';
@@ -32,7 +34,8 @@ export default class ArenaChapterScene extends Phaser.Scene {
     this.finished = false; this.failureShown = false; this.messageUntil = 0; this.held.clear(); this.edges = { jump: false, punch: false, dodge: false };
     store.startArena();
   }
-  private bind(id: string, fn: () => void) { ui().querySelector(`#${id}`)?.addEventListener('click', fn); }
+  private bind(id: string, fn: () => void) { ui().querySelector(`#${id}`)?.addEventListener('click', () => { try { (soundEngine as any).playPing?.(); } catch {} fn(); }); }
+  private audio = new AudioController();
   private focusGame() { this.game.canvas.tabIndex = 0; this.game.canvas.focus({ preventScroll: true }); }
   private clear() { this.held.clear(); this.edges = { jump: false, punch: false, dodge: false }; this.session.clearInput(); }
   private speak(text: string, seconds = 3.5) {
@@ -40,6 +43,8 @@ export default class ArenaChapterScene extends Phaser.Scene {
     const el = ui().querySelector<HTMLElement>('#arena-message'); if (el) { el.textContent = text; el.hidden = false; }
   }
   create() {
+    this.audio.attach(this);
+    try { soundEngine.init?.(); if (!(soundEngine as any).muted) soundEngine.startBGM?.(); } catch {}
     this.view = new ArenaView(this);
     ensureBridgeTextures(this);
 
@@ -93,6 +98,7 @@ export default class ArenaChapterScene extends Phaser.Scene {
     const onDown = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
       const key = event.key.toLowerCase();
+<<<<<<< HEAD
       if (key === 'b' && !event.repeat && !this.finished && !this.failureShown) {
         event.preventDefault();
         if (this.bagOpen) {
@@ -116,6 +122,10 @@ export default class ArenaChapterScene extends Phaser.Scene {
       if (['a','d','arrowleft','arrowright',' '].includes(key) && this.inventoryBar?.isRevealed) {
         this.inventoryBar.hide();
       }
+=======
+      if (key === 'b' && !event.repeat && !this.finished && !this.failureShown) { event.preventDefault(); try { (soundEngine as any).playBagRustle?.() || (soundEngine as any).playPickup?.(); } catch {} if (this.bagOpen) this.pause(false); else this.openBag(); return; }
+      if (key === 'escape' && !event.repeat && !this.finished) { event.preventDefault(); if (!this.failureShown) this.pause(!this.session.paused); return; }
+>>>>>>> 76262a7 (Add Fantasy UI main menu, audio system, and volume control)
       if (this.finished || this.session.paused || !['a','d','arrowleft','arrowright',' ','j','k','l','r'].includes(key)) return;
       event.preventDefault();
       if (event.repeat) return;
