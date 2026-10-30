@@ -13,7 +13,6 @@ import { ScaleView, VISUAL_GROUND_Y, toDomainY, vy } from '../view/ScaleView';
 import InventoryBar from '../ui/InventoryBar.js';
 import DiegeticGrab from '../ui/DiegeticGrab';
 import { ensureBridgeTextures } from '../view/BridgeView';
-import { soundEngine } from '../utils/SoundEngine.js';
 import { MicroInteractions } from '../utils/MicroInteractions.js';
 
 const ui = () => document.querySelector<HTMLDivElement>('#interface')!;
@@ -36,6 +35,8 @@ export default class ScaleChapterScene extends Phaser.Scene {
   private crawlDustTimer = 0;
   private lastWallTime = 0;
   private lastPendulumAngle = 0;
+  private inventoryBar!: InventoryBar;
+  private diegeticGrab!: DiegeticGrab;
 
   // Cached DOM test targets for ultra-high framerate execution
   private elWallet: HTMLElement | null = null;
