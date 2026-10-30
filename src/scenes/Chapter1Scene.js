@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
 import SubtitleBox from '../ui/BridgeSubtitle.js';
 import InventoryBar from '../ui/InventoryBar.js';
-import ThoughtBubble from '../ui/ThoughtBubble.js';
 import GameHUD from '../ui/BridgeHUD.js';
 import { gameState, ITEM_TEXTURE_KEYS } from '../utils/AdventureState.js';
 import { soundEngine } from '../utils/SoundEngine.js';
@@ -178,10 +177,9 @@ export default class Chapter1Scene extends Phaser.Scene {
     AmbientAtmosphere.createWeatheredOverlay(this);
     AmbientAtmosphere.createForegroundSilhouettes(this, 'canyon');
 
-    // 14. High-End Perplexity HUD & Auto-Hiding Inventory Bar & Thought Bubble
+    // 14. High-End Perplexity HUD & Auto-Hiding Inventory Bar
     this.hud = new GameHUD(this);
     this.inventoryBar = new InventoryBar(this);
-    this.thought = new ThoughtBubble(this);
 
     // Natural Signifiers
     AmbientAtmosphere.startNaturalSignifiers(this, [this.winchContainer, this.bambooItem, this.cogItem]);
@@ -401,7 +399,7 @@ export default class Chapter1Scene extends Phaser.Scene {
       return;
     }
 
-    // Inspect without parts: Show Machinarium Thought Bubble & Denial reaction!
+    // Inspect without parts: U Gyi coaching & Denial reaction!
     if (!this.hasCog || !this.hasLever) {
       const needed = !this.hasCog ? 'item-cog' : 'item-bamboo-pole';
       MicroInteractions.triggerDenial(
@@ -410,7 +408,7 @@ export default class Chapter1Scene extends Phaser.Scene {
         this.player,
         'တံတားချမယ့် စက်သီးယန္တရားကြီးပဲ... ဂီယာခွေရယ်၊ လှည့်မယ့် မောင်းတံရယ် မပါရင် လှည့်လို့မရဘူး!',
         needed,
-        this.thought,
+        null,
         this.subtitle
       );
     } else {
@@ -531,22 +529,7 @@ export default class Chapter1Scene extends Phaser.Scene {
     });
   }
 
-  createWallChalkDiagram(x, y) {
-    this.chalkContainer = this.add.container(x, y).setDepth(5);
-    const diagram = this.add.image(0, 0, 'chalk-diagram').setAlpha(0.7);
-
-    const hit = this.add.rectangle(0, 0, 140, 90, 0x000000, 0.001)
-      .setInteractive({ useHandCursor: true });
-
-    hit.on('pointerdown', () => {
-      this.interactWithProximity(x, () => {
-        soundEngine.playPaper();
-        this.subtitle.say('ကျောက်နံရံပေါ်မှာ ထုံးဖြူနဲ့ ဆွဲထားတဲ့ ပုံကြမ်းပဲ... စက်သီးကို ဂီယာတပ်ပြီး လှည့်ရမယ်တဲ့။ ပြီးတော့ ဘယ်ဘက်နံရံဆီ မျှားထိုးပြထားသေးတယ်!');
-      });
-    });
-
-    this.chalkContainer.add([diagram, hit]);
-  }
+  createWallChalkDiagram() {}
 
   createToolPickups(groundY) {
     // 1. Bamboo Pole Lever (Depth: 30)

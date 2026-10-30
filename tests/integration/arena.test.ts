@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { A4 } from '../../src/content/chapter4';
 import { C } from '../../src/content/chapter1';
-import { ARENA_IDLE, arenaHasSlingshot, createArena, equipArenaWeapon, settleArena, stepArena } from '../../src/domain/arena';
+import { ARENA_IDLE, arenaHasSlingshot, createArena, equipArenaWeapon, settleArena, stepArena, triggerArenaGoldTrap } from '../../src/domain/arena';
 import type { ArenaAttempt, ArenaInput } from '../../src/domain/arena';
 import { newCampaign, validateCampaign } from '../../src/domain/settlement';
 import { ArenaSession } from '../../src/services/ArenaSession';
@@ -166,3 +166,166 @@ it('valid old schema2 progress enters Chapter4 without changing durable inventor
   const store=new CampaignStore({read:()=>raw,write:v=>{raw=v;}},'x');expect(store.loadError).toBeNull();expect(store.startArena()).toBe(true);expect(store.campaign.ownedTools).toEqual(['kept']);expect(store.campaign.resumeAt).toBe('CHAPTER_4');
   expect(validateCampaign({...c,chapter4Completed:'yes'})).toBe(false);expect(validateCampaign({...c,resumeAt:'CHAPTER_5_PENDING'})).toBe(false);
 });
+it('brown ape takes friendly-fire from silver ape thrown rocks and after 3 hits they brawl and drop each other HP', () => {
+  const a = createArena('ape-brawl-rocks', true);
+  a.status = 'ACTIVE';
+  a.player.centerX = 220;
+  const brown = a.apes[0]!;
+  const silver = a.apes[1]!;
+  brown.x = 500;
+  silver.x = 700;
+
+  // Hit 1 & 2 from silver ape thrown rocks
+  for (let hitNum = 1; hitNum <= 2; hitNum++) {
+    a.shots.push({ id: a.nextShot++, owner: 'APE', x: brown.x + 20, y: C.floor - 65, vx: -A4.throwSpeed, vy: 0, damage: A4.throwDamage, age: 0 });
+    tick(a, { ...ARENA_IDLE, right: true });
+    expect(brown.friendlyHits).toBe(hitNum);
+    expect(brown.hp).toBe(A4.apeHealth - hitNum * A4.friendlyFireHitDamage);
+    expect(a.events).toContain('friendly_fire');
+    expect(brown.phase).not.toBe('BRAWL');
+  }
+
+  // 3rd hit triggers mutual BRAWL
+  a.shots.push({ id: a.nextShot++, owner: 'APE', x: brown.x + 20, y: C.floor - 65, vx: -A4.throwSpeed, vy: 0, damage: A4.throwDamage, age: 0 });
+  tick(a, { ...ARENA_IDLE, right: true });
+  expect(a.events).toContain('brawl');
+  expect(brown.phase).toBe('BRAWL');
+  expect(silver.phase).toBe('BRAWL');
+  expect(brown.friendlyHits).toBe(0);
+
+  const brownHpAtBrawlStart = brown.hp;
+  const silverHpAtBrawlStart = silver.hp;
+
+  // Let the brawl play out to completion
+  tick(a, ARENA_IDLE, 130);
+  expect(brown.hp).toBeLessThan(brownHpAtBrawlStart);
+  expect(silver.hp).toBeLessThan(silverHpAtBrawlStart);
+  expect(brown.phase).not.toBe('BRAWL');
+  expect(silver.phase).not.toBe('BRAWL');
+});
+it('silver ape also takes accidental melee hits from brown ape and triggers mutual brawl on the 3rd hit', () => {
+  const a = createArena('ape-brawl-melee', true);
+  a.status = 'ACTIVE';
+  const brown = a.apes[0]!;
+  const silver = a.apes[1]!;
+  brown.x = 760;
+  silver.x = 810;
+  a.player.centerX = 860;
+
+  for (let hitNum = 1; hitNum <= 3; hitNum++) {
+    brown.phase = 'STRIKE';
+    brown.phaseLeft = A4.meleeStrike;
+    brown.facing = 1;
+    brown.hit = false;
+    tick(a, ARENA_IDLE);
+    if (hitNum < 3) {
+      expect(silver.friendlyHits).toBe(hitNum);
+      expect(silver.hp).toBe(A4.apeHealth - hitNum * A4.friendlyFireHitDamage);
+      expect(a.events).toContain('friendly_fire');
+    } else {
+      expect(a.events).toContain('brawl');
+      expect(brown.phase).toBe('BRAWL');
+      expect(silver.phase).toBe('BRAWL');
+    }
+  }
+});
+it('player can jump onto the fallen stone pillar, crawl under the low stone arch, and outplay/stun the brown ape', () => {
+  const a = createArena('obstacle-outplay', true);
+  a.status = 'ACTIVE';
+
+  // 1. Jumping onto the Fallen Stone Pillar (A4.pillarX = 380) lands on top of the pillar
+  a.player.centerX = A4.pillarX;
+  a.player.feetY = C.floor - A4.pillarH - 4;
+  a.player.vy = 120;
+  a.player.grounded = false;
+  tick(a, ARENA_IDLE, 2);
+  expect(a.player.support).toBe('arena_pillar');
+  expect(a.player.feetY).toBe(C.floor - A4.pillarH);
+
+  // 2. Upright walking into the Low Stone Arch (A4.archX = 580) is blocked by the overhead lintel, but crawling passes under it
+  const archLeftEdge = A4.archX - (A4.archW / 2 + 4);
+  a.player.centerX = archLeftEdge - 2;
+  a.player.feetY = C.floor;
+  a.player.grounded = true;
+  a.player.support = 'arena_floor';
+  tick(a, { ...ARENA_IDLE, right: true }, 5);
+  expect(a.player.centerX).toBe(archLeftEdge);
+
+  // Holding crawl (S / ArrowDown) lowers Phoe Htaung into LAYING posture and lets him crawl under the arch
+  tick(a, { ...ARENA_IDLE, right: true, crawl: true }, 12);
+  expect(a.player.control).toBe('LAYING');
+  expect(a.player.centerX).toBeGreaterThan(archLeftEdge + 10);
+
+  // 3. While Phoe Htaung crawls under the arch, the chasing Brown Ape bonks into the stone lintel and is stunned
+  const brown = a.apes[0]!;
+  brown.x = A4.archX + 52;
+  brown.phase = 'IDLE';
+  const hpBeforeBonk = brown.hp;
+  tick(a, { ...ARENA_IDLE, crawl: true }, 3);
+  expect(brown.phase).toBe('STUN');
+  expect(brown.hp).toBe(hpBeforeBonk - A4.obstacleBonkDamage);
+});
+it('brown ape periodically places low stone pillars and logs that corner upright walking until jumped or crawled', () => {
+  const a = createArena('dynamic-obstacles', true);
+  // Start combat and step until Brown Ape drops its first obstacle
+  let dropped = false;
+  for (let i = 0; i < 240; i++) {
+    tick(a, { ...ARENA_IDLE, right: i === 0 });
+    if (a.events.includes('obstacle_drop')) {
+      dropped = true;
+      break;
+    }
+  }
+  expect(dropped).toBe(true);
+  expect(a.obstacles.length).toBe(1);
+
+  // Test PILLAR blocks ground walking until Phoe Htaung jumps over/onto it
+  a.obstacles = [{ id: 10, kind: 'PILLAR', x: 300, age: 1, ttl: 14 }];
+  const pillarLeftEdge = 300 - (A4.droppedPillarW / 2 + 6);
+  a.player.centerX = pillarLeftEdge - 2;
+  a.player.feetY = C.floor;
+  a.player.grounded = true;
+  tick(a, { ...ARENA_IDLE, right: true }, 5);
+  expect(a.player.centerX).toBe(pillarLeftEdge);
+
+  // Jumping allows Phoe Htaung to clear the dropped PILLAR and avoid being cornered
+  tick(a, { ...ARENA_IDLE, right: true, jump: true }, 1);
+  tick(a, { ...ARENA_IDLE, right: true }, 14);
+  expect(a.player.centerX).toBeGreaterThan(300);
+
+  // Test LOG blocks upright walking until Phoe Htaung crouches/crawls under it
+  a.obstacles = [{ id: 11, kind: 'LOG', x: 460, age: 1, ttl: 14 }];
+  const logLeftEdge = 460 - (A4.droppedLogW / 2 + 4);
+  a.player.centerX = logLeftEdge - 2;
+  a.player.feetY = C.floor;
+  a.player.vy = 0;
+  a.player.grounded = true;
+  tick(a, { ...ARENA_IDLE, right: true }, 5);
+  expect(a.player.centerX).toBe(logLeftEdge);
+
+  // Crouching/crawling passes cleanly underneath the dropped LOG
+  tick(a, { ...ARENA_IDLE, right: true, crawl: true }, 15);
+  expect(a.player.control).toBe('LAYING');
+  expect(a.player.centerX).toBeGreaterThan(logLeftEdge + 12);
+});
+it('defeating both apes spawns the gold pouch greed trap which explodes and kills the player if picked up', () => {
+  const a = createArena('greed-gold-trap', true);
+  a.status = 'ACTIVE';
+  a.apes[0]!.hp = 0;
+  a.apes[1]!.hp = 0;
+  tick(a, ARENA_IDLE, 1);
+
+  expect(a.combatWon).toBe(true);
+  expect(a.goldTrapSpawned).toBe(true);
+  expect(a.goldTrapExploded).toBe(false);
+
+  // Picking up the gold pouch triggers the explosion trap and kills the player
+  expect(triggerArenaGoldTrap(a)).toBe(true);
+  expect(a.goldTrapExploded).toBe(true);
+  expect(a.hp).toBe(0);
+  expect(a.status).toBe('FAILED');
+  expect(a.failure).toBe('GREED_TRAP');
+  expect(a.events).toContain('gold_trap_exploded');
+});
+
+

@@ -1,14 +1,13 @@
 import { store } from '../services/adventure';
 import { soundEngine } from '../utils/SoundEngine.js';
 import { audioDirector } from '../audio/AudioDirector.js';
-import { AmbientAtmosphere } from '../utils/AmbientAtmosphere.js';
 export default class BridgeHUD {
   constructor(scene){
     this.scene=scene;this.ui=document.querySelector('#interface');
     this.ui.innerHTML=`<div class="hud"><div class="stage-title"><span class="eyebrow">အခန်း ၁ / PUZZLE</span><strong>ပုဂံတံတားယန္တရား</strong></div><div class="ledger"><div><span>သိမ်းပြီးရွှေ</span><b id="bridge-wallet"></b></div><div><span>သေဆုံး</span><b id="bridge-deaths"></b></div></div><button id="bag" class="icon-button bag-icon-btn" aria-label="လွယ်အိတ်">🎒</button><button id="pause" class="icon-button" aria-label="Pause">Ⅱ</button></div><div class="game-bottom"></div><div id="pause-panel" class="modal" hidden></div><div id="bridge-unsaved" class="unsaved-status" hidden>ယာယီ session · save မသိမ်းရသေးပါ</div><div id="reset-fade" class="reset-fade"></div>`;
     this.ui.querySelector('#pause').onclick=()=>this.pause(!scene.sharedPaused);
     this.ui.querySelector('#bag').onclick=()=>scene.inventoryBar?.toggleReveal();
-    this.key=e=>{if(e.key==='Escape'&&!e.repeat){e.preventDefault();this.pause(!scene.sharedPaused);}if(e.key.toLowerCase()==='h'&&!scene.sharedPaused)AmbientAtmosphere.triggerHotspotPulse(scene);};
+    this.key=e=>{if(e.key==='Escape'&&!e.repeat){e.preventDefault();this.pause(!scene.sharedPaused);}};
     this.blur=()=>this.pause(true);this.visibility=()=>{if(document.hidden)this.pause(true);};
     this.storage=e=>{if(e.key==='phoe-htaung.adventure.v2'){store.conflict=true;this.pause(true);const panel=this.ui.querySelector('#pause-panel');panel.innerHTML='<section class="dialog"><h2>အခြား tab မှ save ပြောင်းသွားသည်</h2><button id="reload" class="primary">Reload</button></section>';panel.querySelector('button').onclick=()=>location.reload();}};
     window.addEventListener('keydown',this.key);window.addEventListener('blur',this.blur);window.addEventListener('storage',this.storage);document.addEventListener('visibilitychange',this.visibility);

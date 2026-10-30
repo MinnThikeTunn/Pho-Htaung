@@ -68,19 +68,14 @@ export default class GameHUD {
       return { btn, label };
     };
 
-    // 2. Hotspot Hint Button (💡)
-    this.hintBtn = createIconButton(-20, '💡', 'အရာဝတ္ထုများ ပြပါ (Hotspots)', () => {
-      AmbientAtmosphere.triggerHotspotPulse(this.scene);
-    });
-
-    // 3. Audio / Mute Toggle Button (🔊/🔇)
+    // 2. Audio / Mute Toggle Button (🔊/🔇)
     const initialAudioIcon = soundEngine.isMuted() ? '🔇' : '🔊';
     this.audioBtn = createIconButton(22, initialAudioIcon, 'အသံ ဖွင့်/ပိတ်', (btn, label) => {
       const isMuted = soundEngine.toggleMute();
       label.setText(isMuted ? '🔇' : '🔊');
     });
 
-    // 4. Fullscreen Toggle Button (⛶)
+    // 3. Fullscreen Toggle Button (⛶)
     this.fsBtn = createIconButton(64, '⛶', 'မျက်နှာပြင်ပြည့်', () => {
       if (this.scene.scale.isFullscreen) {
         this.scene.scale.stopFullscreen();
@@ -89,7 +84,7 @@ export default class GameHUD {
       }
     });
 
-    // 5. Options Menu Button (⚙️)
+    // 4. Options Menu Button (⚙️)
     this.menuBtn = createIconButton(106, '⚙️', 'မီနူး', () => {
       this.toggleOptionsMenu();
     });
@@ -110,14 +105,6 @@ export default class GameHUD {
   }
 
   setupHotkeys() {
-    // Space or H -> Hotspot pulse
-    this.scene.input.keyboard.on('keydown-SPACE', (e) => {
-      AmbientAtmosphere.triggerHotspotPulse(this.scene);
-    });
-    this.scene.input.keyboard.on('keydown-H', (e) => {
-      AmbientAtmosphere.triggerHotspotPulse(this.scene);
-    });
-
     // M -> Mute toggle
     this.scene.input.keyboard.on('keydown-M', (e) => {
       const isMuted = soundEngine.toggleMute();

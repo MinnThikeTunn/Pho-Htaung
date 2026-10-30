@@ -318,28 +318,7 @@ export default class BridgeChapterScene extends LegacyBridge {
     });
   }
 
-  createWallChalkDiagram(_x, _y) {
-    // Horizontally centered in the middle of the screen (x = 640) and safely below the HUD (clueY = 190)
-    const clueX = 640;
-    const clueY = 190;
-    this.chalkContainer = this.add.container(clueX, clueY).setDepth(20);
-    const diagram = this.add.image(0, 0, 'ch1_vector_stele');
-
-    const hit = this.add
-      .rectangle(0, 0, 130, 80, 0x000000, 0.001)
-      .setInteractive({ useHandCursor: true });
-
-    hit.on('pointerdown', () => {
-      this.interactWithProximity(clueX, () => {
-        soundEngine.playPaper();
-        this.subtitle.say(
-          'ကျောက်နံရံပေါ်က ပုံကြမ်းပဲ... စက်သီးမှာ ဂီယာနဲ့ ဝါးလုံးတပ်ပြီး လှည့်ရမယ်။ ဘယ်ဘက်နံရံကိုလည်း မျှားပြထားတယ်။'
-        );
-      });
-    });
-
-    this.chalkContainer.add([diagram, hit]);
-  }
+  createWallChalkDiagram() {}
 
   createDrawbridgeAssembly(leftPlatWidth, groundY, pitWidth) {
     ensureBridgeTextures(this, pitWidth + 26);

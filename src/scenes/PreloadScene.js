@@ -147,6 +147,8 @@ export default class PreloadScene extends Phaser.Scene {
     this.load.image('phoe_bag_rummage', 'assets/character/phoe_bag_rummage.png');
     this.load.image('phoe_hold', 'assets/character/phoe_hold.png');
     this.load.image('traditional_bag_icon', 'assets/ui/traditional_bag_icon.png');
+    this.load.spritesheet('brown_ape_sheet', 'assets/chapter4/brown_ape_spritesheet.png', { frameWidth: 720, frameHeight: 380 });
+    this.load.spritesheet('brown_ape_walk', 'assets/chapter4/brown_ape_walk_spritesheet.png', { frameWidth: 720, frameHeight: 380 });
   }
 
   create() {

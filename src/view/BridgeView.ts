@@ -295,7 +295,21 @@ export function ensureBridgeTextures(scene: Phaser.Scene, bridgeLength: number =
 
   registerTexture('ch1_vector_bamboo_icon', 44, 44, drawBambooDiagonal);
   registerTexture('item-bamboo-pole', 44, 44, drawBambooDiagonal);
+  registerTexture('ch3_vector_bamboo_pole', 44, 44, drawBambooDiagonal);
+  registerTexture('ch3_icon_bamboo_pole', 44, 44, drawBambooDiagonal);
+  registerTexture('ch3_vector_rusty_cog', 44, 44, drawCog);
+  registerTexture('ch3_icon_rusty_cog', 44, 44, drawCog);
 
+  const drawBetelCutter = (g: Phaser.GameObjects.Graphics) => {
+    g.lineStyle(5, INK, 1).lineBetween(10, 32, 34, 12).lineBetween(10, 14, 34, 28);
+    g.lineStyle(3, METAL, 1).lineBetween(10, 32, 34, 12).lineBetween(10, 14, 34, 28);
+    g.fillStyle(GOLD, 1).fillCircle(22, 21, 3.5);
+    g.lineStyle(1.5, INK, 1).strokeCircle(22, 21, 3.5);
+  };
+  registerTexture('ch3_vector_betel_cutter', 44, 44, drawBetelCutter);
+  registerTexture('ch3_icon_betel_cutter', 44, 44, drawBetelCutter);
+
+  // Authentic Burmese Lay Khwa (လေးခွ / Slingshot)
   const drawSlingshot = (g: Phaser.GameObjects.Graphics) => {
     const cx = 22, cy = 24;
     g.lineStyle(6, INK, 1).lineBetween(cx, cy + 16, cx, cy);
@@ -312,7 +326,52 @@ export function ensureBridgeTextures(scene: Phaser.Scene, bridgeLength: number =
     g.fillStyle(CREAM, 0.6).fillCircle(cx - 1, cy - 5, 1);
   };
   registerTexture('ch2_vector_slingshot', 44, 44, drawSlingshot);
+  registerTexture('ch3_vector_slingshot', 44, 44, drawSlingshot);
+  registerTexture('ch3_icon_slingshot', 44, 44, drawSlingshot);
   registerTexture('item-slingshot', 44, 44, drawSlingshot);
+
+  // Phoe Htaung Bare Hand / Clenched Fist Icon (လက်ချည်း / FISTS)
+  const drawBareHand = (g: Phaser.GameObjects.Graphics) => {
+    // Wrist & hemp wrist-wrap
+    g.fillStyle(INK, 1).fillRoundedRect(14, 28, 16, 11, 3);
+    g.fillStyle(0xc89362, 1).fillRoundedRect(15.5, 29, 13, 9, 2);
+    g.fillStyle(SHAN_RED, 1).fillRect(15, 31, 14, 4);
+    g.fillStyle(GOLD, 0.85).fillRect(15, 32.5, 14, 1);
+
+    // Main clenched fist block
+    g.fillStyle(INK, 1).fillRoundedRect(9, 11, 26, 20, 6);
+    g.fillStyle(0xd9a574, 1).fillRoundedRect(10.5, 12.5, 23, 17, 5);
+    // Specular cream highlight across top knuckles
+    g.fillStyle(CREAM, 0.45).fillRoundedRect(12, 13.5, 20, 4, 2);
+
+    // 4 Knuckle ridge dividers
+    g.lineStyle(1.6, INK, 0.8);
+    for (const kx of [16, 22, 28]) {
+      g.lineBetween(kx, 12.5, kx, 22);
+    }
+
+    // Tucked thumb across front of fist
+    g.fillStyle(INK, 1).fillRoundedRect(11, 20, 18, 8, 3.5);
+    g.fillStyle(0xc89362, 1).fillRoundedRect(12.2, 21.2, 15.6, 5.6, 2.5);
+    g.fillStyle(CREAM, 0.35).fillRect(13.5, 22, 12, 1.5);
+  };
+  registerTexture('ch4_vector_bare_hand', 44, 44, drawBareHand);
+  registerTexture('item-fists', 44, 44, drawBareHand);
+
+  // Smooth River Stone Ammo Bundle (ကျောက်ခဲ) for Diegetic Pile Grabbing
+  const drawStoneBundle = (g: Phaser.GameObjects.Graphics) => {
+    const pebbles: [number, number, number, number][] = [
+      [15, 28, 15, 11],
+      [29, 28, 15, 11],
+      [22, 20, 16, 12],
+    ];
+    for (const [px, py, pw, ph] of pebbles) {
+      g.fillStyle(INK, 1).fillEllipse(px, py, pw + 3, ph + 3);
+      g.fillStyle(0x8d8c76, 1).fillEllipse(px, py, pw, ph);
+      g.fillStyle(CREAM, 0.45).fillEllipse(px - 2, py - 2, pw * 0.45, ph * 0.38);
+    }
+  };
+  registerTexture('ch4_vector_stone_bundle', 44, 44, drawStoneBundle);
 
   // 4b. Chapter 3 Scale Puzzle Procedural Icons & World Vector Props
   // Bagan Tile Door / Portcullis Gate (64x380px)

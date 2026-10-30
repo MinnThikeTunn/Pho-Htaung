@@ -64,6 +64,8 @@ class BootScene extends Phaser.Scene {
     this.load.image('phoe_bag_rummage', '/assets/character/phoe_bag_rummage.png');
     this.load.image('phoe_hold', '/assets/character/phoe_hold.png');
     this.load.image('traditional_bag_icon', '/assets/ui/traditional_bag_icon.png');
+    this.load.spritesheet('brown_ape_sheet', '/assets/chapter4/brown_ape_spritesheet.png', { frameWidth: 720, frameHeight: 380 });
+    this.load.spritesheet('brown_ape_walk', '/assets/chapter4/brown_ape_walk_spritesheet.png', { frameWidth: 720, frameHeight: 380 });
   }
   create() { this.scene.start('PreloadScene'); }
 }
@@ -78,7 +80,7 @@ class MenuScene extends Phaser.Scene {
     const c=store.campaign;
     ui.innerHTML=`<div class="menu-scrim"></div><section class="title-panel adventure-menu"><span class="eyebrow">ပုဂံရွှေမြို့တော် စွန့်စားခန်း</span><h1 id="game-title">ဖိုးထောင်။</h1><p class="chapter-name">တံတား → ကျောက်တုံးချစက် → ချိန်ခွင်ခန်း</p><p class="intro">အကြွေးဆပ်ဖို့ ရွှေမြို့တော်ရှာရင်း ဦးကြီးနောက်လိုက်လာတယ်။<br>ဒီတစ်ခါ ရွှေရုပ်ပါ ယူထွက်နိုင်မလား။</p>${buttons(button('start',c.bridgeCompleted?'ဆက်ကစားမယ်':'စကစားမယ်',true)+(c.bridgeCompleted?button('bridge-replay','အခန်း ၁ ပြန်စမ်း'):'')+(c.chapter2Completed?button('action-replay','အခန်း ၂ ပြန်စမ်း'):'')+(c.chapter3Completed?button('scale-replay','အခန်း ၃ ပြန်စမ်း'):''))}<div class="key-guide"><span><kbd>A</kbd><kbd>D</kbd> ရွေ့</span><span><kbd>SPACE</kbd> ခုန်</span><span>အခန်း ၁ / ၃ · နှိပ်ပြီး ကောက် / သုံး</span></div><small class="prototype-note">တူညီသော character · ယာယီ scenery နှင့်အသံများ။<br>အခန်း ၄ တိုက်ခိုက်ရေးကို မတည်ဆောက်ရသေးပါ။</small>${c.chapter2Completed?buttons(button('practice-b','အခန်း ၂ လေ့ကျင့် B')+button('practice-c','အခန်း ၂ လေ့ကျင့် C')):''}${buttons(button('new-game','Campaign အသစ်စမယ်'))}<p class="warning" id="load-error" hidden></p></section><div class="corner-label">01 / 03 <span>PUZZLE → ACTION → PUZZLE</span></div>`;
     ui.querySelector('.chapter-name')!.textContent='တံတား → ကျောက်တုံးချစက် → ချိန်ခွင် → လူဝံအစောင့် → ဦးကြီး';
-    ui.querySelector('.prototype-note')!.textContent='J လက်သီး / B အိတ်ဖွင့်ထုတ် / K လေးခွဆွဲပစ် / L ရှောင်။ အခန်း ၅ မှာ ဦးကြီးနဲ့ရင်ဆိုင်ပြီး ဇာတ်သိမ်းမယ်။';
+    ui.querySelector('.prototype-note')!.textContent='Mouse Left Click / S လက်သီး · Q လေးခွထုတ်ပစ် · W ရှောင် · Space ခုန် · C ငုံ့လျှို။ အခန်း ၅ မှာ ဦးကြီးနဲ့ရင်ဆိုင်ပြီး ဇာတ်သိမ်းမယ်။';
     ui.querySelector('.corner-label')!.innerHTML='01 / 05 <span>PUZZLE → ACTION → FINAL BOSS</span>';
     if(c.chapter3Completed)ui.querySelector('.actions')!.insertAdjacentHTML('beforeend',button('arena-replay','အခန်း ၄ ပြန်စမ်း'));
     if(c.chapter4Completed)ui.querySelector('.actions')!.insertAdjacentHTML('beforeend',button('final-replay','အခန်း ၅ ပြန်စမ်း'));

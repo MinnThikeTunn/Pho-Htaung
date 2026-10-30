@@ -521,7 +521,7 @@ export class MicroInteractions {
       player.setTexture('ph-think');
       soundEngine.playThinkingChime();
 
-      // Thoughtful head tilt & gentle breathing
+      // Thoughtful head tilt & gentle breathing (zero thought bubbles per Core Design System)
       scene.tweens.add({
         targets: player,
         angle: 5 * dir,
@@ -530,52 +530,6 @@ export class MicroInteractions {
         yoyo: true,
         repeat: 1,
         ease: 'Sine.easeInOut'
-      });
-
-      // Machinarium Thought Balloon with a rotating cog / question mark
-      const thinkBubble = scene.add.container(player.x + dir * 16, player.y - 50).setDepth(45);
-      const dot1 = scene.add.circle(-8, 8, 2.5, 0x292524, 0.9);
-      const dot2 = scene.add.circle(-4, 3, 3.5, 0x292524, 0.9);
-      const cloud = scene.add.graphics();
-      cloud.fillStyle(0x1c1917, 0.92);
-      cloud.fillCircle(10, -6, 14);
-      cloud.fillCircle(2, -8, 12);
-      cloud.fillCircle(18, -8, 10);
-      cloud.lineStyle(1.5, 0xf59e0b, 0.9);
-      cloud.strokeCircle(10, -6, 14);
-
-      const mark = scene.add.text(10, -7, '?', {
-        fontFamily: 'Plus Jakarta Sans',
-        fontSize: '14px',
-        fontStyle: '900',
-        color: '#fbbf24'
-      }).setOrigin(0.5);
-
-      thinkBubble.add([dot1, dot2, cloud, mark]);
-      thinkBubble.setScale(0.2);
-      player.idleEffectObj = thinkBubble;
-
-      scene.tweens.add({
-        targets: thinkBubble,
-        scale: 1.0,
-        duration: 350,
-        ease: 'Back.easeOut'
-      });
-
-      scene.tweens.add({
-        targets: mark,
-        angle: 15,
-        duration: 250,
-        yoyo: true,
-        repeat: 2
-      });
-
-      scene.tweens.add({
-        targets: thinkBubble,
-        alpha: 0,
-        delay: 1200,
-        duration: 300,
-        onComplete: () => thinkBubble.destroy()
       });
 
       safeReset(1550);
