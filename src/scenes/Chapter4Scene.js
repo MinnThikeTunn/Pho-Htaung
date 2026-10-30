@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import SubtitleBox from '../ui/SubtitleBox.js';
 import InventoryBar from '../ui/InventoryBar.js';
+import DiegeticGrab from '../ui/DiegeticGrab';
 import ThoughtBubble from '../ui/ThoughtBubble.js';
 import GameHUD from '../ui/GameHUD.js';
 import { gameState, BURMESE_DIGITS } from '../utils/GameState.js';
@@ -65,29 +66,40 @@ export default class Chapter4Scene extends Phaser.Scene {
       }
     });
 
-    // 5. Tool Pickups (Engineer's Secret Note)
+    // 5. HUD & Auto-Hiding Inventory Bar & Thought Bubble & DiegeticGrab
+    this.hud = new GameHUD(this);
+    this.thought = new ThoughtBubble(this);
+    this.inventoryBar = new InventoryBar(this, (combined) => {});
+    this.subtitle = new SubtitleBox(this);
+
+    this.diegeticGrab = new DiegeticGrab(this, {
+      inventoryBar: this.inventoryBar,
+      player: this.player,
+      speak: (text, duration) => this.subtitle.say(text),
+      onAutoWalk: (targetX, onReach) => this.interactWithProximity(targetX, onReach)
+    });
+
+    // 6. Tool Pickups (Engineer's Secret Note via DiegeticGrab)
     this.createFloorItems(groundY);
 
-    // 6. Floating Dust Motes & Cavern Drips & Atmosphere Overlays
+    // 7. Floating Dust Motes & Cavern Drips & Atmosphere Overlays
     AmbientAtmosphere.createDustMotes(this, 24);
     AmbientAtmosphere.startCavernDrips(this, groundY);
     AmbientAtmosphere.createWeatheredOverlay(this);
     AmbientAtmosphere.createForegroundSilhouettes(this, 'canyon');
     AmbientAtmosphere.createVolumetricRays(this, width * 0.68, 0);
 
-    // 7. Ambient Toys (Machinarium Juice)
+    // 8. Ambient Toys (Machinarium Juice)
     this.createAmbientToys(groundY, width);
-
-    // 8. HUD & Auto-Hiding Inventory Bar & Thought Bubble
-    this.hud = new GameHUD(this);
-    this.thought = new ThoughtBubble(this);
-    this.inventoryBar = new InventoryBar(this, (combined) => {});
 
     // Natural Signifiers
     AmbientAtmosphere.startNaturalSignifiers(this, [this.noteItem, this.safeContainer, this.keyholeHitZone]);
 
-    // 9. Subtitle Box
-    this.subtitle = new SubtitleBox(this);
+    // Universal verb E for proximity pickup
+    this.input.keyboard?.on('keydown-E', () => {
+      if (this.isDead || this.blueprintOpen) return;
+      this.diegeticGrab.handleProximityVerb(this.player.x, this.player.y);
+    });
 
     // Screen Vignette
     this.add.image(width / 2, height / 2, 'screen-vignette')
@@ -563,18 +575,18 @@ export default class Chapter4Scene extends Phaser.Scene {
 
   createFloorItems(groundY) {
     if (!gameState.hasItem('engineer_note')) {
-      this.noteItem = this.add.image(this.scale.width * 0.38, groundY - 14, 'item-engineer-note')
-        .setScale(0.5);
-      MicroInteractions.makeInteractiveHover(this.noteItem, 1.15);
-
-      this.noteItem.on('pointerdown', () => {
-        this.interactWithProximity(this.noteItem.x, () => {
-          MicroInteractions.pickupItemToBag(this, this.noteItem, this.player, () => {
-            gameState.addItem('engineer_note');
-            this.inventoryBar.refresh();
-            this.showBlueprintOverlay();
-          });
-        });
+      this.noteItem = this.diegeticGrab.createPickup({
+        id: 'engineer_note',
+        x: this.scale.width * 0.38,
+        y: groundY - 14,
+        textureKey: 'item-engineer-note',
+        scale: 0.5,
+        hoverScale: 0.58,
+        onBagged: () => {
+          gameState.addItem('engineer_note');
+          this.inventoryBar.refresh();
+          this.showBlueprintOverlay();
+        }
       });
     }
   }

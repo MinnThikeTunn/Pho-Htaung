@@ -23,9 +23,9 @@ const uid = () => crypto.randomUUID();
 
 function hideBootSplash() {
   const el = document.getElementById('boot-splash');
-  if (!el || el.classList.contains('hide')) return;
-  el.classList.add('hide');
-  window.setTimeout(() => el.remove(), 400);
+  if (!el) return;
+  el.style.display = 'none';
+  el.remove();
 }
 
 const audio = new AudioController();
@@ -160,6 +160,8 @@ class BootScene extends Phaser.Scene {
     this.load.image('phoe_bag_rummage', '/assets/character/phoe_bag_rummage.png');
     this.load.image('phoe_hold', '/assets/character/phoe_hold.png');
     this.load.image('traditional_bag_icon', '/assets/ui/traditional_bag_icon.png');
+    this.load.spritesheet('brown_ape_sheet', '/assets/chapter4/brown_ape_spritesheet.png', { frameWidth: 720, frameHeight: 380 });
+    this.load.spritesheet('brown_ape_walk', '/assets/chapter4/brown_ape_walk_spritesheet.png', { frameWidth: 720, frameHeight: 380 });
   }
   create() { this.scene.start('PreloadScene'); }
 }
@@ -219,11 +221,13 @@ class MenuScene extends Phaser.Scene {
       try { (soundEngine as any).playPing?.(); } catch {}
       closeMenu();
       const c = store.campaign as any;
-      if (c.chapter4Completed) this.scene.start('CHAPTER_5');
+      if (!c.bridgeCompleted) this.scene.start('Chapter1Scene');
+      else if (c.chapter5Completed) this.scene.start('CAMPAIGN_END');
+      else if (c.chapter4Completed) this.scene.start('CHAPTER_5');
       else if (c.chapter3Completed) this.scene.start('CHAPTER_4');
+      else if (c.resumeAt === 'CH2_EXIT_LINK') this.scene.start('CH2_EXIT_LINK', { mode: 'CAMPAIGN' });
       else if (c.chapter2Completed) this.scene.start('CHAPTER_3');
-      else if (c.bridgeCompleted) this.scene.start('BRIDGE_EXIT_LINK');
-      else this.scene.start('Chapter1Scene');
+      else enter(this, 'A', 'CAMPAIGN');
     });
 
     restartBtn?.addEventListener('click', () => {

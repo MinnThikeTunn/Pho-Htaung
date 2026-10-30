@@ -182,7 +182,7 @@ sequenceDiagram
 
 ---
 
-## 6. Held Item System (`showHeldItem`)
+## 6. Held Item System & Formalized Loadout Law (`FISTS` vs `SLING`)
 
 When a player selects an item from the inventory bag or pulls it out:
 
@@ -207,6 +207,15 @@ When a player selects an item from the inventory bag or pulls it out:
 3. **Movement Tracking:** In `update()`, `this.heldItemSprite.setPosition(handX, handY)` and `this.heldItemSprite.setScale(p.facing * 0.38, 0.38)`.
 4. **Zero Ground Dragging:** Hand height $524\text{px}$ is comfortably $52\text{px}$ above ground baseline ($576\text{px}$). It will **never** drag along the floor.
 
+### 6.2 Formalized Equipment & Grabbing Law: Bare Hands (`လက်ချည်း`) & Lay Khwa (`လေးခွ`) Only
+Phoe Htaung's personal capabilities strictly separate **what he can actively wield in combat/action** from **what he can physically grab into his Shan bag**:
+
+| Capability Tier | Allowed Items / Stances | Input & Mechanics |
+| :--- | :--- | :--- |
+| **1. Active Combat / Hand Loadout** (`ArenaWeapon`) | **Bare Hands (`လက်ချည်း` / `FISTS`)** & **Lay Khwa (`လေးခွ` / `SLING`) ONLY** | Phoe Htaung starts every encounter with **Bare Hands (`လက်ချည်း`)** (`holding: false`, icon: `ch4_vector_bare_hand`). He can shove/punch (<kbd>J</kbd>), push blocks, climb, jump, and belly-crawl. He can **only** switch to **Lay Khwa (`လေးခွ`)** (`holding: true`, icon: `ch2_vector_slingshot`) after he has physically **grabbed** it into his Shan bag (*Lwe-Ait*). |
+| **2. Diegetic Grabbing (`DiegeticGrab`)** | **Lay Khwa (`လေးခွ` / `slingshot`)**, **Stones (`ကျောက်ခဲ`)**, & **Chapter Puzzle Props** | Even though Phoe Htaung only fights with **Bare Hands** or **Lay Khwa**, he can physically **grab (<kbd>E</kbd> or Direct Click within $85\text{px}$)** the **Lay Khwa (`လေးခွ`)** in the world to acquire it, grab **stones (`ကျောက်ခဲ`)** from stone piles into his bag to replenish ammo, and grab **puzzle weights/mechanisms** in puzzle rooms to place onto contraptions. |
+| **3. Strict Non-Weapon Rule** | Puzzle props (`bamboo_pole`, `rusty_cog`, `stone`, `sandbag`, `crate`, `treasure`, `pin`) | Puzzle objects are grabbed into the Shan bag strictly for puzzle mechanisms (winches, gearboxes, scale pans, latches) and can **never** be equipped as combat weapons. |
+
 ---
 
 ## 7. Myanmar Traditional Bag (*Lwe-Ait*) & Bottom Dock Architecture
@@ -217,7 +226,10 @@ When a player selects an item from the inventory bag or pulls it out:
    * Clicking the bag icon or pressing <kbd>B</kbd> / <kbd>Tab</kbd> slides the 12-slot inventory tray upward ($y = 596\text{px}$) with fabric rustle audio.
    * Pressing <kbd>B</kbd>, <kbd>Tab</kbd>, or <kbd>Escape</kbd> collapses the tray back into the subterranean base.
    * Hovering scales bag icon by $1.10\times$.
-4. **Item Slot Standards:** All items rendered at $44 \times 44\text{px}$. Elongated tools (bamboo pole, pins) drawn diagonally from $(8, 36)$ to $(36, 8)$.
+4. **Item Slot Standards:** All items rendered at $44 \times 44\text{px}$.
+   * **Bare Hands (`FISTS`):** Uses `ch4_vector_bare_hand` (`item-fists`).
+   * **Lay Khwa (`SLING` / `slingshot`):** Uses `ch2_vector_slingshot` / `ch3_icon_slingshot` (`item-slingshot`).
+   * **Elongated Tools:** Bamboo pole and iron pin drawn diagonally from $(8, 36)$ to $(36, 8)$.
 
 ---
 
@@ -232,15 +244,15 @@ graph TD
     C --> D[3. Instantiate DiegeticGrab with getActor adapter]
     D --> E[4. Create interactive pickups via diegeticGrab.createPickup]
     E --> F[5. Wire E key to diegeticGrab.handleProximityVerb]
-    F --> G[6. Anchor showHeldItem at handY = visualCenterY - 12]
+    F --> G[6. Enforce Bare Hand / Lay Khwa Loadout & handY = 524px]
     G --> H[7. Wire S/Down to prone crawl with 55% height reduction]
-    H --> I[8. Verify 0 passive auto-pickups & 0 ground-dragging items]
+    H --> I[8. Verify 0 passive walk-over weapon pickups & 0 ground-dragging items]
 ```
 
 ### 8.1 Actor Adapter Pattern
 `DiegeticGrab` requires an actor interface. Use the appropriate adapter:
 
-#### For Domain-Driven Scenes (Chapter 2, Chapter 3 Scale):
+#### For Domain-Driven Scenes (Chapter 2, Chapter 3 Scale, Chapter 4 Arena):
 ```typescript
 this.diegeticGrab = new DiegeticGrab(this, {
   inventoryBar: this.inventoryBar,
@@ -252,14 +264,17 @@ this.diegeticGrab = new DiegeticGrab(this, {
       x: p.centerX,
       y: visualFeetY - 40, // 536px visual center
       facing: p.facing,
-      setControl: (ctrl: string) => { p.control = ctrl as any; },
+      setControl: (ctrl: string) => {
+        this.grabControl = ctrl === 'FREE' ? null : (ctrl as 'PICKUP' | 'RUMMAGE');
+      },
       bounce: () => {
-        const actor = (this.world as any)?.actor;
+        const actor = this.view?.getActorSprite();
         if (actor) {
+          const baseScale = Math.abs(actor.scaleY || 0.12);
           this.tweens.add({
             targets: actor,
-            scaleY: 1.08,
-            scaleX: p.facing * 0.94,
+            scaleY: baseScale * 1.08,
+            scaleX: p.facing * baseScale * 0.94,
             duration: 120,
             yoyo: true,
             ease: 'Back.Out'
@@ -273,7 +288,7 @@ this.diegeticGrab = new DiegeticGrab(this, {
 });
 ```
 
-#### For Phaser Arcade Physics Scenes (Chapter 1, Chapter 4 Arena, Chapter 5):
+#### For Phaser Arcade Physics Scenes (Chapter 1):
 ```typescript
 this.diegeticGrab = new DiegeticGrab(this, {
   inventoryBar: this.inventoryBar,
@@ -292,3 +307,4 @@ this.diegeticGrab = new DiegeticGrab(this, {
 3. **NO Passive Walk-Over Pickup:** Phoe Htaung must never vacuum items by walking over them.
 4. **NO Dragging Items on Floor:** Held items must never have $y \ge 560\text{px}$.
 5. **NO Ground Baseline Drift:** Ground baseline is strictly $576\text{px}$ everywhere.
+6. **NO Non-Canonical Combat Weapons:** Phoe Htaung can only equip and fight with **Bare Hands (`လက်ချည်း` / `FISTS`)** or **Lay Khwa (`လေးခွ` / `SLING`)** — never with bamboo poles, cogs, or puzzle weights.
