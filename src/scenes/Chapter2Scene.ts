@@ -45,6 +45,7 @@ export default class Chapter2Scene extends Phaser.Scene {
   private bambooItem: Phaser.GameObjects.Image | null = null;
   private cogItem: Phaser.GameObjects.Image | null = null;
   private gearBoxItem: Phaser.GameObjects.GameObject | null = null;
+  private gearBoxVisual: Phaser.GameObjects.Image | null = null;
   private slingshotItem: Phaser.GameObjects.Image | null = null;
   private ancientBrickItem: Phaser.GameObjects.Image | null = null;
   private steamNozzleRedirectorItem: Phaser.GameObjects.Image | null = null;
@@ -369,6 +370,7 @@ export default class Chapter2Scene extends Phaser.Scene {
       this.ancientBrickItem = null;
       this.steamNozzleRedirectorItem = null;
       if (this.gearBoxItem) { this.gearBoxItem.destroy(); this.gearBoxItem = null; }
+      if (this.gearBoxVisual) { this.gearBoxVisual.destroy(); this.gearBoxVisual = null; }
       if (this.steamNozzleSprite) { this.steamNozzleSprite.destroy(); this.steamNozzleSprite = null; }
       this.hideHeldItem();
     });
@@ -436,6 +438,19 @@ export default class Chapter2Scene extends Phaser.Scene {
         this.interactWithProximity(1060, () => this.interactWithGearBox());
       });
       this.gearBoxItem = zone;
+
+    // Visual brass gear box to replace green X zone
+    if (!this.gearBoxVisual) {
+      const g = this.make.graphics({ x: 0, y: 0 });
+      const w = 64, h = 64;
+      g.fillStyle(0xd97706, 1).fillRoundedRect(0, 0, w, h, 6);
+      g.fillStyle(0xb45309, 1).fillRoundedRect(4, 4, w - 8, h - 8, 4);
+      g.fillStyle(0xf59e0b, 1).fillRoundedRect(6, 6, w - 12, 12, 3);
+      g.generateTexture('ch2_gear_box_visual', w, h);
+      const visual = this.add.image(1108, 324, 'ch2_gear_box_visual');
+      visual.setDepth(100);
+      this.gearBoxVisual = visual;
+    }
     }
 
     // 4. Slingshot on high platform if platforms revealed
