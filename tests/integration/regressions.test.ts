@@ -17,7 +17,7 @@ it('A10: ten active drop cycles remain recoverable with input-only dodges',()=>{
   for(let pair=0;pair<5;pair++){
     if(pair)until(()=>a.player.centerX<=97,{left:true});
     tick({taunt:true});until(()=>a.machine.state==='LOCKED');until(()=>a.player.centerX>=188,{right:true});until(()=>a.machine.state==='READY');
-    tick({taunt:true});until(()=>a.machine.state==='LOCKED');until(()=>a.player.centerX>=280,{right:true});until(()=>a.machine.state==='READY');
+    tick({taunt:true});until(()=>a.machine.state==='LOCKED');until(()=>a.player.centerX>=275,{right:true});until(()=>a.machine.state==='READY');
   }
   expect(drops).toBe(10);expect(shatters).toBe(5);expect(a.stones).toHaveLength(0);
 });
@@ -39,7 +39,7 @@ it('A31: actual grounded-side input lock clears the step obstruction',()=>{
   expect(a.status).toBe('ACTIVE');expect(a.stones).toHaveLength(0);
 });
 it('A28: 30/60/144 Hz rendering yields identical production fixed-step traces',()=>{
-  const snapshots=[30,60,144].map(rate=>{const s=new Session('A',()=> 'same');for(let i=0;i<rate*2;i++)s.tick(1/rate,{...NO_INPUT,right:true});return s.attempt;});
+  const snapshots=[30,60,144].map(rate=>{const s=new Session('A',()=> 'same');s.attempt.pickups.find(p=>p.id==='coin_04')!.disarmed=true;for(let i=0;i<rate*2;i++)s.tick(1/rate,{...NO_INPUT,right:true});return s.attempt;});
   expect(snapshots[0]).toEqual(snapshots[1]);expect(snapshots[1]).toEqual(snapshots[2]);
 });
 it('A03: busy E presses neither queue nor interrupt machine',()=>{

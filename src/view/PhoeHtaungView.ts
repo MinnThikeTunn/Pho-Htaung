@@ -87,7 +87,9 @@ export function renderPhoe(
     if ('stop' in actor && typeof actor.stop === 'function') actor.stop();
   };
 
-  if (p.control === 'LAYING' || p.poseOverride === 'ph-lay') {
+  const effectivePose = p.poseOverride || (actor.getData && (actor.getData('poseOverride') as string | undefined));
+
+  if (p.control === 'LAYING' || effectivePose === 'ph-lay') {
     stopAnim();
     if (hasTexture('phoe_crouch')) {
       actor.setTexture('phoe_crouch');
@@ -109,18 +111,18 @@ export function renderPhoe(
     }
     offsetY = 12;
     baseH = 850;
-  } else if (p.poseOverride) {
+  } else if (effectivePose) {
     stopAnim();
-    if (hasTexture(p.poseOverride)) {
-      actor.setTexture(p.poseOverride);
+    if (hasTexture(effectivePose)) {
+      actor.setTexture(effectivePose);
     } else {
       actor.setTexture('phoe', 'neutral');
     }
-    if (p.poseOverride === 'ph-flat') {
+    if (effectivePose === 'ph-flat') {
       multY = 0.35;
       multX = 1.35;
       alpha = 0.9;
-    } else if (p.poseOverride === 'ph-shock') {
+    } else if (effectivePose === 'ph-shock') {
       angle = -180 * p.facing;
       multY = 0.9;
       multX = 0.9;
@@ -272,6 +274,12 @@ export function renderPhoe(
     }
     baseH = 850;
   }
+
+  // External squash and stretch (e.g. accordion squash from Kyee-Zee bonk)
+  const extSquashY = (actor.getData && (actor.getData('squashY') as number | undefined)) ?? 1;
+  const extSquashX = (actor.getData && (actor.getData('squashX') as number | undefined)) ?? (1 + (1 - extSquashY) * 0.55);
+  multY *= extSquashY;
+  multX *= extSquashX;
 
   const baseScale = 80 / baseH;
   actor.setOrigin(originX, 0.99);

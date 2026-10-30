@@ -11,7 +11,7 @@ export class AudioController {
     if (this.muted || !this.scene || !(this.scene.sound instanceof Phaser.Sound.WebAudioSoundManager)) return;
     const context = this.scene.sound.context;
     if (context.state !== 'running') return;
-    const frequencies: Partial<Record<EventKind, number>> = { lock: 540, coin: 940, death: 85, shatter: 130, land: 105, gate: 160, shelf: 180, complete: 700, taunt: 360 };
+    const frequencies: Partial<Record<EventKind, number>> = { lock: 540, coin: 940, death: 85, shatter: 130, land: 105, gate: 160, shelf: 180, complete: 700, taunt: 360, bomb: 70, bomb_disarm: 440 };
     const frequency = frequencies[kind]; if (!frequency) return;
     const osc = context.createOscillator(), gain = context.createGain();
     const now = context.currentTime, duration = kind === 'death' ? .18 : .08;

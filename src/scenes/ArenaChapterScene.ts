@@ -95,13 +95,19 @@ export default class ArenaChapterScene extends Phaser.Scene {
       const key = event.key.toLowerCase();
       if (key === 'b' && !event.repeat && !this.finished && !this.failureShown) {
         event.preventDefault();
-        this.inventoryBar?.toggleReveal();
+        if (this.bagOpen) {
+          this.inventoryBar?.hide();
+          this.pause(false);
+        } else {
+          this.openBag();
+        }
         return;
       }
       if (key === 'escape' && !event.repeat && !this.finished) {
         event.preventDefault();
-        if (this.inventoryBar?.isRevealed) {
-          this.inventoryBar.hide();
+        if (this.inventoryBar?.isRevealed || this.bagOpen) {
+          this.inventoryBar?.hide();
+          this.pause(false);
           return;
         }
         if (!this.failureShown) this.pause(!this.session.paused);

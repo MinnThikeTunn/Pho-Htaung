@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { C } from '../../src/content/chapter1';
 import { S3 } from '../../src/content/chapter3';
 import type { ScaleItemId } from '../../src/content/chapter3';
-import { createScaleAttempt, panWeight, queueScaleCommand, scaleGate, settleScale, stepScale } from '../../src/domain/scale';
+import { createScaleAttempt, leftWeight, panWeight, queueScaleCommand, rightWeight, scaleGate, settleScale, stepScale } from '../../src/domain/scale';
 import type { ScaleAttempt, ScaleInput } from '../../src/domain/scale';
 import { overlaps } from '../../src/domain/collision';
 import { newCampaign, validateCampaign } from '../../src/domain/settlement';
@@ -96,7 +96,7 @@ describe('Chapter 3 interaction and timing rules', () => {
     frame(a, { ...idle, jump: true }); until(a, () => a.locations.sandbag === 'BAG');
   });
   it('does not turn underweight, overweight or a wrong item into a death', () => {
-    const a = createScaleAttempt('wrong'); pick(a, 'pin'); placeWrong();
+    const a = createScaleAttempt('wrong'); a.pendulum.active = false; pick(a, 'pin'); placeWrong();
     function placeWrong() { queueScaleCommand(a, { kind: 'pan', id: 'pin' }); until(a, () => a.command === null); }
     expect(a.locations.pin).toBe('BAG'); pick(a, 'stone'); place(a, 'stone');
     for (let i = 0; i < 100; i++) frame(a); expect(a.gateLift).toBe(0);
@@ -174,5 +174,118 @@ describe('Chapter 3 lifecycle and durable progress', () => {
     expect(validateCampaign({ ...campaign(), chapter3Completed: 'yes' })).toBe(false);
     expect(validateCampaign({ ...campaign(), lastChapter3Result: { attemptId: 'x', activeSeconds: -1, treasureRecovered: true, method: 'BRACE' } })).toBe(false);
     expect(validateCampaign({ ...campaign(), resumeAt: 'CHAPTER_4_PENDING', chapter3Completed: false })).toBe(false);
+  });
+});
+
+describe('Chapter 3 Kyee-Zee pendulum mechanics', () => {
+  it('standing player gets hit by pendulum (triggers slapstick, then death)', () => {
+    const a = createScaleAttempt('pendulum-death');
+    // Position player standing directly under center swing
+    a.player.centerX = S3.pendulum.pivotX;
+    a.status = 'ACTIVE';
+    let slapstickSeen = false;
+    let deathSeen = false;
+    // Advance frames: initial grace period is 1.5s (90 frames)
+    for (let i = 0; i < 400; i++) {
+      stepScale(a, { ...idle, right: false, left: false, jump: false });
+      if (a.events.includes('pendulum_slapstick')) {
+        slapstickSeen = true;
+        expect(a.pendulum.slapstickTriggered).toBe(true);
+        expect(a.status).toBe('ACTIVE');
+      }
+      if (a.events.includes('pendulum_death')) {
+        deathSeen = true;
+        expect(a.status).toBe('DEAD');
+        expect(a.player.control).toBe('DEAD');
+        break;
+      }
+    }
+    expect(slapstickSeen).toBe(true);
+    expect(deathSeen).toBe(true);
+  });
+
+  it('prone belly-crawling player (S) safely ducks underneath with zero hits', () => {
+    const a = createScaleAttempt('pendulum-duck');
+    // Position player under center swing
+    a.player.centerX = S3.pendulum.pivotX;
+    // Prone belly-crawl under swinging pendulum for multiple full oscillation periods (600 frames = 10s)
+    for (let i = 0; i < 600; i++) {
+      stepScale(a, { left: false, right: false, jump: false, down: true });
+      expect(a.events).not.toContain('pendulum_slapstick');
+      expect(a.events).not.toContain('pendulum_death');
+    }
+    expect(a.player.control).toBe('LAYING');
+    expect(a.pendulum.slapstickTriggered).toBe(false);
+    expect(a.status).toBe('ACTIVE');
+  });
+
+  it('balancing the scale or latching pin disables the pendulum', () => {
+    // 1. Balancing scale disables pendulum
+    const a = createScaleAttempt('disable-balanced');
+    expect(a.pendulum.active).toBe(true);
+    basic(a);
+    expect(panWeight(a)).toBe(S3.targetWeight);
+    expect(a.pendulum.active).toBe(false);
+
+    // 2. Latching pin disables pendulum
+    const b = createScaleAttempt('disable-latch');
+    expect(b.pendulum.active).toBe(true);
+    pick(b, 'pin');
+    basic(b);
+    queueScaleCommand(b, { kind: 'latch' });
+    until(b, () => b.braced);
+    expect(b.braced).toBe(true);
+    expect(b.pendulum.active).toBe(false);
+  });
+
+  describe('Chapter 3 dynamic dual-pan physics & permanent counterweight', () => {
+    it('reference weight is permanently anchored to the left pan and cannot be picked up', () => {
+      const a = createScaleAttempt('anchor-test');
+      expect(a.locations.reference).toBe('LEFT_PAN');
+      expect(leftWeight(a)).toBe(10);
+
+      // Attempt to pick up reference
+      queueScaleCommand(a, { kind: 'item', id: 'reference' });
+      for (let i = 0; i < 50; i++) frame(a);
+
+      expect(a.locations.reference).toBe('LEFT_PAN');
+      expect(leftWeight(a)).toBe(10);
+    });
+
+    it('adding an item to left pan increases left weight and requires matching right weight to open gate', () => {
+      const a = createScaleAttempt('dual-pan-weight');
+      pick(a, 'stone');
+      // Place stone on Left Pan
+      queueScaleCommand(a, { kind: 'pan', pan: 'LEFT', id: 'stone' });
+      until(a, () => a.locations.stone === 'LEFT_PAN');
+
+      // Left pan now has reference (10) + stone (3) = 13
+      expect(leftWeight(a)).toBe(13);
+      expect(rightWeight(a)).toBe(0);
+
+      // Placing treasure (7) on right pan is insufficient (7 != 13)
+      pick(a, 'treasure');
+      place(a, 'treasure');
+      for (let i = 0; i < 50; i++) frame(a);
+      expect(a.gateLift).toBe(0);
+
+      // Adding crate (4) and slingshot/pole (2) brings right pan to 13, opening the gate!
+      // In profile 0: crate = 4, slingshot = 2, betel_cutter = 1, rusty_cog = 4
+      // Let's place crate (4) + slingshot (2): 7 + 4 + 2 = 13
+      // First pick crate (4) from world
+      pick(a, 'crate');
+      place(a, 'crate'); // now 7 + 4 = 11
+      expect(rightWeight(a)).toBe(11);
+      expect(a.gateLift).toBe(0);
+
+      // Pick slingshot (2) from world and place onto right pan: 11 + 2 = 13!
+      pick(a, 'slingshot');
+      place(a, 'slingshot');
+      expect(rightWeight(a)).toBe(13);
+
+      // Both pans equal 13 -> balanced!
+      open(a);
+      expect(a.gateLift).toBe(S3.gateTravel);
+    });
   });
 });

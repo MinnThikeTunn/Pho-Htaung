@@ -311,7 +311,7 @@ export default class InventoryBar {
     return { key, name: ITEM_NAMES_MY[key] || key };
   }
 
-  drawSlot(index, isSelected, sx) {
+  drawSlot(index, isSelected, sx, hasItem = true) {
     const g = this.slotBoxGraphics[index];
     if (!g) return;
 
@@ -323,12 +323,18 @@ export default class InventoryBar {
       g.fillStyle(CREAM, 0.2).fillRect(sx - 17, -17, 34, 3);
       g.lineStyle(2, GOLD, 1);
       g.strokeRoundedRect(sx - 21, -21, 42, 42, 10);
-    } else {
+    } else if (hasItem) {
       // Clean tactile slate slot matching Chapter 2 blocks
       g.fillStyle(STONE, 1);
       g.fillRoundedRect(sx - 21, -21, 42, 42, 10);
       g.fillStyle(CREAM, 0.12).fillRect(sx - 17, -17, 34, 3);
       g.lineStyle(1.5, INK, 1);
+      g.strokeRoundedRect(sx - 21, -21, 42, 42, 10);
+    } else {
+      // Empty slot - subtle recessed appearance (no bright placeholder)
+      g.fillStyle(0x0e1713, 0.6);
+      g.fillRoundedRect(sx - 21, -21, 42, 42, 10);
+      g.lineStyle(1, INK, 0.3);
       g.strokeRoundedRect(sx - 21, -21, 42, 42, 10);
     }
   }

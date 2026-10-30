@@ -447,7 +447,7 @@ export default class Chapter2Scene extends Phaser.Scene {
       g.fillStyle(0xb45309, 1).fillRoundedRect(4, 4, w - 8, h - 8, 4);
       g.fillStyle(0xf59e0b, 1).fillRoundedRect(6, 6, w - 12, 12, 3);
       g.generateTexture('ch2_gear_box_visual', w, h);
-      const visual = this.add.image(1108, 324, 'ch2_gear_box_visual');
+      const visual = this.add.image(1140, 356, 'ch2_gear_box_visual');
       visual.setDepth(100);
       this.gearBoxVisual = visual;
     }

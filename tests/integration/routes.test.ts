@@ -19,6 +19,7 @@ export function driver(preset: 'A'|'B'|'C'='A') {
 
 it.each([true,false])('A16 route A: actual spawn → active gate shot → exit, use E=%s',(useTaunt)=>{
   const d=driver(),{a,press,until}=d;
+  until(a=>a.player.centerX>=240,{right:true}); press({taunt:true});
   until(a=>a.player.centerX>=438,{right:true});
   press({right:true,jump:true});
   until(a=>a.player.centerX>=1080,{right:true});
@@ -42,6 +43,7 @@ it.each([true,false])('A16 route A: actual spawn → active gate shot → exit, 
 
 it('A16/A17 route B: actual A spawn → plate → raised lift → intact gate top',()=>{
   const {a,press,until}=driver();
+  until(a=>a.player.centerX>=240,{right:true}); press({taunt:true});
   until(a=>a.player.centerX>=398,{right:true}); press({taunt:true});
   until(a=>a.machine.state==='LOCKED');
   until(a=>a.player.centerX<=320,{left:true});
@@ -64,13 +66,14 @@ it('A16/A17 route B: actual A spawn → plate → raised lift → intact gate to
   expect({seconds:Number(a.elapsed.toFixed(2)),coins:a.coins}).toMatchInlineSnapshot(`
     {
       "coins": 15,
-      "seconds": 9.25,
+      "seconds": 9.27,
     }
   `);
 });
 
 it('A16 route C: actual A spawn → break shelf → retrieve fallen pouch → exit',()=>{
   const {a,press,until}=driver();
+  until(a=>a.player.centerX>=240,{right:true}); press({taunt:true});
   until(a=>a.player.centerX>=438,{right:true}); press({right:true,jump:true});
   until(a=>a.player.centerX>=896,{right:true});
   if(a.machine.state==='READY')press({taunt:true});
@@ -97,6 +100,7 @@ it('A16 route C: actual A spawn → break shelf → retrieve fallen pouch → ex
 
 it('A16 route D: actual A spawn → home-lift rock → shelf (no raised-lift flag)',()=>{
   const {a,press,until}=driver();
+  until(a=>a.player.centerX>=240,{right:true}); press({taunt:true});
   until(a=>a.player.centerX>=438,{right:true}); press({right:true,jump:true});
   until(a=>a.player.centerX>=540,{right:true}); until(a=>a.player.grounded);
   until(a=>a.player.centerX>=570,{right:true}); press({right:true,jump:true});
@@ -114,7 +118,7 @@ it('A16 route D: actual A spawn → home-lift rock → shelf (no raised-lift fla
   expect({seconds:Number(a.elapsed.toFixed(2)),coins:a.coins}).toMatchInlineSnapshot(`
     {
       "coins": 15,
-      "seconds": 9.43,
+      "seconds": 9.45,
     }
   `);
 });

@@ -185,8 +185,13 @@ describe('Chapter 2 enhancements (Pho-Htaung-Safe.docx specifications)', () => {
     step(a, { ...NO_INPUT, taunt: true });
     expect(a.hasCog).toBe(true);
 
-    a.player.centerX = 1104; a.player.feetY = 640;
-    step(a, { ...NO_INPUT, taunt: true });
+    a.player.centerX = 1104; a.player.feetY = 320;
+    step(a, { ...NO_INPUT, taunt: true }); // mount cog -> COG_MOUNTED
+    step(a, { ...NO_INPUT, taunt: true }); // triggers slapstick daze when attempting with pole unlubricated
+    run(a, 0.65); // recover from daze
+    step(a, { ...NO_INPUT, taunt: true }); // lubricate with betel juice -> LUBRICATED
+    step(a, { ...NO_INPUT, taunt: true }); // insert pole lever -> ARMED
+    step(a, { ...NO_INPUT, taunt: true }); // crank gear -> ACTIVE
     expect(a.gearBoxActive).toBe(true);
     expect(a.platformsRevealed).toBe(true);
 
@@ -243,5 +248,107 @@ describe('Chapter 2 enhancements (Pho-Htaung-Safe.docx specifications)', () => {
     step(a, { left: false, right: false, jump: false, taunt: false, down: false });
     expect(a.player.control).toBe('FREE');
     expect(playerRect(a.player).h).toBe(C.playerH);
+  });
+
+  it('detonates bomb coin_04 and kills player upon contact', () => {
+    const a = active();
+    a.player.centerX = 304; a.player.feetY = 640; a.player.grounded = true;
+    step(a, NO_INPUT);
+    expect(a.status).toBe('DEAD');
+    expect(a.bombDetonated).toBe(true);
+    expect(a.bombX).toBe(304);
+    expect(a.events.some(e => e.kind === 'bomb')).toBe(true);
+    expect(a.events.some(e => e.kind === 'death')).toBe(true);
+    expect(a.coins).toBe(0);
+  });
+
+  it('jumping over bomb coin_04 safely clears without detonation', () => {
+    const a = active();
+    a.player.centerX = 304; a.player.feetY = 560; a.player.grounded = false; a.player.vy = -100;
+    step(a, NO_INPUT);
+    expect(a.status).toBe('ACTIVE');
+    expect(a.bombDetonated).toBe(false);
+  });
+
+  it('pressing taunt (E) within proximity disarms bomb coin into safe collectible', () => {
+    const a = active();
+    a.player.centerX = 260; a.player.feetY = 640; a.player.grounded = true;
+    step(a, { ...NO_INPUT, taunt: true });
+    expect(a.events.some(e => e.kind === 'bomb_disarm')).toBe(true);
+    const bombCoin = a.pickups.find(p => p.id === 'coin_04')!;
+    expect(bombCoin.disarmed).toBe(true);
+
+    // Now walking into the disarmed coin safely collects it
+    a.player.centerX = 304;
+    step(a, NO_INPUT);
+    expect(a.status).toBe('ACTIVE');
+    expect(bombCoin.collected).toBe(true);
+    expect(a.coins).toBe(2);
+  });
+});
+
+describe('Chapter 2 Gearbox Puzzle & Slapstick mechanics', () => {
+  it('interacting from ground (y = 640) fails with gear_too_high', () => {
+    const a = active();
+    a.player.centerX = 1104; a.player.feetY = 640;
+    a.hasCog = true; a.hasPole = true;
+    step(a, { ...NO_INPUT, taunt: true });
+    expect(a.gearboxState).toBe('EMPTY');
+    expect(a.gearBoxActive).toBe(false);
+    expect(a.events.some(e => e.kind === 'gear_too_high')).toBe(true);
+  });
+
+  it('interacting from lintel height (y <= 400) with cog mounts the cog (COG_MOUNTED)', () => {
+    const a = active();
+    a.player.centerX = 1104; a.player.feetY = 360;
+    a.hasCog = true; a.hasPole = false;
+    step(a, { ...NO_INPUT, taunt: true });
+    expect(a.gearboxState).toBe('COG_MOUNTED');
+    expect(a.events.some(e => e.kind === 'puzzle_item')).toBe(true);
+  });
+
+  it('taunt (E) lubricates with betel juice (LUBRICATED)', () => {
+    const a = active();
+    a.player.centerX = 1104; a.player.feetY = 360;
+    a.gearboxState = 'COG_MOUNTED';
+    a.hasCog = true; a.hasPole = false;
+    step(a, { ...NO_INPUT, taunt: true });
+    expect(a.gearboxState).toBe('LUBRICATED');
+    expect(a.events.some(e => e.kind === 'gear_lube')).toBe(true);
+  });
+
+  it('having the pole arms the lever (ARMED)', () => {
+    const a = active();
+    a.player.centerX = 1104; a.player.feetY = 360;
+    a.gearboxState = 'LUBRICATED';
+    a.hasCog = true; a.hasPole = true;
+    step(a, { ...NO_INPUT, taunt: true });
+    expect(a.gearboxState).toBe('ARMED');
+    expect(a.events.some(e => e.kind === 'gear_lever')).toBe(true);
+  });
+
+  it('cranking completes to ACTIVE, sets gearBoxActive = true, and sets platformsRevealed = true', () => {
+    const a = active();
+    a.player.centerX = 1104; a.player.feetY = 360;
+    a.gearboxState = 'ARMED';
+    a.hasCog = true; a.hasPole = true;
+    step(a, { ...NO_INPUT, taunt: true });
+    expect(a.gearboxState).toBe('ACTIVE');
+    expect(a.gearBoxActive).toBe(true);
+    expect(a.platformsRevealed).toBe(true);
+    expect(a.events.some(e => e.kind === 'gear_crank')).toBe(true);
+    expect(a.events.some(e => e.kind === 'platforms')).toBe(true);
+  });
+
+  it('trying to force unlubricated mechanism triggers gear_slapstick and daze without killing the player', () => {
+    const a = active();
+    a.player.centerX = 1104; a.player.feetY = 360;
+    a.gearboxState = 'COG_MOUNTED';
+    a.hasCog = true; a.hasPole = true;
+    step(a, { ...NO_INPUT, taunt: true });
+    expect(a.events.some(e => e.kind === 'gear_slapstick')).toBe(true);
+    expect(a.player.control).toBe('TAUNTING');
+    expect(a.player.tauntLeft).toBe(0.6);
+    expect(a.status).toBe('ACTIVE');
   });
 });

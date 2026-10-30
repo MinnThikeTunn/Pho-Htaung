@@ -9,8 +9,10 @@ import { store } from '../services/adventure';
 import { SAVE_KEY } from '../services/CampaignStore';
 import { ScaleView, VISUAL_GROUND_Y, toDomainY, vy } from '../view/ScaleView';
 import InventoryBar from '../ui/InventoryBar.js';
+import DiegeticGrab from '../ui/DiegeticGrab';
 import { ensureBridgeTextures } from '../view/BridgeView';
 import { soundEngine } from '../utils/SoundEngine.js';
+import { MicroInteractions } from '../utils/MicroInteractions.js';
 
 const ui = () => document.querySelector<HTMLDivElement>('#interface')!;
 const button = (id: string, text: string, primary = false) =>
@@ -20,14 +22,20 @@ export default class ScaleChapterScene extends Phaser.Scene {
   private session!: ScaleSession;
   private view!: ScaleView;
   public inventoryBar!: InventoryBar;
+  public diegeticGrab!: DiegeticGrab;
   private held = new Set<string>();
   private jumpEdge = false;
   private selected: ScaleItemId | null = null;
   private history: string[] = [];
   private finished = false;
   private lastLine = '';
+  private grabControl: string | null = null;
   private heldItemSprite: Phaser.GameObjects.Image | null = null;
   private speechTimer: Phaser.Time.TimerEvent | null = null;
+  private isLaying = false;
+  private crawlDustTimer = 0;
+  private lastWallTime = 0;
+  private lastPendulumAngle = 0;
 
   // Cached DOM test targets for ultra-high framerate execution
   private elWallet: HTMLElement | null = null;
@@ -36,6 +44,7 @@ export default class ScaleChapterScene extends Phaser.Scene {
   private elState: HTMLElement | null = null;
   private elUnsaved: HTMLElement | null = null;
   private elPan: HTMLButtonElement | null = null;
+  private elLeftPan: HTMLButtonElement | null = null;
   private elLatch: HTMLButtonElement | null = null;
   private elWorld = new Map<ScaleItemId, HTMLButtonElement>();
   private elBag = new Map<ScaleItemId, HTMLButtonElement>();
@@ -61,6 +70,11 @@ export default class ScaleChapterScene extends Phaser.Scene {
     this.lastLine = '';
     this.held.clear();
     this.jumpEdge = false;
+    this.isLaying = false;
+    this.grabControl = null;
+    this.crawlDustTimer = 0;
+    this.lastWallTime = 0;
+    this.lastPendulumAngle = 0;
     this.hideHeldItem();
     store.startScale();
   }
@@ -119,14 +133,16 @@ export default class ScaleChapterScene extends Phaser.Scene {
     const p = this.session?.attempt?.player;
     if (!p) return;
 
-    const handX = p.centerX + p.facing * 16;
-    const handY = vy(p.feetY) - 40 - 24;
+    const visualFeetY = vy(p.feetY);
+    const visualCenterY = visualFeetY - 40;
+    const handX = p.centerX + p.facing * 20;
+    const handY = visualCenterY - 12;
     const texKey = `ch3_icon_${this.selected}`;
 
     if (this.textures.exists(texKey)) {
       this.heldItemSprite = this.add
         .image(handX, handY, texKey)
-        .setScale(0.85)
+        .setScale(p.facing * 0.38, 0.38)
         .setDepth(200);
     }
   }
@@ -138,9 +154,69 @@ export default class ScaleChapterScene extends Phaser.Scene {
     }
   }
 
+  private spawnWorldPickups() {
+    this.diegeticGrab.clear();
+    const a = this.session?.attempt;
+    if (!a) return;
+
+    const defs: { id: ScaleItemId; x: number; y: number; tex: string; scale: number; voice: string }[] = [
+      { id: 'stone', x: 220, y: vy(640) - 19, tex: 'ch3_vector_stone', scale: 1.0, voice: 'ကျောက်တုံး ကောက်ရပြီ!' },
+      { id: 'sandbag', x: 380, y: vy(530) - 20, tex: 'ch3_vector_sandbag', scale: 1.0, voice: 'စင်ပေါ်က သဲအိတ် ရပြီ!' },
+      { id: 'crate', x: 930, y: vy(640) - 20, tex: 'ch3_vector_crate', scale: 1.0, voice: 'သစ်သားသေတ္တာ ကောက်ယူလိုက်ပြီ!' },
+      { id: 'treasure', x: 850, y: vy(640) - 26, tex: 'ch3_vector_treasure', scale: 1.0, voice: 'ရွှေရုပ် ရပြီ! လွယ်အိတ်ထဲ ထည့်ထားလိုက်တယ်။' },
+      { id: 'pin', x: 150, y: vy(640) - 18, tex: 'ch3_vector_pin', scale: 1.0, voice: 'သံချောင်း ကောက်ရပြီ!' },
+      { id: 'betel_cutter', x: 1150, y: vy(640) - 16, tex: 'ch3_vector_betel_cutter', scale: 1.0, voice: 'ကွမ်းသီးညှပ် ကောက်ရပြီ!' },
+      { id: 'bamboo_pole', x: 1100, y: vy(640) - 18, tex: 'ch3_vector_bamboo_pole', scale: 1.0, voice: 'ဝါးလုံး ကောက်ရပြီ!' },
+      { id: 'rusty_cog', x: 120, y: vy(640) - 16, tex: 'ch3_vector_rusty_cog', scale: 1.0, voice: 'သံချေးတက်ဂီယာ ကောက်ရပြီ!' },
+      { id: 'slingshot', x: 60, y: vy(640) - 16, tex: 'ch3_vector_slingshot', scale: 1.0, voice: 'လေးခွ ကောက်ရပြီ!' },
+    ];
+
+    for (const def of defs) {
+      if (a.locations[def.id] === 'WORLD') {
+        this.diegeticGrab.createPickup({
+          id: def.id,
+          x: def.x,
+          y: def.y,
+          textureKey: def.tex,
+          scale: def.scale,
+          hoverScale: def.scale * 1.15,
+          depth: 12,
+          bobRange: 3,
+          bobDuration: 1200,
+          voiceoverText: def.voice,
+          voiceoverDuration: 2.2,
+          onBagged: () => {
+            this.session.attempt.locations[def.id] = 'BAG';
+            if (!this.selected) {
+              this.selected = def.id;
+              this.updateHeldItem();
+              this.inventoryBar?.setSelected(def.id);
+            }
+            this.inventoryBar?.refresh();
+            this.sync();
+          }
+        });
+      }
+    }
+  }
+
   create() {
-    this.view = new ScaleView(this);
+    // 1. Ensure procedural vector textures exist FIRST
     ensureBridgeTextures(this);
+    // 2. Instantiate ScaleView with procedural textures ready
+    this.view = new ScaleView(this);
+    
+    // Set up pan item click handler
+    this.view.setItemClickHandler((id: ScaleItemId) => {
+      if (this.session.paused || this.finished) return;
+      const a = this.session.attempt;
+      const loc = a.locations[id];
+      
+      // Only allow pickup if item is on a pan (and not the fixed reference)
+      if (loc === 'LEFT_PAN' || loc === 'PAN' || loc === 'RIGHT_PAN') {
+        this.queue({ kind: 'item', id });
+      }
+    });
 
     // Standardized Bottom Myanmar Traditional Bag (Lwe-Ait)
     this.inventoryBar = new InventoryBar(this, {
@@ -154,7 +230,7 @@ export default class ScaleChapterScene extends Phaser.Scene {
             items.push({
               key: id,
               id,
-              name: `${itemDef.name}${itemDef.weight ? ` (${itemDef.weight} ပိဿာ)` : ''}`,
+              name: itemDef.name,
               selected: this.selected === id,
               texture: `ch3_icon_${id}`
             });
@@ -172,6 +248,43 @@ export default class ScaleChapterScene extends Phaser.Scene {
         }
       }
     });
+
+    // Standardized 3-Phase Diegetic Grab with Actor Adapter
+    this.diegeticGrab = new DiegeticGrab(this, {
+      inventoryBar: this.inventoryBar,
+      getActor: () => {
+        const p = this.session?.attempt?.player;
+        if (!p) return null;
+        const visualFeetY = vy(p.feetY);
+        return {
+          x: p.centerX,
+          y: visualFeetY - 40,
+          facing: p.facing,
+          setControl: (ctrl: string) => {
+            this.grabControl = ctrl === 'FREE' ? null : ctrl;
+          },
+          bounce: () => {
+            const actor = this.view?.getActorSprite();
+            if (actor) {
+              const baseScale = Math.abs(actor.scaleY || 0.12);
+              this.tweens.add({
+                targets: actor,
+                scaleY: baseScale * 1.08,
+                scaleX: p.facing * baseScale * 0.94,
+                duration: 120,
+                yoyo: true,
+                ease: 'Back.Out'
+              });
+            }
+          }
+        };
+      },
+      speak: (text, duration, who) => this.speak(text, duration ?? 2.5, who),
+      onAutoWalk: (_targetX, onReach) => onReach()
+    });
+
+    // Spawn high-fidelity vector pickups in the world
+    this.spawnWorldPickups();
 
     // Standardized Perplexity HUD: zero on-screen shortcut strips, zero world text tags
     ui().innerHTML = `
@@ -196,6 +309,7 @@ export default class ScaleChapterScene extends Phaser.Scene {
 
       <!-- Text-free, zero-opacity click targets strictly for headless test locators -->
       <div class="scale-test-targets">
+        <button type="button" id="scale-left-pan" class="test-target" aria-label="left-pan"></button>
         <button type="button" id="scale-pan" class="test-target" aria-label="pan"></button>
         <button type="button" id="scale-latch" class="test-target" aria-label="latch"></button>
         ${SCALE_IDS.map(id => `<button type="button" id="world-${id}" class="test-target" aria-label="${id}"></button>`).join('')}
@@ -214,9 +328,16 @@ export default class ScaleChapterScene extends Phaser.Scene {
     this.elTime = ui().querySelector('#scale-time');
     this.elState = ui().querySelector('#scale-state');
     this.elUnsaved = ui().querySelector('#scale-unsaved');
+    this.elLeftPan = ui().querySelector('#scale-left-pan');
     this.elPan = ui().querySelector('#scale-pan');
     this.elLatch = ui().querySelector('#scale-latch');
 
+    if (this.elLeftPan) {
+      this.elLeftPan.style.left = `${(S3.leftPanX / C.width) * 100}%`;
+      this.elLeftPan.style.top = `${(vy(535) / C.height) * 100}%`;
+      this.elLeftPan.style.width = '100px';
+      this.elLeftPan.style.height = '40px';
+    }
     if (this.elPan) {
       this.elPan.style.left = `${(S3.panX / C.width) * 100}%`;
       this.elPan.style.top = `${(vy(535) / C.height) * 100}%`;
@@ -232,7 +353,8 @@ export default class ScaleChapterScene extends Phaser.Scene {
 
     this.elWorld.clear();
     this.elBag.clear();
-    for (const id of SCALE_IDS) {
+    for (let i = 0; i < SCALE_IDS.length; i++) {
+      const id = SCALE_IDS[i]!;
       const w = ui().querySelector<HTMLButtonElement>(`#world-${id}`);
       if (w) {
         this.elWorld.set(id, w);
@@ -242,13 +364,35 @@ export default class ScaleChapterScene extends Phaser.Scene {
         w.style.height = '48px';
       }
       const b = ui().querySelector<HTMLButtonElement>(`#bag-${id}`);
-      if (b) this.elBag.set(id, b);
+      if (b) {
+        this.elBag.set(id, b);
+        b.style.left = `${10 + i * 8}%`;
+        b.style.top = '88%';
+        b.style.width = '44px';
+        b.style.height = '44px';
+      }
     }
 
-    this.bind('scale-pan', () => this.usePan());
+    this.bind('scale-pan', () => this.usePan('RIGHT'));
+    this.bind('scale-left-pan', () => this.usePan('LEFT'));
     this.bind('scale-latch', () => this.useLatch());
     for (const id of SCALE_IDS) {
-      this.bind(`world-${id}`, () => this.queue({ kind: 'item', id }));
+      this.bind(`world-${id}`, () => {
+        if (id === 'reference') {
+          this.usePan('LEFT');
+          return;
+        }
+        const loc = this.session.attempt.locations[id];
+        if (loc === 'LEFT_PAN') {
+          this.usePan('LEFT');
+          return;
+        }
+        if (loc === 'PAN' || loc === 'RIGHT_PAN') {
+          this.usePan('RIGHT');
+          return;
+        }
+        this.queue({ kind: 'item', id });
+      });
       this.bind(`bag-${id}`, () => {
         if (!this.session.paused && !this.finished) {
           this.session.attempt.command = null;
@@ -269,30 +413,39 @@ export default class ScaleChapterScene extends Phaser.Scene {
 
       const a = this.session.attempt;
       const x = pointer.worldX;
-      const domainY = toDomainY(pointer.worldY);
+      const y = pointer.worldY;
+      const domainY = toDomainY(y);
 
-      // Check click on items
+      // 1. Check click on Left Pan zone (generous hitbox: x from 415 to 585, y from 140 down to ground)
+      if (x >= 415 && x <= 585 && y >= 140 && y <= vy(650)) {
+        this.usePan('LEFT');
+        return;
+      }
+
+      // 2. Check click on Right Pan zone (generous hitbox: x from 665 to 835, y from 140 down to ground)
+      if (x >= 665 && x <= 835 && y >= 140 && y <= vy(650)) {
+        this.usePan('RIGHT');
+        return;
+      }
+
+      // 3. Check click on Latch zone (beside the Bagan gate)
+      if (x >= 970 && x <= 1045 && y >= vy(490) && y <= vy(650)) {
+        this.useLatch();
+        return;
+      }
+
+      // 4. Check click on world items (only items currently on the ground or shelf)
       for (const id of SCALE_IDS) {
-        if (!['WORLD', 'PAN'].includes(a.locations[id])) continue;
-        const targetPt = a.locations[id] === 'PAN'
-          ? { x: S3.panX, feetY: 535 }
-          : SCALE_ITEMS[id];
-        if (Math.abs(x - targetPt.x) <= 38 && Math.abs(domainY - targetPt.feetY) <= 52) {
+        if (a.locations[id] !== 'WORLD') continue;
+        const targetPt = SCALE_ITEMS[id];
+        if (Math.abs(x - targetPt.x) <= 45 && Math.abs(domainY - targetPt.feetY) <= 55) {
+          if (Math.abs(a.player.centerX - targetPt.x) <= 85) {
+            this.diegeticGrab.executeGrab(id);
+            return;
+          }
           this.queue({ kind: 'item', id });
           return;
         }
-      }
-
-      // Check click on pan
-      if (Math.abs(x - S3.panX) <= 85 && Math.abs(domainY - 535) <= 50) {
-        this.usePan();
-        return;
-      }
-
-      // Check click on latch
-      if (Math.abs(x - S3.latchX) <= 32 && Math.abs(domainY - 575) <= 50) {
-        this.useLatch();
-        return;
       }
     };
 
@@ -309,6 +462,12 @@ export default class ScaleChapterScene extends Phaser.Scene {
           return;
         }
         this.pause(!this.session.paused);
+        return;
+      }
+
+      // Instant quick-reset on death per Norman's Law
+      if (key === 'r' && !event.repeat && this.session.attempt.status === 'DEAD') {
+        this.session.restart();
         return;
       }
 
@@ -335,31 +494,31 @@ export default class ScaleChapterScene extends Phaser.Scene {
         const a = this.session.attempt;
         const px = a.player.centerX;
         const pfeet = a.player.feetY;
+        const visualFeetY = vy(pfeet);
 
         // Check latch hole proximity
-        if (Math.abs(px - S3.latchX) <= 85) {
+        if (Math.abs(px - S3.latchX) <= 90) {
           if (this.selected === 'pin') {
             this.useLatch();
             return;
           }
         }
 
-        // Check pan proximity
-        if (Math.abs(px - S3.panX) <= 85) {
-          this.usePan();
+        // Check left pan proximity (expanded reach)
+        if (Math.abs(px - S3.leftPanX) <= 105) {
+          this.usePan('LEFT');
           return;
         }
 
-        // Check items proximity
-        for (const id of SCALE_IDS) {
-          if (['WORLD', 'PAN'].includes(a.locations[id])) {
-            const targetPt = a.locations[id] === 'PAN' ? { x: S3.panX, feetY: 535 } : SCALE_ITEMS[id];
-            if (Math.abs(px - targetPt.x) <= 85 && Math.abs(pfeet - targetPt.feetY) <= 75) {
-              this.queue({ kind: 'item', id });
-              return;
-            }
-          }
+        // Check right pan proximity (expanded reach)
+        if (Math.abs(px - S3.panX) <= 105) {
+          this.usePan('RIGHT');
+          return;
         }
+
+        // Check ground item proximity grab first via DiegeticGrab
+        const grabbed = this.diegeticGrab.handleProximityVerb(px, visualFeetY - 40);
+        if (grabbed) return;
       }
 
       this.held.add(key);
@@ -401,6 +560,7 @@ export default class ScaleChapterScene extends Phaser.Scene {
       this.held.clear();
       this.jumpEdge = false;
       this.hideHeldItem();
+      this.diegeticGrab?.clear();
       this.session.clearInput();
       this.input.off('pointerdown', onWorldClick);
       if (this.speechTimer) {
@@ -414,16 +574,23 @@ export default class ScaleChapterScene extends Phaser.Scene {
     this.focusGame();
   }
 
-  private usePan() {
+  private usePan(side: 'LEFT' | 'RIGHT' = 'RIGHT') {
     if (this.session.paused || this.finished) return;
     const a = this.session.attempt;
 
-    // If no item is selected, check if there is an item on the pan to pick up
+    // If no item is selected, check if there is a retrievable item on that pan
     if (!this.selected) {
-      const onPan = SCALE_IDS.filter(id => a.locations[id] === 'PAN');
-      if (onPan.length > 0) {
-        const lastItem = onPan[onPan.length - 1] as ScaleItemId | undefined;
-        if (lastItem) this.queue({ kind: 'item', id: lastItem });
+      const matchLoc = side === 'LEFT' ? 'LEFT_PAN' : 'PAN';
+      const onPan = SCALE_IDS.filter(id => a.locations[id] === matchLoc || (side === 'RIGHT' && a.locations[id] === 'RIGHT_PAN'));
+      // Filter out immovable items like 'reference'
+      const pickableOnPan = onPan.filter(id => id !== 'reference');
+      if (pickableOnPan.length > 0) {
+        const lastItem = pickableOnPan[pickableOnPan.length - 1] as ScaleItemId;
+        this.queue({ kind: 'item', id: lastItem });
+        return;
+      }
+      if (side === 'LEFT' && onPan.includes('reference')) {
+        this.speak(SCALE_LINES.fixedReference, 3.5);
         return;
       }
       this.speak(SCALE_LINES.pan, 2.5);
@@ -435,7 +602,13 @@ export default class ScaleChapterScene extends Phaser.Scene {
       return;
     }
 
-    this.queue({ kind: 'pan', id: this.selected });
+    // Place the selected item onto the pan, then deselect so user must explicitly choose next
+    this.queue({ kind: 'pan', pan: side, id: this.selected });
+    this.selected = null;
+    this.updateHeldItem();
+    this.inventoryBar?.clearSelected();
+    this.inventoryBar?.refresh();
+    this.sync();
   }
 
   private useLatch() {
@@ -515,6 +688,55 @@ export default class ScaleChapterScene extends Phaser.Scene {
     if (event === 'pickup' || event === 'retrieved') {
       soundEngine.playPickup();
     }
+    if (event === 'pendulum_slapstick') {
+      try {
+        if (typeof (soundEngine as any).playBonk === 'function') {
+          (soundEngine as any).playBonk();
+        } else {
+          soundEngine.playClang();
+        }
+      } catch {}
+
+      // Accordion squash animation on Phoe Htaung sprite (scaleY: 0.4, then bounce back to normal over 400ms)
+      const actor = this.view.getActorSprite();
+      if (actor) {
+        actor.setData('squashY', 0.4);
+        this.tweens.add({
+          targets: { val: 0.4 },
+          val: 1.0,
+          duration: 400,
+          ease: 'Bounce.Out',
+          onUpdate: (tween: Phaser.Tweens.Tween) => {
+            actor.setData('squashY', tween.getValue());
+          },
+          onComplete: () => {
+            actor.setData('squashY', 1.0);
+          }
+        });
+      }
+
+      this.speak(SCALE_LINES.pendulumSlapstick, 3.5);
+    }
+    if (event === 'pendulum_death') {
+      store.death(this.session.attempt.id);
+      try {
+        soundEngine.playDeath();
+        if (typeof (soundEngine as any).playBonk === 'function') {
+          (soundEngine as any).playBonk();
+        }
+      } catch {}
+
+      this.cameras.main.shake(250, 0.008);
+
+      // Comedic knockdown animation / flat collapse
+      const actor = this.view.getActorSprite();
+      if (actor) {
+        actor.setData('squashY', 0.35);
+        actor.setData('poseOverride', 'ph-flat');
+      }
+
+      this.speak('ဦးကြီး — ကြေးစည်ကြီးနဲ့ ခေါင်းကွဲသွားပြီ! R ကို နှိပ်ပြီး ချက်ချင်း ပြန်စလိုက် ဖိုးထောင်!', 4.0);
+    }
     if (event === 'complete') {
       store.completeScale(this.session.attempt);
       this.finished = true;
@@ -589,9 +811,9 @@ export default class ScaleChapterScene extends Phaser.Scene {
     for (const id of SCALE_IDS) {
       const worldTarget = this.elWorld.get(id);
       if (worldTarget) {
-        const isWorld = ['WORLD', 'PAN'].includes(a.locations[id]);
+        const isWorld = ['WORLD', 'PAN', 'RIGHT_PAN', 'LEFT_PAN'].includes(a.locations[id]);
         if (worldTarget.hidden !== !isWorld) worldTarget.hidden = !isWorld;
-        if (a.locations[id] === 'PAN') {
+        if (a.locations[id] === 'PAN' || a.locations[id] === 'RIGHT_PAN' || a.locations[id] === 'LEFT_PAN') {
           const pt = this.view.itemPoint(a, id);
           worldTarget.style.left = `${(pt.x / C.width) * 100}%`;
           worldTarget.style.top = `${((pt.feetY - 20) / C.height) * 100}%`;
@@ -608,8 +830,12 @@ export default class ScaleChapterScene extends Phaser.Scene {
     }
 
     if (this.elPan) {
-      const pY = `${(this.view.panY(a) / C.height) * 100}%`;
+      const pY = `${(this.view.rightPanY(a) / C.height) * 100}%`;
       if (this.elPan.style.top !== pY) this.elPan.style.top = pY;
+    }
+    if (this.elLeftPan) {
+      const pY = `${(this.view.leftPanY(a) / C.height) * 100}%`;
+      if (this.elLeftPan.style.top !== pY) this.elLeftPan.style.top = pY;
     }
 
     if (this.elUnsaved && this.elUnsaved.hidden !== !store.unsaved) {
@@ -619,22 +845,49 @@ export default class ScaleChapterScene extends Phaser.Scene {
 
   update(_time: number, milliseconds: number) {
     if (this.finished) return;
-    const dt = Math.max(milliseconds / 1000, C.dt);
+    const now = performance.now();
+    const wallElapsed = this.lastWallTime > 0 ? (now - this.lastWallTime) / 1000 : 0;
+    this.lastWallTime = now;
+    const dt = Math.max(Math.min(wallElapsed, 0.25), milliseconds / 1000, C.dt);
     const previous = this.session.generation;
     const before = { ...this.session.attempt.locations };
     const stepped = this.session.accumulator + dt + 1e-9 >= C.dt;
 
+    const inputLeft = this.held.has('a') || this.held.has('arrowleft');
+    const inputRight = this.held.has('d') || this.held.has('arrowright');
+    const inputDown = this.held.has('s') || this.held.has('arrowdown');
+
     const events = this.session.tick(
       dt,
       {
-        left: this.held.has('a') || this.held.has('arrowleft'),
-        right: this.held.has('d') || this.held.has('arrowright'),
-        jump: this.jumpEdge
+        left: inputLeft,
+        right: inputRight,
+        jump: this.jumpEdge,
+        down: inputDown
       },
       this.held.has('r')
     );
 
     if (stepped) this.jumpEdge = false;
+
+    // Track prone crawl state and footstep dust
+    const currentLaying = this.session.attempt.player.control === 'LAYING';
+    if (currentLaying && !this.isLaying) {
+      this.isLaying = true;
+      try { soundEngine.playLongyiRustle(); } catch {}
+    } else if (!currentLaying && this.isLaying) {
+      this.isLaying = false;
+    }
+
+    if (currentLaying && (inputLeft || inputRight)) {
+      if (_time > this.crawlDustTimer) {
+        const dir = Number(inputRight) - Number(inputLeft);
+        try {
+          MicroInteractions.spawnFootstepDust(this, this.session.attempt.player.centerX, 576, Math.sign(dir));
+        } catch {}
+        this.crawlDustTimer = _time + 280;
+      }
+    }
 
     if (previous !== this.session.generation) {
       this.selected = null;
@@ -643,13 +896,24 @@ export default class ScaleChapterScene extends Phaser.Scene {
       this.jumpEdge = false;
       this.history = [];
       this.lastLine = '';
+      const actor = this.view?.getActorSprite();
+      if (actor) {
+        actor.setData('squashY', 1.0);
+        actor.setData('poseOverride', undefined);
+      }
       this.speak('လက်ရှိအခန်းကို ပြန်စထားသည်။ သိမ်းပြီးရွှေနဲ့ campaign progress မပြောင်းပါ။', 2.5);
       this.inventoryBar?.refresh();
       this.inventoryBar?.clearSelected();
+      this.spawnWorldPickups();
     } else {
       let bagChanged = false;
       for (const id of SCALE_IDS) {
         if (before[id] !== 'BAG' && this.session.attempt.locations[id] === 'BAG') {
+          // If the item has an active pickup in DiegeticGrab that hasn't started grabbing yet,
+          // execute the 3-phase grab animation sequence!
+          if (before[id] === 'WORLD' && this.diegeticGrab.getPickupSprite(id)) {
+            this.diegeticGrab.executeGrab(id);
+          }
           this.selected = id;
           this.updateHeldItem();
           this.speak(`${SCALE_ITEMS[id].name} ကို လွယ်အိတ်ထဲ ထည့်ထားပြီ။`);
@@ -671,16 +935,27 @@ export default class ScaleChapterScene extends Phaser.Scene {
       soundEngine.playFootstepStone();
     }
 
-    // Update held item position to follow Phoe's hand
+    // Update held item position to follow Phoe's hand strictly at 524px per character.md
     if (this.heldItemSprite && p) {
-      const handX = p.centerX + p.facing * 16;
-      const handY = vy(p.feetY) - 40 - 24;
+      const visualFeetY = vy(p.feetY);
+      const visualCenterY = visualFeetY - 40;
+      const handX = p.centerX + p.facing * 20;
+      const handY = visualCenterY - 12;
       this.heldItemSprite.setPosition(handX, handY);
-      this.heldItemSprite.setFlipX(p.facing < 0);
+      this.heldItemSprite.setScale(p.facing * 0.38, 0.38);
     }
 
+    // Atmospheric wind whoosh foley when Kyee-Zee pendulum passes its lowest apex
+    const curAngle = this.session.attempt.pendulum.angle;
+    if (this.session.attempt.pendulum.active && this.session.attempt.elapsed >= 0.5) {
+      if ((this.lastPendulumAngle < 0 && curAngle >= 0) || (this.lastPendulumAngle > 0 && curAngle <= 0)) {
+        try { soundEngine.playWoosh(); } catch {}
+      }
+    }
+    this.lastPendulumAngle = curAngle;
+
     for (const event of events) this.event(event);
-    this.view.render(this.session.attempt, dt, Boolean(this.heldItemSprite));
+    this.view.render(this.session.attempt, dt, Boolean(this.heldItemSprite), this.grabControl);
     this.sync();
   }
 }

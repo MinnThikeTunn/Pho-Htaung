@@ -380,10 +380,29 @@ export default class BridgeChapterScene extends LegacyBridge {
       });
     });
 
+    // Specular Range Indicator Glint (pulsing diegetic affordance when jammed and in range)
+    this.winchGlint = this.add.graphics().setDepth(36);
+    this.winchGlint.fillStyle(0xffdf80, 0.9);
+    // Draw 4-pointed specular diamond star at cog center (0, -20)
+    this.winchGlint.beginPath();
+    this.winchGlint.moveTo(0, -28);
+    this.winchGlint.lineTo(3, -20);
+    this.winchGlint.lineTo(11, -20);
+    this.winchGlint.lineTo(3, -20);
+    this.winchGlint.lineTo(0, -12);
+    this.winchGlint.lineTo(-3, -20);
+    this.winchGlint.lineTo(-11, -20);
+    this.winchGlint.lineTo(-3, -20);
+    this.winchGlint.closePath();
+    this.winchGlint.fillPath();
+    this.winchGlint.fillStyle(CREAM, 1).fillCircle(0, -20, 2);
+    this.winchGlint.setAlpha(0);
+
     this.winchContainer.add([
       winchG,
       this.winchCogSlot,
       this.winchLeverSlot,
+      this.winchGlint,
       this.winchHitZone
     ]);
 
@@ -636,7 +655,7 @@ export default class BridgeChapterScene extends LegacyBridge {
         this.tweens.add({
           targets: this.stuckRockSprite,
           y: this.groundY - 26,
-          duration: 220,
+          duration: 150,
           yoyo: true,
           ease: 'Sine.InOut'
         });
@@ -646,24 +665,26 @@ export default class BridgeChapterScene extends LegacyBridge {
       this.tweens.add({
         targets: pryLever,
         angle: 65,
-        duration: 220,
+        duration: 150,
         yoyo: true,
         onYoyo: () => {
           soundEngine.playClang();
           MicroInteractions.spawnFootstepDust(this, rockX + 20, this.groundY, 1);
+          this.isPrying = false;
+          this.isInteracting = false;
 
           if (this.wedgedCogSprite) {
             // Parabolic arc launch: X: rockX -> targetLandX, Y: arc up to groundY - 55 then land at groundY - 14
             this.tweens.add({
               targets: this.wedgedCogSprite,
               x: targetLandX,
-              duration: 360,
+              duration: 260,
               ease: 'Linear'
             });
             this.tweens.add({
               targets: this.wedgedCogSprite,
               y: this.groundY - 55,
-              duration: 180,
+              duration: 130,
               ease: 'Quad.Out',
               yoyo: true,
               easeYoyo: 'Quad.In',
@@ -685,7 +706,7 @@ export default class BridgeChapterScene extends LegacyBridge {
             this.tweens.add({
               targets: this.wedgedCogSprite,
               angle: 180,
-              duration: 360,
+              duration: 260,
               ease: 'Quad.Out'
             });
           } else {
@@ -729,7 +750,7 @@ export default class BridgeChapterScene extends LegacyBridge {
     item.on('pointerdown', (_p, _x, _y, event) => {
       event?.stopPropagation();
       this.interactWithProximity(item.x, () => {
-        if (!item.active || this.isInteracting) return;
+        if (!item.active) return;
         this.isInteracting = true;
         this.pickupState = 'PICKUP';
         soundEngine.playWoosh();
@@ -868,8 +889,8 @@ export default class BridgeChapterScene extends LegacyBridge {
   }
 
   handleBetelSpit() {
-    if (this.isDead || this.completing || this.isInteracting || this.isVaulting) return;
-    if (this.activeTime - (this.lastSpitTime || 0) < 0.25) return;
+    if (this.isDead || this.completing || this.isVaulting) return;
+    if (this.lastSpitTime !== undefined && this.activeTime - this.lastSpitTime < 0.25) return;
     this.lastSpitTime = this.activeTime;
 
     const nearWinch = Math.abs(this.player.x - this.winchContainer.x) <= 85;
@@ -889,7 +910,7 @@ export default class BridgeChapterScene extends LegacyBridge {
         targets: drop,
         x: this.winchContainer.x,
         y: this.winchContainer.y - 20,
-        duration: 320,
+        duration: 180,
         ease: 'Quad.In',
         onComplete: () => {
           soundEngine.playPickup();
@@ -898,6 +919,7 @@ export default class BridgeChapterScene extends LegacyBridge {
           this.winchJammed = false;
           this.winchLubricated = true;
           this.isInteracting = false;
+          if (this.winchGlint) this.winchGlint.setAlpha(0);
 
           // Golden sparkle flash on cog
           const sparkle = this.add.graphics().setDepth(40);
@@ -986,6 +1008,7 @@ export default class BridgeChapterScene extends LegacyBridge {
 
     this.winchJammed = false;
     this.winchLubricated = true;
+    if (this.winchGlint) this.winchGlint.setAlpha(0);
 
     try { soundEngine.playStoneGrind(); } catch (e) {}
     try { soundEngine.playGearClick(); } catch (e) {}
@@ -1174,6 +1197,16 @@ export default class BridgeChapterScene extends LegacyBridge {
     }
     if (this.beeswaxItem?.active) {
       this.beeswaxItem.y = this.groundY - 14 + Math.sin(this.activeTime * 3 + 2) * 2;
+    }
+
+    // Diegetic range indicator: subtle golden glint when within spitting distance of jammed winch
+    if (this.winchGlint) {
+      const nearWinch = this.winchContainer && Math.abs(this.player.x - this.winchContainer.x) <= 85;
+      if (this.winchJammed && nearWinch && this.hasCog && !this.winchLubricated) {
+        this.winchGlint.setAlpha(0.45 + Math.sin(this.activeTime * 8) * 0.35);
+      } else {
+        this.winchGlint.setAlpha(0);
+      }
     }
 
     if (this.isDead) {
@@ -1380,7 +1413,7 @@ export default class BridgeChapterScene extends LegacyBridge {
       return;
     }
 
-    if (this.jumpBuffer > 0 && this.coyote > 0 && !this.isInteracting) {
+    if ((this.jumpBuffer > 0 || jump) && this.coyote > 0 && !this.isInteracting) {
       this.player.setVelocityY(C.jump);
       this.jumpBuffer = 0;
       this.coyote = 0;
@@ -1417,6 +1450,32 @@ export default class BridgeChapterScene extends LegacyBridge {
     this.invisibleBlock?.setAlpha(1);
 
     audioDirector.handleTrapInvisibleBlock();
+
+    try {
+      soundEngine.playClang();
+    } catch (e) {}
+
+    // Sharp 180ms chalk shockwave flash outline around the block for punchy slapstick impact
+    if (this.invisibleBlock) {
+      const bx = this.invisibleBlock.x;
+      const by = this.invisibleBlock.y;
+      const bw = this.invisibleBlock.displayWidth || 64;
+      const bh = this.invisibleBlock.displayHeight || 64;
+      const chalk = this.add.graphics().setDepth(45);
+      chalk.setPosition(bx, by);
+      chalk.lineStyle(3, 0xffffff, 1);
+      chalk.strokeRect(-bw / 2, -bh / 2, bw, bh);
+
+      this.tweens.add({
+        targets: chalk,
+        scaleX: 1.18,
+        scaleY: 1.18,
+        alpha: 0,
+        duration: 180,
+        ease: 'Quad.Out',
+        onComplete: () => chalk.destroy()
+      });
+    }
 
     try {
       MicroInteractions.spawnFootstepDust(

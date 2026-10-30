@@ -257,6 +257,40 @@ class SoundEngine {
     osc.stop(now + 0.25);
   }
 
+  // Comic Bonk (Phoe Htaung getting clocked by bronze Kyee-Zee gong)
+  playBonk() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    // 1. Resonant bronze gong thud
+    const osc1 = this.ctx.createOscillator();
+    const gain1 = this.ctx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(320, now);
+    osc1.frequency.exponentialRampToValueAtTime(80, now + 0.28);
+    gain1.gain.setValueAtTime(0.25, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+    osc1.connect(gain1);
+    gain1.connect(this.ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.28);
+
+    // 2. High metallic chime overtone
+    const osc2 = this.ctx.createOscillator();
+    const gain2 = this.ctx.createGain();
+    osc2.type = 'triangle';
+    osc2.frequency.setValueAtTime(880, now);
+    osc2.frequency.exponentialRampToValueAtTime(440, now + 0.35);
+    gain2.gain.setValueAtTime(0.12, now);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc2.connect(gain2);
+    gain2.connect(this.ctx.destination);
+    osc2.start(now);
+    osc2.stop(now + 0.35);
+  }
+
   // Contemplative / Thinking Chime ("ဟင်...")
   playThinkingChime() {
     if (this.muted) return;
@@ -453,6 +487,47 @@ class SoundEngine {
 
     osc.start(now);
     osc.stop(now + 0.08);
+  }
+
+  // Bomb explosion
+  playExplosion() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    // Deep sub-bass boom
+    const osc = this.ctx.createOscillator();
+    const oscGain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(160, now);
+    osc.frequency.exponentialRampToValueAtTime(30, now + 0.38);
+    oscGain.gain.setValueAtTime(0.35, now);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+    osc.connect(oscGain);
+    oscGain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.38);
+
+    // Explosive noise crackle
+    const bufferSize = Math.floor(this.ctx.sampleRate * 0.4);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(800, now);
+    filter.frequency.exponentialRampToValueAtTime(100, now + 0.4);
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.3, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+    noise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(this.ctx.destination);
+    noise.start(now);
+    noise.stop(now + 0.4);
   }
 
   // Steam blast
@@ -1266,6 +1341,197 @@ class SoundEngine {
       osc.start(now + idx * 0.06);
       osc.stop(now + idx * 0.06 + 0.55);
     });
+  }
+
+  // Sizzling / bubbling noise when betel saliva frees rusted gears
+  playRustSizzle() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const dur = 0.45;
+
+    // Highpass sizzling white noise with crackle
+    const bSize = Math.floor(this.ctx.sampleRate * dur);
+    const bBuf = this.ctx.createBuffer(1, bSize, this.ctx.sampleRate);
+    const bData = bBuf.getChannelData(0);
+    for (let i = 0; i < bSize; i++) {
+      bData[i] = (Math.random() * 2 - 1) * (Math.random() > 0.85 ? 0.7 : 0.25);
+    }
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = bBuf;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(2800, now);
+    filter.frequency.exponentialRampToValueAtTime(1400, now + dur);
+    filter.Q.setValueAtTime(3.0, now);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.09, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+    noise.start(now);
+    noise.stop(now + dur);
+
+    // Subtle bubbling / liquid pops
+    [0.05, 0.12, 0.22, 0.31].forEach((delay, idx) => {
+      const bOsc = this.ctx.createOscillator();
+      const bGain = this.ctx.createGain();
+      bOsc.type = 'sine';
+      const popFreq = 450 + idx * 90 + Math.random() * 50;
+      bOsc.frequency.setValueAtTime(popFreq, now + delay);
+      bOsc.frequency.exponentialRampToValueAtTime(popFreq * 1.4, now + delay + 0.04);
+
+      bGain.gain.setValueAtTime(0.04, now + delay);
+      bGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.04);
+
+      bOsc.connect(bGain);
+      bGain.connect(this.ctx.destination);
+      bOsc.start(now + delay);
+      bOsc.stop(now + delay + 0.04);
+    });
+  }
+
+  // Slapstick bamboo pole whip/twang kickback + face thud
+  playPoleSnapback() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+
+    // 1. Springy whip / twang pitch bend
+    const twangOsc = this.ctx.createOscillator();
+    const twangGain = this.ctx.createGain();
+    twangOsc.type = 'sawtooth';
+    twangOsc.frequency.setValueAtTime(680, now);
+    twangOsc.frequency.exponentialRampToValueAtTime(120, now + 0.14);
+
+    const twangFilter = this.ctx.createBiquadFilter();
+    twangFilter.type = 'lowpass';
+    twangFilter.frequency.setValueAtTime(1600, now);
+    twangFilter.frequency.exponentialRampToValueAtTime(350, now + 0.14);
+
+    twangGain.gain.setValueAtTime(0.12, now);
+    twangGain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+    twangOsc.connect(twangFilter);
+    twangFilter.connect(twangGain);
+    twangGain.connect(this.ctx.destination);
+    twangOsc.start(now);
+    twangOsc.stop(now + 0.14);
+
+    // 2. Comical slapstick thud / smack (wooden smack on head)
+    const thudDelay = 0.07;
+    const thudOsc = this.ctx.createOscillator();
+    const thudGain = this.ctx.createGain();
+    thudOsc.type = 'triangle';
+    thudOsc.frequency.setValueAtTime(110, now + thudDelay);
+    thudOsc.frequency.exponentialRampToValueAtTime(38, now + thudDelay + 0.16);
+
+    thudGain.gain.setValueAtTime(0.15, now + thudDelay);
+    thudGain.gain.exponentialRampToValueAtTime(0.001, now + thudDelay + 0.16);
+
+    thudOsc.connect(thudGain);
+    thudGain.connect(this.ctx.destination);
+    thudOsc.start(now + thudDelay);
+    thudOsc.stop(now + thudDelay + 0.16);
+
+    // Short slap noise burst
+    const nSize = Math.floor(this.ctx.sampleRate * 0.06);
+    const nBuf = this.ctx.createBuffer(1, nSize, this.ctx.sampleRate);
+    const nData = nBuf.getChannelData(0);
+    for (let i = 0; i < nSize; i++) nData[i] = (Math.random() * 2 - 1) * 0.5;
+    const nSrc = this.ctx.createBufferSource();
+    nSrc.buffer = nBuf;
+    const nGain = this.ctx.createGain();
+    nGain.gain.setValueAtTime(0.1, now + thudDelay);
+    nGain.gain.exponentialRampToValueAtTime(0.001, now + thudDelay + 0.06);
+    nSrc.connect(nGain);
+    nGain.connect(this.ctx.destination);
+    nSrc.start(now + thudDelay);
+    nSrc.stop(now + thudDelay + 0.06);
+  }
+
+  // Heavy ancient mechanical cranking / ratcheting sound
+  playHeavyRatchet() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const clicks = 5;
+    const interval = 0.055;
+
+    for (let i = 0; i < clicks; i++) {
+      const clickTime = now + i * interval;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'square';
+      const baseFreq = 260 + (i % 2 === 0 ? 50 : 0) + (Math.random() * 30 - 15);
+      osc.frequency.setValueAtTime(baseFreq, clickTime);
+      osc.frequency.exponentialRampToValueAtTime(80, clickTime + 0.04);
+
+      gain.gain.setValueAtTime(0.11, clickTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, clickTime + 0.04);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(clickTime);
+      osc.stop(clickTime + 0.04);
+
+      // Metallic friction burst
+      const bSize = Math.floor(this.ctx.sampleRate * 0.035);
+      const bBuf = this.ctx.createBuffer(1, bSize, this.ctx.sampleRate);
+      const bData = bBuf.getChannelData(0);
+      for (let j = 0; j < bSize; j++) bData[j] = (Math.random() * 2 - 1) * 0.35;
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = bBuf;
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(1100 + i * 80, clickTime);
+      filter.Q.setValueAtTime(5, clickTime);
+
+      const nGain = this.ctx.createGain();
+      nGain.gain.setValueAtTime(0.06, clickTime);
+      nGain.gain.exponentialRampToValueAtTime(0.001, clickTime + 0.035);
+
+      noise.connect(filter);
+      filter.connect(nGain);
+      nGain.connect(this.ctx.destination);
+      noise.start(clickTime);
+      noise.stop(clickTime + 0.035);
+    }
+  }
+
+  // Short organic resonant wood tap (mounting bamboo lever / wedge)
+  playWoodTap() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(360, now);
+    osc.frequency.exponentialRampToValueAtTime(140, now + 0.05);
+
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.05);
   }
 }
 

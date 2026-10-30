@@ -115,14 +115,108 @@ export class WorldView {
       g.lineStyle(2, GOLD, .95).strokeCircle(pickup.x, vy(pickup.y) + bob, pickup.size / 2 + 3);
     }
 
-    // Door Gear Box
+    // Door Gear Box (5 Visual States: EMPTY, COG_MOUNTED, LUBRICATED, ARMED, ACTIVE)
     const gb = vr(CH2_GEARBOX_RECT);
-    this.block(gb, METAL);
-    g.fillStyle(GOLD).fillCircle(gb.x + gb.w / 2, gb.y + gb.h / 2, 14);
-    g.fillStyle(INK).fillCircle(gb.x + gb.w / 2, gb.y + gb.h / 2, 4);
-    for (let i = 0; i < 8; i++) {
-      const ang = (i * Math.PI) / 4 + (a.gearBoxActive ? this.clock * 2 : 0);
-      g.fillStyle(GOLD).fillCircle(gb.x + gb.w / 2 + Math.cos(ang) * 14, gb.y + gb.h / 2 + Math.sin(ang) * 14, 3);
+    const cx = gb.x + gb.w / 2;
+    const cy = gb.y + gb.h / 2;
+    const gbState = a.gearboxState ?? (a.gearBoxActive ? 'ACTIVE' : 'EMPTY');
+
+    // Recessed dark iron gearbox housing
+    this.block(gb, 0x3d4b45);
+    g.fillStyle(0x18241e).fillCircle(cx, cy, 18);
+    g.lineStyle(1.5, 0x101915, 0.8).strokeCircle(cx, cy, 18);
+
+    // Corner iron rivets
+    for (const rx of [gb.x + 5, gb.x + gb.w - 5]) {
+      for (const ry of [gb.y + 5, gb.y + gb.h - 5]) {
+        g.fillStyle(0x101713).fillCircle(rx, ry, 2);
+        g.fillStyle(CREAM, 0.35).fillCircle(rx - 0.5, ry - 0.5, 0.8);
+      }
+    }
+
+    if (gbState === 'EMPTY') {
+      // Recessed dark iron box with empty central axle hole
+      g.fillStyle(0x0a100d).fillCircle(cx, cy, 6);
+      g.lineStyle(1.5, 0x223028).strokeCircle(cx, cy, 6);
+      g.fillStyle(CREAM, 0.15).fillCircle(cx - 1, cy - 1, 1.5);
+    } else {
+      // Bronze gear with teeth
+      const rot = gbState === 'ACTIVE' ? this.clock * 2 : 0;
+      const numTeeth = 8;
+      const toothRadius = 14;
+
+      // 1. Gear teeth
+      for (let i = 0; i < numTeeth; i++) {
+        const ang = (i * Math.PI * 2) / numTeeth + rot;
+        const tx = cx + Math.cos(ang) * toothRadius;
+        const ty = cy + Math.sin(ang) * toothRadius;
+        g.fillStyle(0xa6742a).fillCircle(tx, ty, 3.5);
+        g.lineStyle(1, INK, 0.7).strokeCircle(tx, ty, 3.5);
+
+        // LUBRICATED / ARMED / ACTIVE glossy reddish sheen on gear teeth
+        if (gbState === 'LUBRICATED' || gbState === 'ARMED' || gbState === 'ACTIVE') {
+          g.fillStyle(0x9b1b22, 0.88).fillCircle(tx, ty, 2.8);
+          g.fillStyle(0xff7070, 0.65).fillCircle(tx - 0.8, ty - 0.8, 1.2);
+        }
+      }
+
+      // 2. Main cog body
+      g.fillStyle(0xb8863b).fillCircle(cx, cy, 13);
+      g.lineStyle(1.5, INK, 0.9).strokeCircle(cx, cy, 13);
+      g.fillStyle(CREAM, 0.2).fillCircle(cx - 2, cy - 2, 9);
+
+      // COG_MOUNTED: weathered rust spots
+      if (gbState === 'COG_MOUNTED') {
+        g.fillStyle(0x7c3620, 0.85).fillCircle(cx - 4, cy - 3, 2.5);
+        g.fillStyle(0x662915, 0.85).fillCircle(cx + 3, cy + 4, 3);
+        g.fillStyle(0x8a4025, 0.8).fillCircle(cx + 4, cy - 2, 2);
+        g.fillStyle(0x5c2514, 0.9).fillCircle(cx - 2, cy + 5, 2);
+      }
+
+      // LUBRICATED / ARMED / ACTIVE: glossy reddish betel juice sheen & drip
+      if (gbState === 'LUBRICATED' || gbState === 'ARMED' || gbState === 'ACTIVE') {
+        g.fillStyle(0x88171d, 0.5).fillCircle(cx, cy, 10);
+        g.fillStyle(0xa81c24).fillEllipse(cx + 1, cy + 15, 2, 3.5);
+        g.fillStyle(0xff8888, 0.45).fillCircle(cx - 3, cy - 3, 2);
+      }
+
+      // ARMED / ACTIVE: bamboo pole lever extending diagonally out of the gear with a wooden cotter wedge
+      if (gbState === 'ARMED' || gbState === 'ACTIVE') {
+        const poleAngle = rot - Math.PI / 4;
+        const poleLen = 42;
+        const ex = cx + Math.cos(poleAngle) * poleLen;
+        const ey = cy + Math.sin(poleAngle) * poleLen;
+        const bx = cx - Math.cos(poleAngle) * 6;
+        const by = cy - Math.sin(poleAngle) * 6;
+
+        // Bamboo pole lever (outer ink + bamboo green/yellow body)
+        g.lineStyle(6, INK, 1).lineBetween(bx, by, ex, ey);
+        g.lineStyle(3.5, 0x8a994c, 1).lineBetween(bx, by, ex, ey);
+        g.lineStyle(1.2, CREAM, 0.45).lineBetween(bx - 0.5, by - 0.5, ex - 0.5, ey - 0.5);
+
+        // Bamboo segment rings
+        for (const dist of [14, 26, 36]) {
+          const nx = cx + Math.cos(poleAngle) * dist;
+          const ny = cy + Math.sin(poleAngle) * dist;
+          g.fillStyle(INK).fillCircle(nx, ny, 2.5);
+          g.fillStyle(0xc8d672).fillCircle(nx, ny, 1.4);
+        }
+
+        // Wooden cotter wedge pinning lever to gear hub
+        const cotterAngle = poleAngle + Math.PI / 2;
+        const wx1 = cx + Math.cos(cotterAngle) * 7.5;
+        const wy1 = cy + Math.sin(cotterAngle) * 7.5;
+        const wx2 = cx - Math.cos(cotterAngle) * 7.5;
+        const wy2 = cy - Math.sin(cotterAngle) * 7.5;
+        g.lineStyle(4, INK).lineBetween(wx1, wy1, wx2, wy2);
+        g.lineStyle(2.5, WOOD).lineBetween(wx1, wy1, wx2, wy2);
+        g.fillStyle(CREAM, 0.8).fillCircle(wx1, wy1, 1);
+      }
+
+      // Center axle hub
+      g.fillStyle(INK).fillCircle(cx, cy, 5);
+      g.fillStyle(0x3e4d44).fillCircle(cx, cy, 3.5);
+      g.fillStyle(GOLD).fillCircle(cx, cy, 1.5);
     }
 
     // 40s Beehive Hazard (Image 2)
@@ -152,6 +246,10 @@ export class WorldView {
         g.lineStyle(1, INK).strokeTriangle(sx, 710, sx + 10, 710, sx + 5, 680);
       }
     }
+    if (a.bombDetonated && a.bombX) {
+      g.fillStyle(0x182720, 0.4).fillEllipse(a.bombX, VISUAL_GROUND_Y + 1, 38, 8);
+      g.fillStyle(0x0e1712, 0.6).fillCircle(a.bombX, VISUAL_GROUND_Y + 1, 6);
+    }
     g.fillStyle(0x07140d, .22).fillEllipse(p.centerX, vy(p.feetY) + 1, 43, 9);
     if (this.actor) {
       renderPhoe(this.actor, { ...p, feetY: vy(p.feetY), holding: Boolean((this.scene as any).heldItemSprite), control: p.control }, this.clock);
@@ -159,6 +257,23 @@ export class WorldView {
       g.fillStyle(0xdbc6a1).fillCircle(p.centerX, vy(p.feetY) - 52, 13);
       g.fillStyle(0xafa77e).fillRect(p.centerX - 12, vy(p.feetY) - 41, 24, 26);
       g.fillStyle(0x4e6b4f).fillTriangle(p.centerX - 15, vy(p.feetY) - 15, p.centerX + 15, vy(p.feetY) - 15, p.centerX + 10, vy(p.feetY));
+    }
+    // Subtle spinning cartoon dizzy stars around Phoe Htaung's head on slapstick daze
+    if (p.control === 'TAUNTING' && a.gearboxSlapped) {
+      const headX = p.centerX;
+      const headY = vy(p.feetY) - 58;
+      const numStars = 3;
+      for (let i = 0; i < numStars; i++) {
+        const starAng = this.clock * 7 + (i * Math.PI * 2) / numStars;
+        const sx = headX + Math.cos(starAng) * 20;
+        const sy = headY + Math.sin(starAng) * 6;
+        g.fillStyle(INK).fillCircle(sx, sy, 3.5);
+        g.fillStyle(GOLD).fillCircle(sx, sy, 2.5);
+        g.fillStyle(CREAM).fillCircle(sx, sy, 1.2);
+        g.lineStyle(1, GOLD, 0.95);
+        g.lineBetween(sx - 4.5, sy, sx + 4.5, sy);
+        g.lineBetween(sx, sy - 4.5, sx, sy + 4.5);
+      }
     }
     if (debug) {
       g.lineStyle(1, 0x75ffff).strokeRect(p.centerX - 18, vy(p.feetY) - 56, 36, 56);

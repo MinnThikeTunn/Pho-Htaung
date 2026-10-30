@@ -13,6 +13,14 @@ export const BETEL_RED = 0x9b111e;
 export const BETEL_DARK = 0x5a0808;
 export const ROPE = 0xc4a364;
 export const ROPE_DARK = 0x8c6d3b;
+export const TERRACOTTA = 0x8b3a2b;
+export const TERRACOTTA_LIGHT = 0xa44c3b;
+export const TEAK = 0x6a482b;
+export const TEAK_LIGHT = 0x8c5e35;
+export const IRON_STRAP = 0x3e4232;
+export const BURLAP = 0xc0aa76;
+export const BRONZE = 0x8f723c;
+export const BRONZE_DARK = 0x69542a;
 
 /**
  * Chapter 2 Signature Block Drawing Function
@@ -306,68 +314,245 @@ export function ensureBridgeTextures(scene: Phaser.Scene, bridgeLength: number =
   registerTexture('ch2_vector_slingshot', 44, 44, drawSlingshot);
   registerTexture('item-slingshot', 44, 44, drawSlingshot);
 
-  // 4b. Chapter 3 Scale Puzzle Procedural Icons (44x44px for Shan Bag Tray)
-  // Pin: Drawn diagonally from (8, 36) to (36, 8) per Core Design System
-  registerTexture('ch3_icon_pin', 44, 44, (g) => {
-    g.lineStyle(6, INK, 1).lineBetween(8, 36, 36, 8);
-    g.lineStyle(4, METAL, 1).lineBetween(8, 36, 36, 8);
-    g.lineStyle(1.5, CREAM, 0.9).lineBetween(9, 35, 35, 9);
-    g.fillStyle(GOLD, 1).fillCircle(36, 8, 4);
-    g.fillStyle(INK, 1).fillCircle(36, 8, 2);
-  });
-  registerTexture('item-pin', 44, 44, (g) => {
-    g.lineStyle(6, INK, 1).lineBetween(8, 36, 36, 8);
-    g.lineStyle(4, METAL, 1).lineBetween(8, 36, 36, 8);
-    g.lineStyle(1.5, CREAM, 0.9).lineBetween(9, 35, 35, 9);
-    g.fillStyle(GOLD, 1).fillCircle(36, 8, 4);
-    g.fillStyle(INK, 1).fillCircle(36, 8, 2);
-  });
+  // 4b. Chapter 3 Scale Puzzle Procedural Icons & World Vector Props
+  // Bagan Tile Door / Portcullis Gate (64x380px)
+  registerTexture('ch3_vector_gate', 64, 380, (g) => {
+    const gw = 64, gh = 380;
+    // Outer INK boundary
+    g.fillStyle(INK, 1).fillRect(0, 0, gw, gh);
 
-  // Stone Weight (3 ပိဿာ)
-  registerTexture('ch3_icon_stone', 44, 44, (g) => {
-    drawBlock(g, { x: 4, y: 7, w: 36, h: 30 }, STEP_STONE);
-    g.fillStyle(INK, 1).fillCircle(14, 22, 2.5).fillCircle(22, 22, 2.5).fillCircle(30, 22, 2.5);
-    g.fillStyle(CREAM, 0.9).fillCircle(14, 21.5, 1.2).fillCircle(22, 21.5, 1.2).fillCircle(30, 21.5, 1.2);
-  });
+    // 1. Weathered Teak Plank Body
+    g.fillStyle(WOOD, 1).fillRect(2, 24, gw - 4, gh - 46);
+    // Vertical wood plank join lines
+    g.lineStyle(1.5, INK, 0.6);
+    g.lineBetween(18, 24, 18, gh - 22);
+    g.lineBetween(32, 24, 32, gh - 22);
+    g.lineBetween(46, 24, 46, gh - 22);
+    // Woodgrain scoring
+    g.lineStyle(1, 0x6e4a28, 0.5);
+    for (let y = 30; y < gh - 30; y += 16) {
+      g.lineBetween(4, y, 16, y + 3);
+      g.lineBetween(34, y + 5, 44, y + 2);
+    }
 
-  // Timber Crate (4 ပိဿာ)
-  registerTexture('ch3_icon_crate', 44, 44, (g) => {
-    drawBlock(g, { x: 4, y: 5, w: 36, h: 34 }, WOOD);
-    g.lineStyle(2, INK, 0.7).lineBetween(6, 6, 38, 37).lineBetween(38, 6, 6, 37);
-    g.lineStyle(1, CREAM, 0.4).lineBetween(7, 6, 39, 36);
-    const nails: [number, number][] = [[6, 7], [37, 7], [6, 37], [37, 37]];
-    for (let i = 0; i < nails.length; i++) {
-      const pt = nails[i]!;
-      g.fillStyle(GOLD, 1).fillCircle(pt[0], pt[1], 2);
+    // 2. Terracotta Roof Tile Eaves (အုတ်ကြွပ်အမိုး / ပုဂံအမိုးကြွပ်ပြားစတိုင်)
+    // Tiered terracotta eave brackets
+    g.fillStyle(0x5c2318, 1).fillRect(1, 2, gw - 2, 22);
+    g.fillStyle(0x8b3a2b, 1).fillRect(3, 4, gw - 6, 18);
+    g.fillStyle(0xa44c3b, 1).fillRect(5, 5, gw - 10, 8);
+    g.fillStyle(CREAM, 0.4).fillRect(5, 5, gw - 10, 2);
+    // Eave tile scallops
+    for (let x = 6; x < gw - 8; x += 10) {
+      g.fillStyle(0x5c2318, 1).fillCircle(x + 5, 22, 5);
+      g.fillStyle(0x8b3a2b, 1).fillCircle(x + 5, 21, 4);
+      g.fillStyle(CREAM, 0.35).fillCircle(x + 4, 20, 1.5);
+    }
+    // Heavy wrought iron suspension ring at top center
+    g.fillStyle(INK, 1).fillCircle(32, 8, 7);
+    g.fillStyle(0x6e786b, 1).fillCircle(32, 8, 5);
+    g.fillStyle(INK, 1).fillCircle(32, 8, 2.5);
+
+    // 3. Horizontal Iron Cross-Straps & Diamond-Faceted Golden Rivets
+    for (let y = 36; y < gh - 40; y += 28) {
+      // Dark iron band
+      g.fillStyle(INK, 1).fillRect(1, y, gw - 2, 9);
+      g.fillStyle(0x3e4232, 1).fillRect(2, y + 1, gw - 4, 7);
+      g.fillStyle(CREAM, 0.22).fillRect(2, y + 1, gw - 4, 1.5);
+      // Dual golden brass rivet studs
+      g.fillStyle(GOLD, 1).fillCircle(10, y + 4.5, 2.5).fillCircle(gw - 10, y + 4.5, 2.5);
+      g.fillStyle(CREAM, 0.8).fillCircle(9.5, y + 4, 1).fillCircle(gw - 10.5, y + 4, 1);
+    }
+
+    // 4. Central Decorative Iron Spine with Bagan Geometric Relief
+    g.fillStyle(INK, 1).fillRect(28, 24, 8, gh - 46);
+    g.fillStyle(0x2d3227, 1).fillRect(29, 24, 6, gh - 46);
+    g.fillStyle(CREAM, 0.18).fillRect(29, 24, 2, gh - 46);
+
+    // 5. Bottom Portcullis Wedge Teeth (Iron spikes at threshold)
+    for (let x = 2; x < gw - 6; x += 12) {
+      g.fillStyle(INK, 1).fillTriangle(x, gh - 22, x + 12, gh - 22, x + 6, gh);
+      g.fillStyle(0x566050, 1).fillTriangle(x + 1.5, gh - 22, x + 10.5, gh - 22, x + 6, gh - 2);
+      g.fillStyle(CREAM, 0.4).lineStyle(1, CREAM, 0.4).lineBetween(x + 6, gh - 20, x + 6, gh - 4);
     }
   });
 
+  // Pin: Drawn diagonally from (8, 36) to (36, 8) per Core Design System
+  const drawPinFn = (g: Phaser.GameObjects.Graphics) => {
+    g.lineStyle(7, INK, 1).lineBetween(8, 36, 36, 8);
+    g.lineStyle(4.5, METAL, 1).lineBetween(8, 36, 36, 8);
+    g.lineStyle(1.8, CREAM, 0.9).lineBetween(9, 35, 35, 9);
+    // Brass ring head
+    g.fillStyle(INK, 1).fillCircle(36, 8, 5.5);
+    g.fillStyle(GOLD, 1).fillCircle(36, 8, 4);
+    g.fillStyle(INK, 1).fillCircle(36, 8, 2);
+    g.fillStyle(CREAM, 0.8).fillCircle(35, 7, 1);
+  };
+  registerTexture('ch3_icon_pin', 44, 44, drawPinFn);
+  registerTexture('ch3_vector_pin', 44, 44, drawPinFn);
+  registerTexture('item-pin', 44, 44, drawPinFn);
+
+  // Stone Weight (3 ပိဿာ)
+  const drawStoneFn = (g: Phaser.GameObjects.Graphics, w = 44, h = 38) => {
+    drawBlock(g, { x: 3, y: 5, w: w - 6, h: h - 8 }, STEP_STONE);
+    // Top cream highlight bevel
+    g.fillStyle(CREAM, 0.4).fillRect(5, 7, w - 10, 2.5);
+
+    // Heavy iron mooring ring loop at top
+    g.fillStyle(INK, 1).fillCircle(w / 2, 5, 5);
+    g.fillStyle(METAL, 1).fillCircle(w / 2, 5, 3.5);
+    g.fillStyle(INK, 1).fillCircle(w / 2, 5, 1.8);
+    g.fillStyle(CREAM, 0.8).fillCircle(w / 2 - 1, 4, 0.8);
+
+    // Deeply chiseled debossed Burmese numeral (၃) in center
+    g.lineStyle(2.5, INK, 0.95);
+    g.beginPath();
+    g.arc(w / 2, h / 2 - 2, 4.5, -Math.PI / 2, Math.PI / 2, false);
+    g.stroke();
+    g.beginPath();
+    g.arc(w / 2, h / 2 + 6, 5, -Math.PI / 2, Math.PI / 2, false);
+    g.stroke();
+
+    g.lineStyle(1.5, GOLD, 0.85);
+    g.beginPath();
+    g.arc(w / 2 - 0.5, h / 2 - 2.5, 3.5, -Math.PI / 2, Math.PI / 2, false);
+    g.stroke();
+    g.beginPath();
+    g.arc(w / 2 - 0.5, h / 2 + 5.5, 4, -Math.PI / 2, Math.PI / 2, false);
+    g.stroke();
+
+    // 3 Debossed weight indicator pips
+    g.fillStyle(INK, 1).fillCircle(11, h / 2 + 3, 2).fillCircle(w / 2, h - 8, 2).fillCircle(w - 11, h / 2 + 3, 2);
+    g.fillStyle(CREAM, 0.8).fillCircle(11, h / 2 + 2.5, 1).fillCircle(w / 2, h - 8.5, 1).fillCircle(w - 11, h / 2 + 2.5, 1);
+
+    // Weathered fissure crack
+    g.lineStyle(1.5, INK, 0.6).lineBetween(8, 10, 14, 17).lineBetween(14, 17, 11, 25);
+  };
+  registerTexture('ch3_icon_stone', 44, 44, (g) => drawStoneFn(g, 44, 44));
+  registerTexture('ch3_vector_stone', 44, 38, (g) => drawStoneFn(g, 44, 38));
+
+  // Timber Crate (4 ပိဿာ)
+  const drawCrateFn = (g: Phaser.GameObjects.Graphics, w = 44, h = 40) => {
+    drawBlock(g, { x: 3, y: 3, w: w - 6, h: h - 6 }, WOOD);
+    // Horizontal teak plank join lines
+    g.lineStyle(1.8, INK, 0.65).lineBetween(4, 15, w - 4, 15).lineBetween(4, 26, w - 4, 26);
+    g.lineStyle(1, 0x6e4a28, 0.5).lineBetween(6, 9, 22, 9).lineBetween(22, 20, 38, 20).lineBetween(8, 31, 26, 31);
+
+    // Diagonal cross-brace timbers with cream highlight
+    g.lineStyle(2.5, INK, 0.7).lineBetween(6, 6, w - 6, h - 6).lineBetween(w - 6, 6, 6, h - 6);
+    g.lineStyle(1.5, 0x6e4a28, 1).lineBetween(6, 6, w - 6, h - 6).lineBetween(w - 6, 6, 6, h - 6);
+    g.lineStyle(1, CREAM, 0.45).lineBetween(7, 5, w - 5, h - 7);
+
+    // Corner reinforcement iron brackets with gold nail studs
+    const corners: [number, number][] = [[6, 6], [w - 6, 6], [6, h - 6], [w - 6, h - 6]];
+    for (const [cx, cy] of corners) {
+      g.fillStyle(INK, 1).fillCircle(cx, cy, 3.5);
+      g.fillStyle(GOLD, 1).fillCircle(cx, cy, 2.2);
+      g.fillStyle(CREAM, 0.8).fillCircle(cx - 0.5, cy - 0.5, 0.8);
+    }
+
+    // Stamped Burmese weight numeral (၄) in center medallion
+    g.fillStyle(INK, 0.7).fillCircle(w / 2, h / 2, 7);
+    g.lineStyle(1.8, GOLD, 0.9).strokeCircle(w / 2, h / 2, 4.5);
+    g.lineStyle(1.5, GOLD, 0.9).lineBetween(w / 2 + 3, h / 2 - 3, w / 2 + 6, h / 2 - 6);
+  };
+  registerTexture('ch3_icon_crate', 44, 44, (g) => drawCrateFn(g, 44, 44));
+  registerTexture('ch3_vector_crate', 44, 40, (g) => drawCrateFn(g, 44, 40));
+
   // Sandbag (3 ပိဿာ)
-  registerTexture('ch3_icon_sandbag', 44, 44, (g) => {
-    g.fillStyle(INK, 1).fillRoundedRect(7, 12, 30, 26, 6);
-    g.fillStyle(0xc0aa76, 1).fillRoundedRect(8, 13, 28, 24, 5);
-    g.fillStyle(CREAM, 0.4).fillRect(10, 14, 6, 20);
-    // Tied neck & knot
-    g.fillStyle(INK, 1).fillEllipse(22, 11, 14, 6);
-    g.fillStyle(0x8c6d3b, 1).fillEllipse(22, 11, 11, 4);
-    g.fillStyle(GOLD, 1).fillCircle(22, 10, 2);
-    g.lineStyle(1.5, INK, 0.8).lineBetween(19, 7, 22, 10).lineBetween(25, 7, 22, 10);
-  });
+  const drawSandbagFn = (g: Phaser.GameObjects.Graphics, w = 44, h = 40) => {
+    // Outer INK boundary
+    g.fillStyle(INK, 1).fillRoundedRect(5, 10, w - 10, h - 14, 8);
+    // Rich burlap hemp fill
+    g.fillStyle(0xc0aa76, 1).fillRoundedRect(6, 11, w - 12, h - 16, 7);
+    // Cream highlight on front belly
+    g.fillStyle(CREAM, 0.35).fillEllipse(w / 2, h / 2 + 3, w / 3, h / 4);
+    // Burlap crosshatch lines
+    g.lineStyle(1, 0x937c4d, 0.45);
+    for (let y = 14; y < h - 8; y += 6) g.lineBetween(9, y, w - 9, y);
+    for (let x = 11; x < w - 9; x += 7) g.lineBetween(x, 14, x, h - 8);
+
+    // Stamped Burmese weight numeral (၃) in center
+    g.lineStyle(1.5, 0x6e5730, 0.75);
+    g.beginPath();
+    g.arc(w / 2, h / 2 + 1, 3.5, -Math.PI / 2, Math.PI / 2, false);
+    g.stroke();
+    g.beginPath();
+    g.arc(w / 2, h / 2 + 7, 4, -Math.PI / 2, Math.PI / 2, false);
+    g.stroke();
+
+    // Tied neck & twine knot with hanging tassel
+    g.fillStyle(INK, 1).fillEllipse(w / 2, 10, 16, 7);
+    g.fillStyle(0x8c6d3b, 1).fillEllipse(w / 2, 10, 13, 5);
+    g.fillStyle(GOLD, 1).fillCircle(w / 2, 9, 2.5);
+    g.lineStyle(1.8, INK, 0.9).lineBetween(w / 2 - 4, 4, w / 2, 9).lineBetween(w / 2 + 4, 4, w / 2, 9);
+    g.lineStyle(1, CREAM, 0.6).lineBetween(w / 2 - 3, 5, w / 2, 8);
+    // Hanging frayed hemp twine tassel
+    g.lineStyle(1.5, 0x8c6d3b, 0.9).lineBetween(w / 2, 11, w / 2 - 5, 18);
+    g.lineStyle(1, 0xc0aa76, 0.9).lineBetween(w / 2, 11, w / 2 - 3, 19);
+  };
+  registerTexture('ch3_icon_sandbag', 44, 44, (g) => drawSandbagFn(g, 44, 44));
+  registerTexture('ch3_vector_sandbag', 44, 40, (g) => drawSandbagFn(g, 44, 40));
 
   // Golden Statue (ရွှေရုပ် 7 ပိဿာ)
-  registerTexture('ch3_icon_treasure', 44, 44, (g) => {
-    // Radiant halo
-    g.fillStyle(GOLD, 0.25).fillCircle(22, 16, 15);
-    // Golden body
-    g.fillStyle(INK, 1).fillCircle(22, 13, 7);
-    g.fillStyle(GOLD, 1).fillCircle(22, 13, 5.5);
-    g.fillStyle(CREAM, 0.6).fillCircle(21, 12, 2);
-    // Torso & crossed lotus legs
-    g.fillStyle(INK, 1).fillRoundedRect(14, 18, 16, 15, 3);
-    g.fillStyle(0xd4af37, 1).fillRoundedRect(15, 19, 14, 13, 2.5);
-    g.fillStyle(CREAM, 0.5).fillRect(16, 20, 3, 10);
-    g.fillStyle(INK, 1).fillRoundedRect(10, 31, 24, 8, 3);
-    g.fillStyle(GOLD, 1).fillRoundedRect(11, 32, 22, 6, 2);
+  const drawTreasureFn = (g: Phaser.GameObjects.Graphics, w = 36, h = 52) => {
+    const cx = w / 2;
+    // 1. Radiant Aureole / Halo (ရောင်ခြည်တော်)
+    g.fillStyle(GOLD, 0.22).fillCircle(cx, 16, 16);
+    g.fillStyle(GOLD, 0.35).fillCircle(cx, 16, 12);
+    // Halo rays
+    g.lineStyle(1.5, GOLD, 0.75);
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
+      g.lineBetween(cx + Math.cos(a) * 11, 16 + Math.sin(a) * 11, cx + Math.cos(a) * 16, 16 + Math.sin(a) * 16);
+    }
+    // Specular halo sparkles
+    g.fillStyle(CREAM, 0.8).fillCircle(cx - 9, 10, 1.2).fillCircle(cx + 9, 10, 1.2);
+
+    // 2. Head & Ushnisha Crown
+    g.fillStyle(INK, 1).fillCircle(cx, 15, 7.5);
+    g.fillStyle(GOLD, 1).fillCircle(cx, 15, 6);
+    g.fillStyle(CREAM, 0.7).fillCircle(cx - 1.5, 13.5, 2);
+    g.fillStyle(GOLD, 1).fillTriangle(cx - 2, 9, cx + 2, 9, cx, 5);
+    g.fillStyle(CREAM, 0.8).fillCircle(cx, 4.5, 1);
+
+    // 3. Torso & Robes (Dhyana Mudra Meditation Pose)
+    g.fillStyle(INK, 1).fillRoundedRect(cx - 9, 20, 18, 17, 4);
+    g.fillStyle(0xd4af37, 1).fillRoundedRect(cx - 8, 21, 16, 15, 3.5);
+    g.fillStyle(CREAM, 0.45).fillRect(cx - 7, 22, 4, 12);
+    // Golden robe sash (ဧကသီ)
+    g.lineStyle(1.5, 0xb8860b, 0.9).lineBetween(cx - 6, 21, cx + 7, 34);
+
+    // 4. Crossed Lotus Legs
+    g.fillStyle(INK, 1).fillRoundedRect(cx - 13, 34, 26, 8, 3.5);
+    g.fillStyle(GOLD, 1).fillRoundedRect(cx - 12, 35, 24, 6, 2.5);
+    g.fillStyle(CREAM, 0.6).fillRect(cx - 10, 35, 20, 2);
+
+    // 5. Tiered Lotus Pedestal (ကြာပလ္လင်)
+    g.fillStyle(INK, 1).fillRoundedRect(cx - 16, 41, 32, 10, 3);
+    g.fillStyle(0x996515, 1).fillRoundedRect(cx - 15, 42, 30, 8, 2);
+    g.fillStyle(GOLD, 1).fillRect(cx - 14, 43, 28, 3);
+    g.fillStyle(CREAM, 0.7).fillRect(cx - 14, 43, 28, 1);
+    // Lotus petal indentations
+    for (let px = cx - 12; px <= cx + 12; px += 6) {
+      g.fillStyle(0x5a3d0b, 1).fillCircle(px, 47, 1.8);
+      g.fillStyle(GOLD, 0.9).fillCircle(px, 46.5, 1);
+    }
+  };
+  registerTexture('ch3_icon_treasure', 44, 44, (g) => drawTreasureFn(g, 44, 44));
+  registerTexture('ch3_vector_treasure', 36, 52, (g) => drawTreasureFn(g, 36, 52));
+
+  // 10-Peittha Cast Bronze Reference Weight (50x40px)
+  registerTexture('ch3_vector_reference', 50, 40, (g) => {
+    // Bell shape body with stepped pedestal
+    g.fillStyle(INK, 1).fillRoundedRect(5, 12, 40, 26, 5);
+    g.fillStyle(0x69542a, 1).fillRoundedRect(6, 13, 38, 24, 4);
+    g.fillStyle(0x8f723c, 1).fillRoundedRect(8, 15, 34, 12, 3);
+    g.fillStyle(CREAM, 0.35).fillRect(9, 15, 32, 2);
+    // Carrying handle at top
+    g.fillStyle(INK, 1).fillCircle(25, 8, 6);
+    g.fillStyle(0x8f723c, 1).fillCircle(25, 8, 4.5);
+    g.fillStyle(INK, 1).fillCircle(25, 8, 2);
+    // Debossed 10-peittha mark
+    g.fillStyle(INK, 0.8).fillCircle(20, 26, 2.5).fillCircle(30, 26, 2.5);
   });
 
   // 5. Procedural Clue Stele (Dark sandstone with cream chalk diagram)
@@ -714,6 +899,43 @@ export function drawBridgeTerrain(
     for (let x = rightX; x < rightX + rightWidth; x += 92) {
       g.lineStyle(1, 0x172820, 0.5).lineBetween(x, groundY + 10, x + 12, groundY + 144);
     }
+
+    // Subtle hairline fissure stress cracks along collapsible slab [1030..1120]
+    // Organic tell for attentive speedrunners/players
+    g.lineStyle(1, 0x182720, 0.55);
+    // Left fracture edge at 1030
+    g.beginPath();
+    g.moveTo(1030, groundY);
+    g.lineTo(1032, groundY + 8);
+    g.lineTo(1029, groundY + 18);
+    g.lineTo(1031, groundY + 32);
+    g.strokePath();
+
+    // Center micro-fracture beneath bait coin at 1075
+    g.beginPath();
+    g.moveTo(1075, groundY);
+    g.lineTo(1073, groundY + 6);
+    g.lineTo(1076, groundY + 14);
+    g.lineTo(1074, groundY + 24);
+    g.strokePath();
+
+    // Right fracture edge at 1120
+    g.beginPath();
+    g.moveTo(1120, groundY);
+    g.lineTo(1118, groundY + 10);
+    g.lineTo(1121, groundY + 22);
+    g.strokePath();
+
+    // Subtle cream highlight bevel accents along fracture edges
+    g.lineStyle(1, CREAM, 0.35);
+    g.beginPath();
+    g.moveTo(1031, groundY + 2);
+    g.lineTo(1033, groundY + 9);
+    g.moveTo(1076, groundY + 1);
+    g.lineTo(1074, groundY + 7);
+    g.moveTo(1121, groundY + 2);
+    g.lineTo(1119, groundY + 11);
+    g.strokePath();
   }
 
   // 3. Pit Chasm Void (Between leftWidth and rightX)
@@ -915,4 +1137,475 @@ export function drawMyanmarTraditionalBag(
 
   drawTasselBunch(x + 2, x + flankW - 2);
   drawTasselBunch(x + w - flankW + 2, x + w - 2);
+}
+
+/**
+ * Draws the Bagan Tile Door (Gate) using the 3-layer inking formula:
+ * Terracotta roof tile eaves (အုတ်ကြွပ်အမိုး / 0x8b3a2b, 0xa44c3b), weathered teak timber core (0x6a482b / 0x8c5e35)
+ * with vertical mortise plank grooves, horizontal iron cross-straps (0x3e4232) spaced every 28px with dual diamond-faceted
+ * golden brass rivet studs (0xe7bb55), central decorative geometric iron spine, and bottom spiked portcullis teeth
+ * resting solidly at ground baseline.
+ */
+export function drawBaganGate(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  w = 64,
+  h = 380
+) {
+  const cx = x + w / 2;
+
+  // 1. Top suspension bracket ring
+  g.fillStyle(INK, 1).fillCircle(cx, y + 10, 8);
+  g.fillStyle(0x4c4432, 1).fillCircle(cx, y + 10, 6);
+  g.lineStyle(1.5, CREAM, 0.75).strokeCircle(cx, y + 10, 6);
+  g.fillStyle(INK, 1).fillCircle(cx, y + 10, 3);
+
+  // Mounting bracket plate
+  g.fillStyle(INK, 1).fillRoundedRect(cx - 16, y + 15, 32, 10, 2);
+  g.fillStyle(IRON_STRAP, 1).fillRoundedRect(cx - 15, y + 16, 30, 8, 2);
+  g.fillStyle(GOLD, 1).fillCircle(cx - 9, y + 20, 2).fillCircle(cx + 9, y + 20, 2);
+
+  // 2. Terracotta roof tile eaves (အုတ်ကြွပ်အမိုး / 0x8b3a2b, 0xa44c3b) with cream bevels
+  // Upper eave tier
+  g.fillStyle(INK, 1).fillTriangle(cx - 26, y + 36, cx + 26, y + 36, cx, y + 23);
+  g.fillStyle(TERRACOTTA, 1).fillTriangle(cx - 24, y + 35, cx + 24, y + 35, cx, y + 25);
+  g.fillStyle(TERRACOTTA_LIGHT, 1).fillTriangle(cx - 20, y + 35, cx + 20, y + 35, cx, y + 26);
+  g.lineStyle(1.5, CREAM, 0.85).lineBetween(cx - 25, y + 36, cx, y + 24).lineBetween(cx, y + 24, cx + 25, y + 36);
+
+  // Lower eave tier
+  g.fillStyle(INK, 1).fillRoundedRect(x + 1, y + 35, w - 2, 18, 3);
+  g.fillStyle(TERRACOTTA, 1).fillRoundedRect(x + 2, y + 36, w - 4, 15, 2);
+  g.fillStyle(TERRACOTTA_LIGHT, 1).fillRect(x + 4, y + 38, w - 8, 5);
+
+  // Individual curved roof tile scores
+  for (let tx = x + 8; tx < x + w - 6; tx += 8) {
+    g.lineStyle(1.5, INK, 0.7).lineBetween(tx, y + 36, tx - 1, y + 50);
+    g.lineStyle(1, TERRACOTTA_LIGHT, 0.9).lineBetween(tx + 1, y + 36, tx, y + 50);
+  }
+  // Bottom eave cream highlight bevel & shadow
+  g.fillStyle(CREAM, 0.85).fillRect(x + 3, y + 49, w - 6, 2);
+  g.fillStyle(INK, 0.55).fillRect(x + 2, y + 52, w - 4, 4);
+
+  // 3. Weathered teak timber core (0x6a482b / 0x8c5e35)
+  const bodyH = 302;
+  const bodyY = y + 54;
+  g.fillStyle(INK, 1).fillRect(x + 1, bodyY, w - 2, bodyH);
+  g.fillStyle(TEAK, 1).fillRect(x + 3, bodyY + 1, w - 6, bodyH - 2);
+
+  // 4 vertical planks with mortise plank grooves
+  const plankW = (w - 6) / 4;
+  for (let i = 0; i < 4; i++) {
+    const px = x + 3 + i * plankW;
+    if (i % 2 === 1) {
+      g.fillStyle(0x765333, 1).fillRect(px, bodyY + 1, plankW, bodyH - 2);
+    }
+    // Grain streaks
+    g.lineStyle(1, TEAK_LIGHT, 0.35);
+    g.lineBetween(px + 4, bodyY + 2, px + 4, bodyY + bodyH - 3);
+    g.lineBetween(px + plankW - 4, bodyY + 2, px + plankW - 4, bodyY + bodyH - 3);
+    // Bevel highlight on left edge of plank
+    g.lineStyle(1, CREAM, 0.16).lineBetween(px + 1, bodyY + 1, px + 1, bodyY + bodyH - 2);
+    // Vertical mortise groove seam
+    if (i > 0) {
+      g.lineStyle(1.8, INK, 0.7).lineBetween(px, bodyY, px, bodyY + bodyH);
+    }
+  }
+
+  // 4. Central decorative geometric iron spine
+  g.fillStyle(INK, 1).fillRect(cx - 4, bodyY, 8, bodyH);
+  g.fillStyle(IRON_STRAP, 1).fillRect(cx - 3, bodyY, 6, bodyH);
+  g.lineStyle(1.2, CREAM, 0.35).lineBetween(cx, bodyY, cx, bodyY + bodyH);
+
+  // 5. Horizontal iron cross-straps (0x3e4232) spaced every 28px
+  for (let sy = y + 68; sy <= y + 344; sy += 28) {
+    g.fillStyle(INK, 1).fillRect(x + 1, sy - 1, w - 2, 9);
+    g.fillStyle(IRON_STRAP, 1).fillRect(x + 2, sy, w - 4, 7);
+    g.fillStyle(CREAM, 0.45).fillRect(x + 3, sy, w - 6, 1.5);
+    g.fillStyle(INK, 0.6).fillRect(x + 3, sy + 5.5, w - 6, 1.5);
+
+    // Central decorative geometric iron diamond plate
+    g.fillStyle(INK, 1).fillTriangle(cx - 6, sy + 3.5, cx, sy - 3, cx + 6, sy + 3.5);
+    g.fillTriangle(cx - 6, sy + 3.5, cx, sy + 10, cx + 6, sy + 3.5);
+    g.fillStyle(IRON_STRAP, 1).fillTriangle(cx - 4.5, sy + 3.5, cx, sy - 1.5, cx + 4.5, sy + 3.5);
+    g.fillTriangle(cx - 4.5, sy + 3.5, cx, sy + 8.5, cx + 4.5, sy + 3.5);
+
+    // Dual diamond-faceted golden brass rivet studs (0xe7bb55) + center stud
+    for (const rx of [x + 10, cx, x + w - 10]) {
+      const ry = sy + 3.5;
+      g.fillStyle(INK, 1).fillTriangle(rx - 3.2, ry, rx, ry - 3.2, rx + 3.2, ry);
+      g.fillTriangle(rx - 3.2, ry, rx, ry + 3.2, rx + 3.2, ry);
+      g.fillStyle(GOLD, 1).fillTriangle(rx - 2.2, ry, rx, ry - 2.2, rx + 2.2, ry);
+      g.fillTriangle(rx - 2.2, ry, rx, ry + 2.2, rx + 2.2, ry);
+      g.fillStyle(CREAM, 0.9).fillTriangle(rx - 1.5, ry, rx, ry - 1.8, rx + 0.5, ry);
+    }
+  }
+
+  // 6. Bottom spiked portcullis teeth resting solidly at ground baseline
+  const teethBaseY = y + 356;
+  g.fillStyle(INK, 1).fillRect(x + 1, teethBaseY - 1, w - 2, 9);
+  g.fillStyle(IRON_STRAP, 1).fillRect(x + 2, teethBaseY, w - 4, 7);
+  g.fillStyle(CREAM, 0.4).fillRect(x + 3, teethBaseY, w - 6, 1.5);
+
+  // 5 spiked teeth pointing downward to y + h (y + 380)
+  const teethCount = 5;
+  const toothPitch = (w - 12) / (teethCount - 1);
+  for (let i = 0; i < teethCount; i++) {
+    const tx = x + 6 + i * toothPitch;
+    const toothTop = teethBaseY + 7;
+    const toothBottom = y + h - 1;
+    g.fillStyle(INK, 1).fillTriangle(tx - 5.5, toothTop, tx + 5.5, toothTop, tx, toothBottom);
+    g.fillStyle(IRON_STRAP, 1).fillTriangle(tx - 4, toothTop, tx + 4, toothTop, tx, toothBottom - 1);
+    g.fillStyle(METAL, 0.75).fillTriangle(tx - 3, toothTop, tx, toothTop, tx, toothBottom - 1);
+    g.lineStyle(1.2, CREAM, 0.85).lineBetween(tx - 3.5, toothTop, tx, toothBottom - 1);
+  }
+}
+
+/**
+ * Draws the Golden Buddha Relic (ရွှေရုပ်) with multi-tiered lotus pedestal (ကြာပလ္လင်),
+ * meditative seated silhouette in Dhyana mudra, and radiant golden halo/aureole (ရောင်ခြည်တော်).
+ */
+export function drawGoldenBuddha(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  w = 36,
+  h = 52,
+  icon = false
+) {
+  const cx = x + w / 2;
+
+  // Golden aureole / halo (ရောင်ခြည်တော်)
+  const haloY = y + (icon ? 14 : 14);
+  const haloR = icon ? 11 : 13;
+
+  // Soft radiant aura glow
+  g.fillStyle(GOLD, 0.25).fillCircle(cx, haloY, haloR + 3);
+  g.fillStyle(0xd4af37, 0.55).fillCircle(cx, haloY, haloR);
+  g.lineStyle(1.8, GOLD, 0.95).strokeCircle(cx, haloY, haloR);
+
+  // Delicate golden rays
+  for (let i = 0; i < 8; i++) {
+    const a = (i * Math.PI) / 4;
+    g.lineStyle(1.2, CREAM, 0.85).lineBetween(
+      cx + Math.cos(a) * (haloR - 1),
+      haloY + Math.sin(a) * (haloR - 1),
+      cx + Math.cos(a) * (haloR + 3),
+      haloY + Math.sin(a) * (haloR + 3)
+    );
+  }
+
+  // Ushnisha (သျှောင်တော် flame crown)
+  const ushY = y + (icon ? 5 : 5);
+  g.fillStyle(INK, 1).fillTriangle(cx - 2.5, ushY + 5, cx + 2.5, ushY + 5, cx, ushY);
+  g.fillStyle(0xfde047, 1).fillTriangle(cx - 1.8, ushY + 4.5, cx + 1.8, ushY + 4.5, cx, ushY + 0.5);
+  g.fillStyle(CREAM, 0.9).fillCircle(cx, ushY + 1, 1);
+
+  // Meditative Head & elongated earlobes
+  const headY = haloY;
+  g.fillStyle(INK, 1).fillCircle(cx, headY, 5.5);
+  g.fillStyle(GOLD, 1).fillCircle(cx, headY, 4.5);
+  g.fillStyle(CREAM, 0.65).fillCircle(cx - 1.2, headY - 1.2, 1.8);
+
+  // Elongated earlobes
+  g.lineStyle(1.5, INK, 1).lineBetween(cx - 4.5, headY - 1, cx - 4.5, headY + 4.5);
+  g.lineStyle(1, GOLD, 1).lineBetween(cx - 4.5, headY - 1, cx - 4.5, headY + 4.5);
+  g.lineStyle(1.5, INK, 1).lineBetween(cx + 4.5, headY - 1, cx + 4.5, headY + 4.5);
+  g.lineStyle(1, GOLD, 1).lineBetween(cx + 4.5, headY - 1, cx + 4.5, headY + 4.5);
+
+  // Neck
+  g.fillStyle(INK, 1).fillRect(cx - 2.5, headY + 4, 5, 3);
+  g.fillStyle(GOLD, 1).fillRect(cx - 1.8, headY + 4, 3.6, 2.5);
+
+  // Torso with Monastic Robe (Sanghati)
+  const torsoY = headY + 6;
+  g.fillStyle(INK, 1).fillRoundedRect(cx - 7, torsoY, 14, 13, 3);
+  g.fillStyle(0xd4af37, 1).fillRoundedRect(cx - 6, torsoY + 1, 12, 11, 2.5);
+  // Diagonal robe fold
+  g.lineStyle(1.4, INK, 0.75).lineBetween(cx - 6, torsoY + 1, cx + 5, torsoY + 11);
+  g.lineStyle(1, CREAM, 0.75).lineBetween(cx - 5, torsoY + 1, cx + 6, torsoY + 11);
+  g.fillStyle(CREAM, 0.4).fillRect(cx - 5, torsoY + 2, 3, 7);
+
+  // Crossed legs in Padmasana
+  const legY = torsoY + 11;
+  g.fillStyle(INK, 1).fillRoundedRect(cx - 12, legY, 24, 8, 4);
+  g.fillStyle(GOLD, 1).fillRoundedRect(cx - 11, legY + 1, 22, 6, 3);
+  g.fillStyle(CREAM, 0.35).fillRect(cx - 9, legY + 1, 18, 2);
+
+  // Hands resting in Dhyana Mudra (palms in lap)
+  g.fillStyle(INK, 1).fillRoundedRect(cx - 4.5, legY - 0.5, 9, 3.5, 1.5);
+  g.fillStyle(0xfde047, 1).fillRoundedRect(cx - 3.5, legY, 7, 2.5, 1);
+
+  // Multi-tiered lotus pedestal (ကြာပလ္လင်)
+  const pedY = legY + 6;
+  // Lotus petals tier
+  g.fillStyle(INK, 1).fillRoundedRect(cx - 14, pedY, 28, 6, 2);
+  g.fillStyle(0xd4af37, 1).fillRoundedRect(cx - 13, pedY + 1, 26, 4.5, 1.5);
+  for (let px = cx - 10; px <= cx + 10; px += 5) {
+    g.fillStyle(CREAM, 0.85).fillTriangle(px - 1.5, pedY + 5, px + 1.5, pedY + 5, px, pedY + 1);
+    g.lineStyle(1, INK, 0.6).strokeTriangle(px - 1.5, pedY + 5, px + 1.5, pedY + 5, px, pedY + 1);
+  }
+  // Bottom tier
+  g.fillStyle(INK, 1).fillRoundedRect(cx - 16, pedY + 5, 32, 6, 2);
+  g.fillStyle(GOLD, 1).fillRoundedRect(cx - 15, pedY + 6, 30, 4, 1.5);
+  g.fillStyle(CREAM, 0.6).fillRect(cx - 14, pedY + 6, 28, 1.5);
+}
+
+/**
+ * Draws the ancient carved sandstone counterweight block matching STEP_STONE palette,
+ * with CREAM top highlight bevel, debossed Burmese weight mark (၃), and weathered hairline fissures.
+ */
+export function drawStoneWeight(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  w = 44,
+  h = 38
+) {
+  // Outer ink border
+  g.fillStyle(INK, 1).fillRoundedRect(x, y, w, h, 4);
+  // STEP_STONE base material
+  g.fillStyle(STEP_STONE, 1).fillRoundedRect(x + 2, y + 2, w - 4, h - 4, 3);
+  // CREAM top highlight bevel
+  g.fillStyle(CREAM, 0.35).fillRect(x + 3, y + 2, w - 6, 3.5);
+  // CREAM left highlight bevel
+  g.fillStyle(CREAM, 0.18).fillRect(x + 2, y + 3, 2.5, h - 6);
+  // Bottom shadow bevel in STONE
+  g.fillStyle(STONE, 0.65).fillRect(x + 3, y + h - 5, w - 6, 3);
+
+  // Weathered hairline fissures & corner chips
+  g.lineStyle(1.4, INK, 0.7);
+  g.lineBetween(x + 9, y + 2, x + 13, y + 9).lineBetween(x + 13, y + 9, x + 11, y + 15);
+  g.lineBetween(x + w - 10, y + h - 2, x + w - 7, y + h - 9).lineBetween(x + w - 7, y + h - 9, x + w - 11, y + h - 13);
+  g.fillStyle(INK, 1).fillTriangle(x + w - 4, y + 2, x + w - 2, y + 2, x + w - 2, y + 5);
+
+  // Debossed Burmese weight mark (၃)
+  const cx = x + w / 2;
+  const cy = y + h / 2 - 1;
+
+  // Outer dark debossed groove
+  g.lineStyle(2.4, INK, 0.9);
+  g.beginPath();
+  g.arc(cx, cy - 4, 4, -Math.PI * 0.8, Math.PI * 0.4, false);
+  g.stroke();
+  g.beginPath();
+  g.arc(cx, cy + 3.5, 4.5, -Math.PI * 0.5, Math.PI * 0.8, false);
+  g.stroke();
+  g.lineBetween(cx - 3, cy + 6.5, cx - 5, cy + 3);
+
+  // Specular CREAM bevel on lower-right edge of debossed groove
+  g.lineStyle(1.2, CREAM, 0.75);
+  g.beginPath();
+  g.arc(cx + 0.5, cy - 3.5, 3.6, -Math.PI * 0.3, Math.PI * 0.35, false);
+  g.stroke();
+  g.beginPath();
+  g.arc(cx + 0.5, cy + 4, 4.2, -Math.PI * 0.2, Math.PI * 0.65, false);
+  g.stroke();
+
+  // Three carved weight pips
+  for (const px of [cx - 8, cx, cx + 8]) {
+    g.fillStyle(INK, 1).fillCircle(px, cy + 12, 1.8);
+    g.fillStyle(CREAM, 0.8).fillCircle(px + 0.5, cy + 12.5, 0.8);
+  }
+}
+
+/**
+ * Draws the Bagan teak timber chest (0x9d7047) with diagonal cross-braces,
+ * forged iron corner angle brackets, and golden brass nail studs (0xe7bb55).
+ */
+export function drawTeakCrate(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  w = 44,
+  h = 40
+) {
+  // Outer ink outline
+  g.fillStyle(INK, 1).fillRoundedRect(x, y, w, h, 3);
+  // Teak timber body
+  g.fillStyle(WOOD, 1).fillRect(x + 2, y + 2, w - 4, h - 4);
+  // Horizontal timber plank grooves
+  g.lineStyle(1.5, INK, 0.65).lineBetween(x + 2, y + 14, x + w - 2, y + 14);
+  g.lineStyle(1.5, INK, 0.65).lineBetween(x + 2, y + 26, x + w - 2, y + 26);
+  g.lineStyle(1, CREAM, 0.25).lineBetween(x + 2, y + 3, x + w - 2, y + 3);
+  g.lineStyle(1, CREAM, 0.2).lineBetween(x + 2, y + 15, x + w - 2, y + 15);
+  g.lineStyle(1, CREAM, 0.2).lineBetween(x + 2, y + 27, x + w - 2, y + 27);
+
+  // Diagonal cross-bracing timbers (X-bracing)
+  g.lineStyle(5.5, INK, 1).lineBetween(x + 4, y + 4, x + w - 4, y + h - 4);
+  g.lineStyle(5.5, INK, 1).lineBetween(x + w - 4, y + 4, x + 4, y + h - 4);
+  g.lineStyle(3.5, 0x825933, 1).lineBetween(x + 4, y + 4, x + w - 4, y + h - 4);
+  g.lineStyle(3.5, 0x825933, 1).lineBetween(x + w - 4, y + 4, x + 4, y + h - 4);
+  g.lineStyle(1, CREAM, 0.4).lineBetween(x + 5, y + 4, x + w - 4, y + h - 5);
+
+  // Forged iron corner angle brackets
+  const bracketSize = 8;
+  const corners = [
+    { bx: x + 2, by: y + 2, dx: 1, dy: 1 },
+    { bx: x + w - 2, by: y + 2, dx: -1, dy: 1 },
+    { bx: x + 2, by: y + h - 2, dx: 1, dy: -1 },
+    { bx: x + w - 2, by: y + h - 2, dx: -1, dy: -1 },
+  ];
+  for (const c of corners) {
+    g.fillStyle(IRON_STRAP, 1).fillRect(c.dx > 0 ? c.bx : c.bx - bracketSize, c.dy > 0 ? c.by : c.by - 3, bracketSize, 3);
+    g.fillStyle(IRON_STRAP, 1).fillRect(c.dx > 0 ? c.bx : c.bx - 3, c.dy > 0 ? c.by : c.by - bracketSize, 3, bracketSize);
+  }
+
+  // Golden brass nail studs (0xe7bb55)
+  const studs: [number, number][] = [
+    [x + 5, y + 5],
+    [x + w - 5, y + 5],
+    [x + 5, y + h - 5],
+    [x + w - 5, y + h - 5],
+    [x + w / 2, y + h / 2],
+  ];
+  for (const [sx, sy] of studs) {
+    g.fillStyle(INK, 1).fillCircle(sx, sy, 2.5);
+    g.fillStyle(GOLD, 1).fillCircle(sx, sy, 1.8);
+    g.fillStyle(CREAM, 0.85).fillCircle(sx - 0.5, sy - 0.5, 0.8);
+  }
+}
+
+/**
+ * Draws the hand-sewn woven burlap sandbag (0xc0aa76) with organic bulging shape,
+ * crimped neck tied with hemp twine and gold bead, and fine burlap crosshatch lines.
+ */
+export function drawSandbag(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  w = 44,
+  h = 40
+) {
+  const cx = x + w / 2;
+
+  // Outer ink outline for bulging organic sack shape
+  g.fillStyle(INK, 1).fillRoundedRect(cx - 17, y + 13, 34, 25, 10);
+  g.fillStyle(INK, 1).fillRoundedRect(cx - 9, y + 4, 18, 9, 3);
+
+  // Burlap sack fill (0xc0aa76)
+  g.fillStyle(BURLAP, 1).fillRoundedRect(cx - 15.5, y + 14.5, 31, 22, 9);
+  g.fillStyle(BURLAP, 1).fillRoundedRect(cx - 7.5, y + 5.5, 15, 8, 2.5);
+
+  // Bottom shadow & side fold depths
+  g.fillStyle(0x9e8555, 0.6).fillRoundedRect(cx - 14, y + 28, 28, 7, 5);
+  g.fillStyle(0x9e8555, 0.4).fillRect(cx - 15, y + 18, 4, 14);
+  g.fillStyle(0x9e8555, 0.4).fillRect(cx + 11, y + 18, 4, 14);
+
+  // CREAM highlight on center belly bulge
+  g.fillStyle(CREAM, 0.35).fillEllipse(cx - 2, y + 23, 16, 12);
+
+  // Fine burlap woven crosshatch lines
+  for (let d = -12; d <= 12; d += 6) {
+    g.lineStyle(1, 0x6e5b32, 0.22);
+    g.lineBetween(cx + d - 8, y + 17, cx + d + 8, y + 33);
+    g.lineBetween(cx - d + 8, y + 17, cx - d - 8, y + 33);
+  }
+
+  // Crimped neck tied with hemp twine & gold bead
+  g.fillStyle(INK, 1).fillRoundedRect(cx - 8, y + 11, 16, 5, 2);
+  g.fillStyle(ROPE_DARK, 1).fillRoundedRect(cx - 7, y + 12, 14, 3, 1.5);
+  g.fillStyle(ROPE, 1).fillRect(cx - 6, y + 12, 12, 1.5);
+
+  // Gold bead / cinch ring
+  g.fillStyle(INK, 1).fillCircle(cx, y + 13.5, 2.8);
+  g.fillStyle(GOLD, 1).fillCircle(cx, y + 13.5, 2);
+  g.fillStyle(CREAM, 0.9).fillCircle(cx - 0.6, y + 12.8, 0.8);
+
+  // Hemp twine tassels
+  g.lineStyle(1.5, INK, 0.9).lineBetween(cx, y + 14, cx - 3, y + 21).lineBetween(cx, y + 14, cx + 4, y + 20);
+  g.lineStyle(1, ROPE, 1).lineBetween(cx, y + 14, cx - 3, y + 21).lineBetween(cx, y + 14, cx + 4, y + 20);
+}
+
+/**
+ * Draws the forged wrought iron security rod (0x839b8b/0x56675e) with rounded brass ring head (0xe7bb55)
+ * and sharp metallic specular bevel (0xe9dfbd), drawn diagonally from (8,36) to (36,8).
+ */
+export function drawIronPin(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  w = 44,
+  h = 44
+) {
+  const x1 = x + 8, y1 = y + 36;
+  const x2 = x + 34, y2 = y + 10;
+
+  // Wrought iron security rod (0x839b8b/0x56675e) drawn diagonally from (8,36) to (36,8)
+  g.lineStyle(7, INK, 1).lineBetween(x1, y1, x2, y2);
+  g.lineStyle(4.5, METAL, 1).lineBetween(x1, y1, x2, y2);
+  g.lineStyle(1.8, 0x56675e, 1).lineBetween(x1 + 1, y1 + 1, x2 + 1, y2 + 1);
+  g.lineStyle(1.4, CREAM, 0.95).lineBetween(x1 - 1, y1 - 1, x2 - 1, y2 - 1);
+
+  // Pointed tip at (x1, y1)
+  g.fillStyle(INK, 1).fillTriangle(x1 - 2, y1 + 2, x1 + 2, y1 - 2, x1 - 3, y1 + 3);
+
+  // Rounded brass ring head (0xe7bb55) at (36,8)
+  const rx = x + 36, ry = y + 8;
+  g.fillStyle(INK, 1).fillCircle(rx, ry, 6);
+  g.fillStyle(GOLD, 1).fillCircle(rx, ry, 4.5);
+  g.fillStyle(CREAM, 0.85).fillCircle(rx - 1.2, ry - 1.2, 1.8);
+  g.fillStyle(INK, 1).fillCircle(rx, ry, 2.2);
+}
+
+/**
+ * Draws the cast bronze 10-peittha temple/elephant weight (ဟင်္သာတံဆိပ် / ဆင်တံဆိပ် အလေး)
+ * with stepped bell body, bronze patina (0x69542a to 0x8f723c), and top carrying loop.
+ */
+export function drawBronzeWeight(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  w = 50,
+  h = 40,
+  icon = false
+) {
+  const cx = x + w / 2;
+
+  // Top carrying loop
+  const loopY = y + (icon ? 5 : 6);
+  g.fillStyle(INK, 1).fillCircle(cx, loopY, 5.5);
+  g.fillStyle(BRONZE, 1).fillCircle(cx, loopY, 4);
+  g.lineStyle(1.2, CREAM, 0.85).strokeCircle(cx, loopY, 4);
+  g.fillStyle(INK, 1).fillCircle(cx, loopY, 2.2);
+
+  // Neck / stepped shoulder
+  const neckY = loopY + 3;
+  g.fillStyle(INK, 1).fillRoundedRect(cx - 8, neckY, 16, 5, 2);
+  g.fillStyle(BRONZE_DARK, 1).fillRoundedRect(cx - 7, neckY + 1, 14, 3.5, 1.5);
+  g.fillStyle(CREAM, 0.4).fillRect(cx - 6, neckY + 1, 12, 1);
+
+  // Stepped bell body with bronze patina (0x69542a to 0x8f723c)
+  const bellTopY = neckY + 4;
+  g.fillStyle(INK, 1).fillTriangle(cx - 15, bellTopY + 10, cx + 15, bellTopY + 10, cx, bellTopY - 2);
+  g.fillStyle(0x7c6233, 1).fillTriangle(cx - 13.5, bellTopY + 9.5, cx + 13.5, bellTopY + 9.5, cx, bellTopY - 0.5);
+
+  // Stepped ring ridge
+  const ridgeY = bellTopY + 9;
+  g.fillStyle(INK, 1).fillRoundedRect(cx - 16, ridgeY, 32, 4.5, 2);
+  g.fillStyle(BRONZE, 1).fillRoundedRect(cx - 15, ridgeY + 1, 30, 3, 1.5);
+  g.fillStyle(CREAM, 0.6).fillRect(cx - 14, ridgeY + 1, 28, 1);
+
+  // Lower bell body
+  const lowerY = ridgeY + 3;
+  g.fillStyle(INK, 1).fillRoundedRect(cx - 20, lowerY, 40, 9, 3);
+  g.fillStyle(BRONZE_DARK, 1).fillRoundedRect(cx - 19, lowerY + 1, 38, 7, 2);
+
+  // Verdigris patina accent in groove
+  g.fillStyle(0x526b58, 0.45).fillRect(cx - 17, lowerY + 2, 34, 1.5);
+
+  // Etched Burmese "၁၀" numeral mark
+  g.lineStyle(1.8, INK, 0.85);
+  g.strokeCircle(cx - 5, lowerY + 4.5, 2.5);
+  g.strokeCircle(cx + 5, lowerY + 4.5, 2.5);
+  g.lineStyle(1, CREAM, 0.7);
+  g.strokeCircle(cx - 5, lowerY + 4.2, 2.2);
+  g.strokeCircle(cx + 5, lowerY + 4.2, 2.2);
+
+  // Flared pedestal base
+  const baseY = lowerY + 7;
+  g.fillStyle(INK, 1).fillRoundedRect(cx - 23, baseY, 46, 6, 2.5);
+  g.fillStyle(BRONZE, 1).fillRoundedRect(cx - 22, baseY + 1, 44, 4.5, 2);
+  g.fillStyle(CREAM, 0.6).fillRect(cx - 20, baseY + 1, 40, 1.2);
+  g.fillStyle(0x423417, 1).fillRect(cx - 21, baseY + 4, 42, 1.2);
 }
