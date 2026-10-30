@@ -237,24 +237,24 @@ export class ArenaView {
     const left = Math.round(x - width / 2);
     const y = Math.round(topY);
 
-    // Outer dark stone/ink plate & gold rim
-    this.fx.fillStyle(0x111a14, 0.92);
+    // Outer dark wood plate & brass rim
+    this.fx.fillStyle(0x1d1208, 0.94);
     this.fx.fillRoundedRect(left - 2, y - 2, width + 4, height + 4, 3);
-    this.fx.lineStyle(1.5, flashing ? 0xffe4a3 : 0xcfa861, 0.85);
+    this.fx.lineStyle(1.5, flashing ? 0xffe4a3 : 0xb07c34, 0.9);
     this.fx.strokeRoundedRect(left - 2, y - 2, width + 4, height + 4, 3);
 
     // Recessed inner depleted track
-    this.fx.fillStyle(0x231d18, 0.95);
+    this.fx.fillStyle(0x120b05, 0.95);
     this.fx.fillRect(left, y, width, height);
 
-    // Dynamic fill color
+    // Dynamic fill color (brass for the player, ember red for the apes)
     let fillColor: number;
     if (flashing) {
       fillColor = 0xfff3c4;
     } else if (isPlayer) {
-      fillColor = ratio > 0.55 ? 0x34d399 : ratio > 0.28 ? 0xfbbf24 : 0xef4444;
+      fillColor = ratio > 0.55 ? 0xd9a441 : ratio > 0.28 ? 0xc98f3a : 0x8f2c1d;
     } else {
-      fillColor = ratio > 0.5 ? 0xe06d3b : ratio > 0.25 ? 0xd94826 : 0xb91c1c;
+      fillColor = ratio > 0.5 ? 0xa33a22 : ratio > 0.25 ? 0x8f2c1d : 0x6d1b12;
     }
 
     const fillW = Math.max(0, Math.round(width * ratio));
