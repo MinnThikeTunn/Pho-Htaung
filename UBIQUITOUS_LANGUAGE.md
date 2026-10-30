@@ -24,6 +24,8 @@ Domain glossary for **Phoe Htaung (ဖိုးထောင်)**: A 2D Point-an
 | **Athletic Route** | High-skill platforming, physics exploitation, or momentum conservation that skips major puzzle steps (The Athlete's Way) | Speedrun route, bypass route, skill route |
 | **Secret Route** | Lateral thinking, environmental sabotage, or hidden passages subverting expected logic (The Trickster's Way / "အောက်လမ်း") | Hidden route, alternate path, cheat |
 | **Heist Route** | Outsmarting greed traps to escape with optional legendary treasures for maximum settlement value (The Thief's Way / Master Thief) | Collector route, treasure route, thief path |
+| **Steam Lift Route** | Using redirected steam pressure hydraulically to lift obstacles (The Industrialist's Way) | Hydraulic route, pressure route |
+| **Gear Jam Route** | Sabotaging machinery by jamming gears to disable threats (The Mechanic's Revenge) | Sabotage route, jam route |
 | **Pawnshop Settlement Receipt** | An authentic weathered receipt rendered upon Chapter completion, displaying deaths, brain cells used, relics stolen, and resale value for viral sharing | Settlement screen, victory screen, score summary |
 
 ## Tool & Inventory System
@@ -49,6 +51,8 @@ Domain glossary for **Phoe Htaung (ဖိုးထောင်)**: A 2D Point-an
 | **Dried Chili** | A fiery Burmese chili (ငရုတ်သီး) that causes explosive sneezing when inserted into keyholes | Chili, pepper |
 | **Beeswax** | Harvested from beehives, used as an alternative lubricant to betel spit | Wax |
 | **Betel Spit** | Red betel nut juice (စွပ်) expelled via Universal Mouth Verb, the primary emergency lubricant | Spit, saliva |
+| **Ancient Brick** | A heavy stone block that occasionally drops from the ceiling, used for jamming mechanisms or triggering traps remotely | Brick, stone block |
+| **Steam Nozzle Redirector** | Crafted from Half Bottle + Rusty Cog, reverses steam flow direction for hydraulic applications | Redirector, steam redirector |
 
 ## Game Mechanics
 

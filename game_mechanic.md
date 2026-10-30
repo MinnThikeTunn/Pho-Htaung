@@ -330,8 +330,19 @@ flowchart TD
   * **Winning Condition 4: Brute Force Gate Shatter (The Destroyer's Way):**
     1. Lure crusher flush against iron portcullis ($x = 1100$).
     2. Provoke two consecutive boulder drops onto gate hinges; second boulder shatters iron bars into twisted scrap, allowing immediate exit without touching pressure plate!
+  * **Winning Condition 5: Steam Lift Hydraulics (The Industrialist's Way):**
+    1. Craft `steam_nozzle_redirector` by combining `half_bottle` + `rusty_cog`.
+    2. Attach redirector to steam nozzle, reversing flow direction.
+    3. Steam pressure builds under gate hinges, hydraulically lifting the iron portcullis.
+    4. Walk through the elevated gate to exit.
+  * **Winning Condition 6: Gear Jam Sabotage (The Mechanic's Revenge):**
+    1. Collect the `ancient_brick` that occasionally drops from ceiling.
+    2. Climb to the crusher's starting position ($x = 200, y = 80$).
+    3. Insert brick into the crusher's gear housing during Beat 1 (visual windup).
+    4. Crusher seizes permanently, stuck in thinking animation.
+    5. Walk safely across the floor to the gate, then use `half_bottle` on steam nozzle to lift gate normally.
 * **Domain Verification Contract (`actionExit`):**
-  $$\text{actionExit}(s) \iff s.\text{alive} \land s.\text{grounded} \land ((s.x \ge 1150 \land s.\text{gateOpen}) \lor s.\text{flueCrawled} \lor s.\text{drainFlushed})$$
+  $$\text{actionExit}(s) \iff s.\text{alive} \land s.\text{grounded} \land ((s.x \ge 1150 \land s.\text{gateOpen}) \lor s.\text{flueCrawled} \lor s.\text{drainFlushed} \lor s.\text{steamLifted} \lor s.\text{gearJammed})$$
 
 ---
 
@@ -456,6 +467,8 @@ flowchart TD
 | **Ch 2: Crusher & Gate** | **Win 2: Athletic Bypass** | Mid-air jump off falling boulder, bounce to upper vent ledge, crawl through exhaust flue. | 🧗 *Chimney Sweep* | *"ကျောက်တုံးပေါ် ခုန်တက်ပြီး လေဝင်ပေါက်ကနေ တွားထွက်သွားတယ်! မျောက်လိုပဲ ငကြောင်ရေ့!"* |
 | **Ch 2: Crusher & Gate** | **Win 3: Secret 'အောက်လမ်း'** | Belly-crawl into sludge drain, spit betel juice 3 times to corrode rusted grate bars. | 🩸 *Acid Spitter* | *"ကွမ်းတံတွေးနဲ့ သံတိုင်ဖျော်ပြီး မြောင်းထဲ လျှောဆင်းသွားတယ်! ကွမ်းစားတဲ့ပါးစပ် ဆေးမလိုဘူးဟေ့!"* |
 | **Ch 2: Crusher & Gate** | **Win 4: Brute Shatter** | Taunt crusher to drop two consecutive boulders directly onto the iron gate portcullis. | 💥 *Gate Smasher* | *"ခေါင်းမာတာတော့ မင်းနဲ့တူတယ်! သံတံခါးကို ကျောက်တုံးနဲ့ ထုခွဲပစ်လိုက်တယ်တဲ့ဗျာ!"* |
+| **Ch 2: Crusher & Gate** | **Win 5: Steam Lift** | Craft `steam_nozzle_redirector`, reverse steam flow, build hydraulic pressure under gate hinges to lift portcullis. | 🏭 *Steam Hydraulics Engineer* | *"ရေနွေးငွေ့နဲ့ သံတံခါးကို လှောင်တင်သွားတယ်! ဗရိတိန်နည်းပညာတော့ ပိုအောင်မြင်တယ် ဖိုးထောင်!"* |
+| **Ch 2: Crusher & Gate** | **Win 6: Gear Jam** | Collect `ancient_brick`, climb to crusher start position, insert brick during Beat 1 to permanently jam gears, walk safely to gate. | ⚙️ *Mechanical Saboteur* | *"ကျောက်ဆစ်နဲ့ စက်ပစ္စည်းကို ဖျက်ဆီထိုးလိုက်တယ်ဆို ကျောက်တုံးတွေ အာဟ طريقة! ငကြောင်ဆိုပေမဲ့ ဉာဏ်တော့ အမွһွေackage!"* |
 | **Ch 3: Sacred Scale** | **Win 1: Canonical Win** | Scrape stone inscription from $10$ to $0$ ($၁၀ \rightarrow ၀$) with cutter to equalize balance. | ✏️ *Mathematician* | *"ဂဏန်းပြင်ပြီး ချိန်ခွင်ညှိသွားတယ်! စာမတတ်ပေမဲ့ ကိန်းဂဏန်းတော့ လိမ်တတ်သားပဲ!"* |
 | **Ch 3: Sacred Scale** | **Win 2: Athletic Bypass** | Pan surge jump, wall-kick off deity ear, swing from prayer rope through transom clerestory. | 🎪 *Temple Acrobat* | *"ချိန်ခွင်တန်းပေါ် ပြေးတက်ပြီး ပြတင်းပေါက်ကနေ ခုန်ထွက်သွားတယ်! ကာယဗလ မောင်ဖိုးထောင်!"* |
 | **Ch 3: Sacred Scale** | **Win 3: Secret 'အောက်လမ်း'** | Kick retaining pin out of left counterweight, catapulting Phoe Htaung through roof skylight. | 🚀 *Human Trebuchet* | *"ချိန်သီးဖြုတ်ချပြီး အမိုးပေါက်ကနေ လွင့်ထွက်သွားတယ်! ကောင်းကင်ပျံ ငကြောင်ဖိုးထောင်!"* |
