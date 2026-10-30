@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { C } from '../content/chapter1';
 import { S3, SCALE_IDS, SCALE_ITEMS, SCALE_LINES } from '../content/chapter3';
+import { soundEngine } from '../utils/SoundEngine.js';
+import { AudioController } from '../services/AudioController';
 import type { ScaleItemId } from '../content/chapter3';
 import { panWeight, queueScaleCommand } from '../domain/scale';
 import type { ScaleCommand, ScaleEvent } from '../domain/scale';
@@ -11,7 +13,6 @@ import { ScaleView, VISUAL_GROUND_Y, toDomainY, vy } from '../view/ScaleView';
 import InventoryBar from '../ui/InventoryBar.js';
 import DiegeticGrab from '../ui/DiegeticGrab';
 import { ensureBridgeTextures } from '../view/BridgeView';
-import { soundEngine } from '../utils/SoundEngine.js';
 import { MicroInteractions } from '../utils/MicroInteractions.js';
 
 const ui = () => document.querySelector<HTMLDivElement>('#interface')!;
@@ -21,8 +22,6 @@ const button = (id: string, text: string, primary = false) =>
 export default class ScaleChapterScene extends Phaser.Scene {
   private session!: ScaleSession;
   private view!: ScaleView;
-  public inventoryBar!: InventoryBar;
-  public diegeticGrab!: DiegeticGrab;
   private held = new Set<string>();
   private jumpEdge = false;
   private selected: ScaleItemId | null = null;
@@ -36,6 +35,8 @@ export default class ScaleChapterScene extends Phaser.Scene {
   private crawlDustTimer = 0;
   private lastWallTime = 0;
   private lastPendulumAngle = 0;
+  private inventoryBar!: InventoryBar;
+  private diegeticGrab!: DiegeticGrab;
 
   // Cached DOM test targets for ultra-high framerate execution
   private elWallet: HTMLElement | null = null;
@@ -201,9 +202,6 @@ export default class ScaleChapterScene extends Phaser.Scene {
   }
 
   create() {
-    // 1. Ensure procedural vector textures exist FIRST
-    ensureBridgeTextures(this);
-    // 2. Instantiate ScaleView with procedural textures ready
     this.view = new ScaleView(this);
     
     // Set up pan item click handler

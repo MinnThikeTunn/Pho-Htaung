@@ -66,6 +66,7 @@ export default class Chapter3Scene extends Phaser.Scene {
 
     // Point-and-click walking
     this.input.on('pointerdown', (pointer) => {
+      try { soundEngine.playFootstep?.(); } catch {}
       if (pointer.y > groundY - 100 && pointer.y < groundY + 80) {
         this.targetX = pointer.x;
         MicroInteractions.spawnClickMarker(this, pointer.x, groundY - 20);
@@ -678,6 +679,7 @@ export default class Chapter3Scene extends Phaser.Scene {
       stone.on('pointerdown', () => {
         this.interactWithProximity(stone.x, () => {
           MicroInteractions.pickupItemToBag(this, stone, this.player, () => {
+            try { soundEngine.playPickup?.(); } catch {}
             gameState.addItem('stone_3');
             this.inventoryBar.refresh();
             this.subtitle.say('၃ ပိဿာ အလေးချိန်ရှိတဲ့ ကျောက်ခဲကို ကောက်ရလိုက်ပြီ။');

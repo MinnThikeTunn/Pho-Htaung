@@ -17,18 +17,114 @@ import ScaleChapterScene from './scenes/ScaleChapterScene';
 import { SCALE_ART } from './content/chapter3Art';
 import ArenaChapterScene from './scenes/ArenaChapterScene';
 import FinalChapterScene, { CampaignEndingScene } from './scenes/FinalChapterScene';
+import { soundEngine } from './utils/SoundEngine.js';
 
 const uid = () => crypto.randomUUID();
+
+function hideBootSplash() {
+  const el = document.getElementById('boot-splash');
+  if (!el) return;
+  el.style.display = 'none';
+  el.remove();
+}
 
 const audio = new AudioController();
 const ui = document.querySelector<HTMLDivElement>('#interface')!;
 let shade = true, showHints = true, debug = false;
-try { const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}'); audio.muted = Boolean(s.muted); shade = s.shake !== false; showHints = s.hints !== false; } catch { /* Readable defaults when settings are unavailable. */ }
+try { const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}'); audio.muted = Boolean(s.muted); soundEngine.muted = Boolean(s.muted); shade = s.shake !== false; showHints = s.hints !== false; } catch { /* Readable defaults when settings are unavailable. */ }
 function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ muted: audio.muted, shake: shade, hints: showHints })); } catch { /* Campaign warnings remain independent. */ } }
 // Full viewport mode - header & footer omitted
 const buttons = (html: string) => `<div class="actions">${html}</div>`;
 const button = (id: string, text: string, primary = false) => `<button type="button" id="${id}" class="${primary ? 'primary' : 'secondary'}">${text}</button>`;
-function bind(id: string, fn: () => void) { ui.querySelector<HTMLButtonElement>(`#${id}`)?.addEventListener('click', fn); }
+function bind(id: string, fn: () => void) { 
+  ui.querySelector<HTMLButtonElement>(`#${id}`)?.addEventListener('click', () => { 
+    try { if (typeof (soundEngine as any).playPing === 'function') (soundEngine as any).playPing(); else if (typeof (soundEngine as any).playPickup === 'function') (soundEngine as any).playPickup(); } catch {}
+    fn(); 
+  }); 
+}
+
+// Global click sound for all buttons
+document.addEventListener('click', (e) => {
+  const target = e.target as HTMLElement;
+  if (target.tagName === 'BUTTON' || target.closest('button')) {
+    try { soundEngine.playPing?.(); } catch {}
+  }
+});
+
+// Volume control
+let bgmVolume = 0.5;
+try {
+  const savedVol = localStorage.getItem('phoe-bgm-volume');
+  if (savedVol !== null) bgmVolume = Math.max(0, Math.min(1, parseFloat(savedVol)));
+} catch {}
+try {
+  (soundEngine as any).setBGMVolume?.(bgmVolume);
+  (soundEngine as any).bgmVolume = bgmVolume;
+} catch {}
+function updateVolumeUI() {
+  const volBtn = document.getElementById('volume-btn');
+  const volIcon = document.getElementById('volume-icon');
+  if (volBtn && volIcon) {
+    if (bgmVolume === 0 || soundEngine.muted) {
+      volIcon.textContent = '🔇';
+    } else if (bgmVolume < 0.5) {
+      volIcon.textContent = '🔉';
+    } else {
+      volIcon.textContent = '🔊';
+    }
+  }
+}
+function createVolumeControl() {
+  if (document.getElementById('volume-control')) return;
+  const volDiv = document.createElement('div');
+  volDiv.id = 'volume-control';
+  volDiv.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999999;';
+  volDiv.innerHTML = `<button id="volume-btn" title="Background Music Volume" style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,rgba(180,83,9,0.95),rgba(120,53,15,0.95));border:3px solid rgba(251,191,36,0.9);color:white;font-size:28px;cursor:pointer;box-shadow:0 12px 40px rgba(0,0,0,0.8),0 0 20px rgba(245,158,11,0.4);display:flex;align-items:center;justify-content:center;"><span id="volume-icon">🔊</span></button>`;
+  document.body.appendChild(volDiv);
+  volDiv.querySelector('#volume-btn')?.addEventListener('click', () => {
+    try { (soundEngine as any).playPing?.(); } catch {}
+    bgmVolume = bgmVolume >= 0.8 ? 0 : bgmVolume + 0.2;
+    try {
+      (soundEngine as any).setBGMVolume?.(bgmVolume);
+      (soundEngine as any).bgmVolume = bgmVolume;
+    } catch {}
+    try { localStorage.setItem('phoe-bgm-volume', bgmVolume.toString()); } catch {}
+    soundEngine.muted = bgmVolume === 0;
+    audio.muted = bgmVolume === 0;
+    saveSettings();
+    updateVolumeUI();
+    try {
+      if (bgmVolume > 0) {
+        if (!(soundEngine as any).bgmPlaying) {
+          soundEngine.startBGM?.();
+        }
+      } else {
+        soundEngine.stopBGM?.();
+      }
+    } catch {}
+  });
+  updateVolumeUI();
+}
+
+// Start BGM on first interaction
+let bgmStarted = false;
+function startBGMOnInteraction() {
+  if (bgmStarted) return;
+  bgmStarted = true;
+  try {
+    soundEngine.init?.();
+    try { (soundEngine as any).setBGMVolume?.(bgmVolume); (soundEngine as any).bgmVolume = bgmVolume; } catch {}
+    if (!soundEngine.muted && bgmVolume > 0) {
+      soundEngine.startBGM?.();
+    }
+  } catch {}
+  document.removeEventListener('click', startBGMOnInteraction);
+  document.removeEventListener('keydown', startBGMOnInteraction);
+}
+document.addEventListener('click', startBGMOnInteraction);
+document.addEventListener('keydown', startBGMOnInteraction);
+
+createVolumeControl();
 function focusGame(scene: Phaser.Scene) { scene.game.canvas.tabIndex = 0; scene.game.canvas.focus({ preventScroll: true }); }
 let liveSession: Session | null = null, currentMode: Mode = 'CAMPAIGN';
 
@@ -76,27 +172,165 @@ class MenuScene extends Phaser.Scene {
   constructor(){super('MENU');}
   create(){
     liveSession=null;audio.attach(this);
-    new WorldView(this).render(createAttempt('A','menu'));
-    const c=store.campaign;
-    ui.innerHTML=`<div class="menu-scrim"></div><section class="title-panel adventure-menu"><span class="eyebrow">ပုဂံရွှေမြို့တော် စွန့်စားခန်း</span><h1 id="game-title">ဖိုးထောင်။</h1><p class="chapter-name">တံတား → ကျောက်တုံးချစက် → ချိန်ခွင်ခန်း</p><p class="intro">အကြွေးဆပ်ဖို့ ရွှေမြို့တော်ရှာရင်း ဦးကြီးနောက်လိုက်လာတယ်။<br>ဒီတစ်ခါ ရွှေရုပ်ပါ ယူထွက်နိုင်မလား။</p>${buttons(button('start',c.bridgeCompleted?'ဆက်ကစားမယ်':'စကစားမယ်',true)+(c.bridgeCompleted?button('bridge-replay','အခန်း ၁ ပြန်စမ်း'):'')+(c.chapter2Completed?button('action-replay','အခန်း ၂ ပြန်စမ်း'):'')+(c.chapter3Completed?button('scale-replay','အခန်း ၃ ပြန်စမ်း'):''))}<div class="key-guide"><span><kbd>A</kbd><kbd>D</kbd> ရွေ့</span><span><kbd>SPACE</kbd> ခုန်</span><span>အခန်း ၁ / ၃ · နှိပ်ပြီး ကောက် / သုံး</span></div><small class="prototype-note">တူညီသော character · ယာယီ scenery နှင့်အသံများ။<br>အခန်း ၄ တိုက်ခိုက်ရေးကို မတည်ဆောက်ရသေးပါ။</small>${c.chapter2Completed?buttons(button('practice-b','အခန်း ၂ လေ့ကျင့် B')+button('practice-c','အခန်း ၂ လေ့ကျင့် C')):''}${buttons(button('new-game','Campaign အသစ်စမယ်'))}<p class="warning" id="load-error" hidden></p></section><div class="corner-label">01 / 03 <span>PUZZLE → ACTION → PUZZLE</span></div>`;
-    ui.querySelector('.chapter-name')!.textContent='တံတား → ကျောက်တုံးချစက် → ချိန်ခွင် → လူဝံအစောင့် → ဦးကြီး';
-    ui.querySelector('.prototype-note')!.textContent='Mouse Left Click / S လက်သီး · Q လေးခွထုတ်ပစ် · W ရှောင် · Space ခုန် · C ငုံ့လျှို။ အခန်း ၅ မှာ ဦးကြီးနဲ့ရင်ဆိုင်ပြီး ဇာတ်သိမ်းမယ်။';
-    ui.querySelector('.corner-label')!.innerHTML='01 / 05 <span>PUZZLE → ACTION → FINAL BOSS</span>';
-    if(c.chapter3Completed)ui.querySelector('.actions')!.insertAdjacentHTML('beforeend',button('arena-replay','အခန်း ၄ ပြန်စမ်း'));
-    if(c.chapter4Completed)ui.querySelector('.actions')!.insertAdjacentHTML('beforeend',button('final-replay','အခန်း ၅ ပြန်စမ်း'));
-    const start=()=>{if(!c.bridgeCompleted)this.scene.start('Chapter1Scene');else if(c.chapter5Completed)this.scene.start('CAMPAIGN_END');else if(c.chapter4Completed)this.scene.start('CHAPTER_5');else if(c.chapter3Completed)this.scene.start('CHAPTER_4');else if(c.resumeAt==='CH2_EXIT_LINK')this.scene.start('CH2_EXIT_LINK',{mode:'CAMPAIGN'});else if(c.chapter2Completed)this.scene.start('CHAPTER_3');else enter(this,'A','CAMPAIGN');};
-    bind('start',start);bind('bridge-replay',()=>this.scene.start('Chapter1Scene',{replay:true}));bind('action-replay',()=>enter(this,'A','REPLAY'));bind('practice-b',()=>enter(this,'B','PRACTICE'));bind('practice-c',()=>enter(this,'C','PRACTICE'));
-    bind('scale-replay',()=>this.scene.start('CHAPTER_3',{replay:true}));
-    bind('arena-replay',()=>this.scene.start('CHAPTER_4'));
-    bind('final-replay',()=>this.scene.start('CHAPTER_5'));
-    bind('new-game',()=>{if(confirm('လက်ရှိ combined campaign နှင့် သိမ်းပြီးရွှေကို အသစ်စမယ်။ သေချာလား?')){store.reset(uid());this.scene.restart();}});
-    if(store.loadError){const warning=ui.querySelector<HTMLElement>('#load-error')!;warning.hidden=false;warning.textContent=store.loadError+' Start ကိုနှိပ်လျှင် မသိမ်းဘဲ ယာယီစမ်းနိုင်သည်။';}
+    try { 
+      soundEngine.init?.(); 
+      try { if((soundEngine as any).setBGMVolume) (soundEngine as any).setBGMVolume(bgmVolume); if((soundEngine as any).bgmVolume !== undefined) (soundEngine as any).bgmVolume = bgmVolume; } catch {}
+      if (!soundEngine.muted && bgmVolume > 0) { try { soundEngine.startBGM?.(); } catch {} }
+    } catch {}
+    ui.innerHTML = '';
+    // Hide flanks
+    document.querySelectorAll('.game-flank').forEach((el:any) => { el.style.display = 'none'; el.style.visibility = 'hidden'; });
+    hideBootSplash();
+    const menuDiv = document.createElement('div');
+    menuDiv.id = 'fantasy-menu-overlay';
+    menuDiv.innerHTML = `
+      <div class="fm-bg"></div>
+      <div class="fm-vignette"></div>
+      <div class="fm-content">
+        <div class="fm-crest">❖</div>
+        <h1 class="fm-title">PHO HTAUNG</h1>
+        <p class="fm-subtitle">ပုဂံရွှေမြို့တော် စွန့်စားခန်း</p>
+        <div class="fm-rule"><span></span><b>❖</b><span></span></div>
+        <nav class="fm-actions">
+          <button type="button" id="menu-play" class="fm-btn fm-primary">
+            <span class="fm-btn-label">PLAY</span>
+            <small>ဆက်လက်ကစားမည်</small>
+          </button>
+          <button type="button" id="menu-restart" class="fm-btn">
+            <span class="fm-btn-label">RESTART</span>
+            <small>အခန်း ၁ မှ ပြန်စမည်</small>
+          </button>
+          <button type="button" id="menu-mechanic" class="fm-btn">
+            <span class="fm-btn-label">MECHANIC</span>
+            <small>လမ်းညွှန် နှင့် ထိန်းချုပ်နည်း</small>
+          </button>
+        </nav>
+      </div>`;
+    ui.appendChild(menuDiv);
+
+    const playBtn = menuDiv.querySelector('#menu-play') as HTMLButtonElement | null;
+    const restartBtn = menuDiv.querySelector('#menu-restart') as HTMLButtonElement | null;
+    const mechanicBtn = menuDiv.querySelector('#menu-mechanic') as HTMLButtonElement | null;
+
+    const closeMenu = () => {
+      menuDiv.remove();
+      document.querySelectorAll('.game-flank').forEach((el:any) => { el.style.display = ''; el.style.visibility = ''; });
+    };
+
+    playBtn?.addEventListener('click', () => {
+      try { (soundEngine as any).playPing?.(); } catch {}
+      closeMenu();
+      const c = store.campaign as any;
+      if (!c.bridgeCompleted) this.scene.start('Chapter1Scene');
+      else if (c.chapter5Completed) this.scene.start('CAMPAIGN_END');
+      else if (c.chapter4Completed) this.scene.start('CHAPTER_5');
+      else if (c.chapter3Completed) this.scene.start('CHAPTER_4');
+      else if (c.resumeAt === 'CH2_EXIT_LINK') this.scene.start('CH2_EXIT_LINK', { mode: 'CAMPAIGN' });
+      else if (c.chapter2Completed) this.scene.start('CHAPTER_3');
+      else enter(this, 'A', 'CAMPAIGN');
+    });
+
+    restartBtn?.addEventListener('click', () => {
+      try { (soundEngine as any).playPing?.(); } catch {}
+      try { localStorage.removeItem(SAVE_KEY); } catch {}
+      try { store.reset(uid()); } catch {}
+      // Brief confirmation, then enter Chapter 1 with a fresh campaign.
+      restartBtn.classList.add('fm-confirmed');
+      const label = restartBtn.querySelector('.fm-btn-label');
+      const note = restartBtn.querySelector('small');
+      if (label) label.textContent = 'RESTARTED';
+      if (note) note.textContent = 'အခန်း ၁ မှ ပြန်စနေသည်…';
+      window.setTimeout(() => {
+        closeMenu();
+        this.scene.start('Chapter1Scene');
+      }, 420);
+    });
+
+    const openMechanic = () => {
+      try { (soundEngine as any).playPing?.(); } catch {}
+      if (document.getElementById('fm-modal')) return;
+      const modal = document.createElement('div');
+      modal.id = 'fm-modal';
+      modal.className = 'fm-modal';
+      modal.innerHTML = `
+        <div class="fm-modal-panel" role="dialog" aria-modal="true" aria-label="Game mechanics">
+          <div class="fm-modal-head">
+            <div>
+              <span class="fm-modal-eyebrow">လမ်းညွှန် / GUIDE</span>
+              <h2 class="fm-modal-title">MECHANICS &amp; CONTROLS</h2>
+            </div>
+            <button type="button" class="fm-modal-close" id="fm-modal-close" aria-label="Close">×</button>
+          </div>
+          <div class="fm-modal-body">
+            <section class="fm-section">
+              <h3>အခန်း ၁ — တံတားယန္တရား <span>/ Bridge</span></h3>
+              <ul>
+                <li><b>← →</b> or <b>A D</b> — လမ်းလျှောက် / Move</li>
+                <li><b>↑</b> or <b>W</b> or <b>Space</b> — ခုန် / Jump</li>
+                <li><b>E</b> — ပစ္စည်းကောက်၊ ယန္တရားလှည့် / Interact</li>
+                <li>တုံးနှင့် ကြိုးကို အသုံးပြုပြီး တံတားကို ချပါ။</li>
+              </ul>
+            </section>
+            <section class="fm-section">
+              <h3>အခန်း ၂ — ကျောက်တုံးချစက် <span>/ Underground</span></h3>
+              <ul>
+                <li><b>← →</b> / <b>A D</b> — ရွေ့လျား / Move</li>
+                <li><b>Space</b> — ခုန် / Jump</li>
+                <li><b>E</b> — စက်ယန္တရား အသုံးပြု / Operate machinery</li>
+                <li>ရွှေကောက်ပြီး ထွက်ပေါက်ဆီ ဆက်သွားပါ။</li>
+              </ul>
+            </section>
+            <section class="fm-section">
+              <h3>အခန်း ၃ — ချိန်ခွင် <span>/ Balance Scale</span></h3>
+              <ul>
+                <li><b>← →</b> / <b>A D</b> — ရွေ့လျား / Move</li>
+                <li><b>E</b> — ပစ္စည်းကောက်၊ ချိန်ခွင်ပေါ်တင် / Pick up &amp; place</li>
+                <li><b>Bag</b> — အိတ်ဖွင့် / Open bag and choose an item</li>
+                <li>နှစ်ဖက်အလေးချိန် ညီအောင် ချိန်ပါ။</li>
+              </ul>
+            </section>
+            <section class="fm-section">
+              <h3>အခန်း ၄ — လူဝံအစောင့် <span>/ Arena</span></h3>
+              <ul>
+                <li><b>← →</b> / <b>A D</b> — ရွေ့လျား / Move</li>
+                <li><b>J</b> — ထိုး/ရိုက် / Punch &amp; attack</li>
+                <li><b>K</b> — ကျောက်တုံးပစ် / Throw boulder</li>
+                <li><b>L</b> — ရှောင်တိမ်း / Dodge &amp; roll</li>
+                <li><b>B</b> — အိတ်ဖွင့် / Open bag</li>
+                <li>ရန်သူ၏ တိုက်ခိုက်မှုကို ရှောင်ပြီး တုံ့ပြန်ပါ။</li>
+              </ul>
+            </section>
+            <section class="fm-section">
+              <h3>အထွေထွေ <span>/ General</span></h3>
+              <ul>
+                <li>ညာဘက်အောက်ခြေ အသံခလုတ်ဖြင့် ဂီတအသံ အတိုးအကျယ် ချိန်ပါ။</li>
+                <li>ကစားတိုးတက်မှုကို အလိုအလျောက် သိမ်းထားသည်။</li>
+                <li><b>ESC</b> — ခေတ္တရပ် / Pause</li>
+              </ul>
+            </section>
+          </div>
+        </div>`;
+      ui.appendChild(modal);
+
+      const close = () => {
+        try { (soundEngine as any).playPing?.(); } catch {}
+        modal.remove();
+      };
+      modal.querySelector('#fm-modal-close')?.addEventListener('click', close);
+      modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+      modal.querySelector('.fm-modal-panel')?.addEventListener('click', (e) => e.stopPropagation());
+      const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { close(); window.removeEventListener('keydown', onKey); } };
+      window.addEventListener('keydown', onKey);
+    };
+    mechanicBtn?.addEventListener('click', openMechanic);
   }
 }
+
+
 class BridgeLinkScene extends Phaser.Scene {
   private elapsed=0;private replay=false;private suspended=false;
   constructor(){super('BRIDGE_EXIT_LINK');}
-  init(data:{replay?:boolean}){this.elapsed=0;this.replay=Boolean(data.replay);this.suspended=false;}
+  init(data:{replay?:boolean}={}){this.elapsed=0;this.replay=Boolean(data?.replay);this.suspended=false;}
   create(){
     this.add.rectangle(640,360,1280,720,0x182d23);ui.innerHTML=`<section class="result-panel"><span class="eyebrow">အခန်း ၁ ပြီးပါပြီ / PUZZLE → ACTION</span><h1>မြေအောက်စက်ခန်းဆီ။</h1><p class="intro">“ဒီအောက်လမ်းက ရွှေမြို့တော်ကို ရောက်တယ်ကွ!”<br>ဦးကြီးရဲ့အသံနောက်လိုက်ပြီး ဆင်းလာတော့ ကျောက်တုံးချစက်တစ်လုံး တွေ့ရတယ်။</p><p class="result-note">အခန်း ၁ တွင် ငွေဆုမပါ။ ရှိပြီးသား ရွှေ ${store.campaign.walletCoins} နဲ့ သေဆုံးမှု ${store.campaign.deathCount} ကို ဆက်သယ်ထားတယ်။</p><p id="bridge-save" class="warning" ${store.unsaved?'':'hidden'}>Save မသိမ်းရသေးပါ။ ယာယီဆက်ပါက reload တွင် progress ပျောက်နိုင်သည်။</p>${buttons(button('continue',store.unsaved?'ယာယီအတိုင်း ဆက်မယ်':'အခန်း ၂ ဆက်မယ်',true)+(store.unsaved?button('retry-save','ထပ်သိမ်းမယ်'):'')+button('menu','ပင်မစာမျက်နှာ'))}</section>`;
     bind('continue',()=>this.go());bind('menu',()=>this.scene.start('MENU'));bind('retry-save',()=>{if(store.save())this.scene.restart({replay:this.replay});});

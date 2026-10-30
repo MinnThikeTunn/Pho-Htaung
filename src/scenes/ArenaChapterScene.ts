@@ -4,6 +4,7 @@ import { C } from '../content/chapter1';
 import { arenaHasSlingshot, triggerArenaGoldTrap } from '../domain/arena';
 import type { ArenaEvent, ArenaWeapon } from '../domain/arena';
 import { ArenaSession } from '../services/ArenaSession';
+import { AudioController } from '../services/AudioController';
 import { store } from '../services/adventure';
 import { SAVE_KEY } from '../services/CampaignStore';
 import { ArenaView, VISUAL_GROUND_Y, vy } from '../view/ArenaView';
@@ -160,7 +161,8 @@ export default class ArenaChapterScene extends Phaser.Scene {
     this.lastClueKey = ''; this.lastClueAt = -99; this.idleSeconds = 0;
     store.startArena();
   }
-  private bind(id: string, fn: () => void) { ui().querySelector(`#${id}`)?.addEventListener('click', fn); }
+  private bind(id: string, fn: () => void) { ui().querySelector(`#${id}`)?.addEventListener('click', () => { try { (soundEngine as any).playPing?.(); } catch {} fn(); }); }
+  private audio = new AudioController();
   private focusGame() { this.game.canvas.tabIndex = 0; this.game.canvas.focus({ preventScroll: true }); }
   private clear() {
     this.held.clear();
@@ -278,6 +280,8 @@ export default class ArenaChapterScene extends Phaser.Scene {
     this.speak(text, seconds, key);
   }
   create() {
+    this.audio.attach(this);
+    try { soundEngine.init?.(); if (!(soundEngine as any).muted) soundEngine.startBGM?.(); } catch {}
     ensureBridgeTextures(this);
     this.view = new ArenaView(this);
 

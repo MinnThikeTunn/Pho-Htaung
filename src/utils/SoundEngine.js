@@ -10,6 +10,7 @@ class SoundEngine {
     this.bgmTimer = null;
     this.bgmPlaying = false;
     this.bgmStep = 0;
+    this.bgmVolume = 0.5;
   }
 
   init() {
@@ -34,12 +35,21 @@ class SoundEngine {
     return this.muted;
   }
 
+  setBGMVolume(vol) {
+    this.bgmVolume = Math.max(0, Math.min(1, vol));
+  }
+
+  getBGMVolume() {
+    return this.bgmVolume;
+  }
+
   // Machinarium Sneaky Comedy Ambient Background Music (Procedural Web Audio Synth)
   // Uses pentatonic acoustic guitar arpeggios & bamboo wooden xylophone notes
   startBGM() {
-    if (this.bgmPlaying || this.muted) return;
+    if (this.bgmPlaying) return;
     this.init();
     if (!this.ctx) return;
+    if (this.muted) return;
     this.bgmPlaying = true;
 
     // Pentatonic scale frequencies: C3, D3, E3, G3, A3, C4, D4, E4
@@ -53,6 +63,7 @@ class SoundEngine {
       const step = this.bgmStep % 16;
       this.bgmStep++;
 
+      const vol = this.bgmVolume || 0.5;
       // 1. Bass note every 4 beats
       if (step % 4 === 0) {
         const bassFreq = bassScale[(Math.floor(this.bgmStep / 4)) % bassScale.length];
@@ -61,8 +72,8 @@ class SoundEngine {
         bOsc.type = 'triangle';
         bOsc.frequency.setValueAtTime(bassFreq, now);
 
-        bGain.gain.setValueAtTime(0.045, now);
-        bGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+        bGain.gain.setValueAtTime(0.045 * vol, now);
+        bGain.gain.exponentialRampToValueAtTime(0.001 * vol, now + 0.45);
 
         bOsc.connect(bGain);
         bGain.connect(this.ctx.destination);
@@ -80,8 +91,8 @@ class SoundEngine {
         mOsc.type = 'sine';
         mOsc.frequency.setValueAtTime(freq, now);
 
-        mGain.gain.setValueAtTime(0.035, now);
-        mGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+        mGain.gain.setValueAtTime(0.035 * vol, now);
+        mGain.gain.exponentialRampToValueAtTime(0.001 * vol, now + 0.22);
 
         mOsc.connect(mGain);
         mGain.connect(this.ctx.destination);
@@ -102,8 +113,8 @@ class SoundEngine {
         bFilter.Q.setValueAtTime(6, now);
 
         const nGain = this.ctx.createGain();
-        nGain.gain.setValueAtTime(0.025, now);
-        nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
+        nGain.gain.setValueAtTime(0.025 * vol, now);
+        nGain.gain.exponentialRampToValueAtTime(0.001 * vol, now + 0.02);
 
         bNoise.connect(bFilter);
         bFilter.connect(nGain);
