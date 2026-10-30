@@ -17,7 +17,8 @@ export const GATE: Readonly<Rect> = { id: 'wood_gate', x: 1104, y: 360, w: 64, h
 export const SHELF: Readonly<Rect> = { id: 'gold_shelf', x: 824, y: 320, w: 144, h: 16 };
 export const PLATE: Readonly<Rect> = { id: 'pressure_plate', x: 336, y: 632, w: 128, h: 8 };
 export const liftRect = (y: number): Rect => ({ id: 'lift', x: 640, y, w: 128, h: 16 });
-export const COINS = [160, 208, 256, 304, 352].map((x, i) => Object.freeze({ id: `coin_0${i + 1}`, x, y: 616, value: 1, size: 20 }));
+export const CH2_BOMB_COIN_ID = 'coin_04';
+export const COINS = [160, 208, 256, 304, 352].map((x, i) => Object.freeze({ id: `coin_0${i + 1}`, x, y: 616, value: 1, size: 20, isBomb: `coin_0${i + 1}` === CH2_BOMB_COIN_ID }));
 export const POUCH = Object.freeze({ id: 'gold_pouch', x: 896, y: 308, value: 10, size: 24 });
 export const CH2_POLE_SPAWN = Object.freeze({ id: 'ch2_bamboo_pole', x: 536, y: 524 });
 export const CH2_COG_SPAWN = Object.freeze({ id: 'ch2_cog', x: 860, y: 304 });
@@ -26,3 +27,7 @@ export const PLATFORM_MID: Readonly<Rect> = Object.freeze({ id: 'plat_mid', x: 3
 export const PLATFORM_HIGH: Readonly<Rect> = Object.freeze({ id: 'plat_high', x: 130, y: 304, w: 150, h: 16 });
 export const CH2_SLINGSHOT_SPAWN = Object.freeze({ id: 'ch2_slingshot', x: 205, y: 284 });
 export const CH2_TRAP_RANGE = Object.freeze({ minX: 1150, maxX: 1220 });
+export const CH2_STEAM_NOZZLE_POS = Object.freeze({ x: 100, y: 300 });
+export const CH2_CRUSHER_START_POS = Object.freeze({ x: 200, y: 80 });
+export const CH2_ANCIENT_BRICK_SPAWN = Object.freeze({ x: 200, y: 100, size: 32 });
+export const CH2_GEAR_HOUSING_POS = Object.freeze({ x: 1104, y: 120, w: 40, h: 40 });

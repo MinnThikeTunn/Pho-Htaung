@@ -13,15 +13,32 @@ export function createAttempt(preset: Preset, id: string): Attempt {
     liftY: preset === 'C' ? C.liftRaised : C.liftHome,
     stones: preset === 'B' ? [stone('initial_1', 256, 640, 'ground')] : preset === 'C'
       ? [stone('initial_1', 400, 640, 'ground'), stone('initial_2', 704, 424, 'lift')] : [],
-    pickups: [...COINS, POUCH].map(v => ({ ...v, collected: false, vy: 0 })),
+    pickups: [...COINS, POUCH].map(v => ({ ...v, isBomb: Boolean((v as any).isBomb), disarmed: false, collected: false, vy: 0 })),
     hasCog: false,
     hasPole: false,
     gearBoxActive: false,
+    gearboxState: 'EMPTY',
+    gearboxSlapped: false,
     platformsRevealed: false,
     hasSlingshot: false,
     beehiveTriggered: false,
     beehiveX: 0,
     beehiveY: 0,
     trapFloorOpen: false,
+    bombDetonated: false,
+    bombX: 0,
+    // WC5: Steam Lift Hydraulics
+    hasSteamNozzleRedirector: false,
+    steamNozzleRedirectorAttached: false,
+    steamPressureBuilding: false,
+    steamPressureTimer: 0,
+    gateLiftedBySteam: false,
+    // WC8: Gear Jam Sabotage
+    ancientBrickCollected: false,
+    ancientBrickX: 200,
+    ancientBrickY: 100,
+    ancientBrickDropping: false,
+    crusherGearJammed: false,
+    gearJammedPermanently: false,
   };
 }

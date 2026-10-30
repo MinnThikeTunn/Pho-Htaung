@@ -31,6 +31,7 @@ export const ITEM_NAMES_MY = {
   slingshot: 'လေးခွနှင့် လောက်စာလုံး',
   beeswax: 'တောပျားဖယောင်း',
   ancient_brick: 'ရှေးဟောင်း အုတ်ခဲ',
+  steam_nozzle_redirector: 'ရေနွေးငွေ့ ပ کیفတွန်းစက်',
   chalk: 'ကျောက်ဖြူတုံး',
   engineer_note: 'လျှို့ဝှက်ပုံကြမ်း စာရွက်'
 };
@@ -51,6 +52,7 @@ export const ITEM_TEXTURE_KEYS = {
   slingshot: 'ch2_vector_slingshot',
   beeswax: 'ch1_vector_beeswax',
   ancient_brick: 'ch1_vector_brick',
+  steam_nozzle_redirector: 'ch2_vector_steam_redirector',
   chalk: 'item-chalk',
   engineer_note: 'item-engineer-note',
   pin: 'ch3_icon_pin',

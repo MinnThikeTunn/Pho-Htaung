@@ -1,7 +1,9 @@
-import { C, GATE, GROUND, PLATE, SHELF, STEP, liftRect, CH2_POLE_SPAWN, CH2_COG_SPAWN, PLATFORM_MID, PLATFORM_HIGH, CH2_SLINGSHOT_SPAWN, CH2_TRAP_RANGE } from '../content/chapter1';
+import { C, GATE, GROUND, PLATE, SHELF, STEP, liftRect, CH2_POLE_SPAWN, CH2_COG_SPAWN, PLATFORM_MID, PLATFORM_HIGH, CH2_SLINGSHOT_SPAWN, CH2_TRAP_RANGE, CH2_STEAM_NOZZLE_POS, CH2_CRUSHER_START_POS, CH2_ANCIENT_BRICK_SPAWN, CH2_GEAR_HOUSING_POS } from '../content/chapter1';
 import { overlaps, overlapX, overlapY, sweep } from './collision';
 import type { Body, Hit } from './collision';
 import type { Attempt, Input, Player, Rect, Stone } from './types';
+import { gameState } from '../utils/GameState';
+import { store } from '../services/adventure';
 
 export const playerRect = (p: Player): Rect => {
   const isLaying = p.control === 'LAYING';
@@ -35,7 +37,8 @@ function refreshSupports(a: Attempt): void {
 
 function updateMachine(a: Attempt, input: Input, dt: number): void {
   const m = a.machine, p = a.player;
-  if (input.taunt && p.grounded && p.control === 'FREE' && m.state === 'READY') {
+  const bombNearby = a.pickups.some(pk => pk.isBomb && !pk.disarmed && !pk.collected && Math.abs(p.centerX - pk.x) <= 85 && Math.abs(p.feetY - C.floor) <= 40);
+  if (input.taunt && !bombNearby && p.grounded && p.control === 'FREE' && m.state === 'READY') {
     m.state = 'TRACK'; m.elapsed = 0; p.control = 'TAUNTING'; p.tauntLeft = C.taunt;
     a.events.push({ kind: 'taunt' });
   }
@@ -204,6 +207,19 @@ export function step(a: Attempt, input: Input, dt = C.dt): void {
     a.status = 'ACTIVE'; a.events.push({ kind: 'start' });
   }
   const p = a.player;
+
+  // Initialize new WC5/WC8 fields if undefined
+  if (a.hasSteamNozzleRedirector === undefined) a.hasSteamNozzleRedirector = false;
+  if (a.steamNozzleRedirectorAttached === undefined) a.steamNozzleRedirectorAttached = false;
+  if (a.steamPressureBuilding === undefined) a.steamPressureBuilding = false;
+  if (a.steamPressureTimer === undefined) a.steamPressureTimer = 0;
+  if (a.gateLiftedBySteam === undefined) a.gateLiftedBySteam = false;
+  if (a.ancientBrickCollected === undefined) a.ancientBrickCollected = false;
+  if (a.ancientBrickX === undefined) a.ancientBrickX = CH2_ANCIENT_BRICK_SPAWN.x;
+  if (a.ancientBrickY === undefined) a.ancientBrickY = CH2_ANCIENT_BRICK_SPAWN.y;
+  if (a.ancientBrickDropping === undefined) a.ancientBrickDropping = false;
+  if (a.crusherGearJammed === undefined) a.crusherGearJammed = false;
+  if (a.gearJammedPermanently === undefined) a.gearJammedPermanently = false;
   refreshSupports(a);
   if (p.control === 'TAUNTING') { p.tauntLeft -= dt; if (p.tauntLeft <= 1e-9) p.control = 'FREE'; }
   updateMachine(a, input, dt);
@@ -246,11 +262,25 @@ export function step(a: Attempt, input: Input, dt = C.dt): void {
     }
     const area = { id: pickup.id, x: pickup.x - pickup.size / 2, y: pickup.y - pickup.size / 2, w: pickup.size, h: pickup.size };
     if (overlaps(playerRect(p), area)) {
+      if (pickup.isBomb && !pickup.disarmed) {
+        a.bombDetonated = true;
+        a.bombX = pickup.x;
+        a.status = 'DEAD';
+        p.control = 'DEAD';
+        a.events.push({ kind: 'bomb', x: pickup.x, y: pickup.y });
+        a.events.push({ kind: 'death', x: pickup.x, y: pickup.y });
+        break;
+      }
       pickup.collected = true; a.coins += pickup.value;
       a.events.push({ kind: 'coin', x: pickup.x, y: pickup.y, value: pickup.value });
     }
   }
   if (input.taunt) {
+    const bombPickup = a.pickups.find(pk => pk.isBomb && !pk.disarmed && !pk.collected);
+    if (bombPickup && Math.abs(p.centerX - bombPickup.x) <= 85 && Math.abs(p.feetY - C.floor) <= 40) {
+      bombPickup.disarmed = true;
+      a.events.push({ kind: 'bomb_disarm', x: bombPickup.x, y: bombPickup.y });
+    }
     if (!a.hasPole && Math.abs(p.centerX - CH2_POLE_SPAWN.x) <= 85 && Math.abs(p.feetY - STEP.y) <= 40) {
       a.hasPole = true;
       a.events.push({ kind: 'puzzle_item', x: CH2_POLE_SPAWN.x, y: CH2_POLE_SPAWN.y });
@@ -259,11 +289,39 @@ export function step(a: Attempt, input: Input, dt = C.dt): void {
       a.hasCog = true;
       a.events.push({ kind: 'puzzle_item', x: CH2_COG_SPAWN.x, y: CH2_COG_SPAWN.y });
     }
-    if (!a.gearBoxActive && a.hasPole && a.hasCog && Math.abs(p.centerX - 1104) <= 85) {
-      a.gearBoxActive = true;
-      a.platformsRevealed = true;
-      a.events.push({ kind: 'gear_box', x: 1104, y: 360 });
-      a.events.push({ kind: 'platforms' });
+    if (Math.abs(p.centerX - 1104) <= 85) {
+      if (p.feetY > 400) {
+        a.events.push({ kind: 'gear_too_high', x: 1104, y: 360 });
+      } else {
+        const rockAbove = a.stones.some(
+          s => s.state === 'FALLING' && Math.abs(s.centerX - 1104) <= 85 && s.bottomY < 400
+        );
+        if (rockAbove) {
+          p.control = 'TAUNTING';
+          p.tauntLeft = 0.6;
+          a.events.push({ kind: 'gear_slapstick', x: 1104, y: 360 });
+        } else if (a.gearboxState === 'COG_MOUNTED' && a.hasPole && !a.gearboxSlapped) {
+          a.gearboxSlapped = true;
+          p.control = 'TAUNTING';
+          p.tauntLeft = 0.6;
+          a.events.push({ kind: 'gear_slapstick', x: 1104, y: 360 });
+        } else if (a.gearboxState === 'EMPTY' && a.hasCog) {
+          a.gearboxState = 'COG_MOUNTED';
+          a.events.push({ kind: 'puzzle_item', x: 1104, y: 360 });
+        } else if (a.gearboxState === 'COG_MOUNTED') {
+          a.gearboxState = 'LUBRICATED';
+          a.events.push({ kind: 'gear_lube', x: 1104, y: 360 });
+        } else if (a.gearboxState === 'LUBRICATED' && a.hasPole) {
+          a.gearboxState = 'ARMED';
+          a.events.push({ kind: 'gear_lever', x: 1104, y: 360 });
+        } else if (a.gearboxState === 'ARMED') {
+          a.gearboxState = 'ACTIVE';
+          a.gearBoxActive = true;
+          a.platformsRevealed = true;
+          a.events.push({ kind: 'gear_crank', x: 1104, y: 360 });
+          a.events.push({ kind: 'platforms' });
+        }
+      }
     }
     if (a.platformsRevealed && !a.hasSlingshot && Math.abs(p.centerX - CH2_SLINGSHOT_SPAWN.x) <= 85 && Math.abs(p.feetY - PLATFORM_HIGH.y) <= 40) {
       a.hasSlingshot = true;
@@ -291,6 +349,80 @@ export function step(a: Attempt, input: Input, dt = C.dt): void {
     a.events.push({ kind: 'trap', x: p.centerX, y: p.feetY });
     a.events.push({ kind: 'death', x: p.centerX, y: p.feetY });
   }
+
+  // ===== WC5: Steam Lift Hydraulics =====
+  // Craft steam_nozzle_redirector from half_bottle + rusty_cog
+  if (input.taunt && Math.abs(p.centerX - CH2_STEAM_NOZZLE_POS.x) <= 85 && Math.abs(p.feetY - CH2_STEAM_NOZZLE_POS.y) <= 40 && !a.hasSteamNozzleRedirector) {
+    const hasHalfBottle = gameState.hasItem('half_bottle') || store.campaign.inventory.includes('half_bottle');
+    const hasRustyCog = gameState.hasItem('rusty_cog') || gameState.hasItem('cog') || store.campaign.inventory.includes('cog');
+    if (hasHalfBottle && hasRustyCog) {
+      a.hasSteamNozzleRedirector = true;
+      gameState.addItem('steam_nozzle_redirector');
+      a.events.push({ kind: 'puzzle_item', x: CH2_STEAM_NOZZLE_POS.x, y: CH2_STEAM_NOZZLE_POS.y });
+    }
+  }
+
+  // Attach redirector to steam nozzle
+  if (input.taunt && a.hasSteamNozzleRedirector && !a.steamNozzleRedirectorAttached && Math.abs(p.centerX - CH2_STEAM_NOZZLE_POS.x) <= 85 && Math.abs(p.feetY - CH2_STEAM_NOZZLE_POS.y) <= 40) {
+    a.steamNozzleRedirectorAttached = true;
+    a.steamPressureBuilding = true;
+    a.steamPressureTimer = 0;
+    a.events.push({ kind: 'steam_nozzle_attach', x: CH2_STEAM_NOZZLE_POS.x, y: CH2_STEAM_NOZZLE_POS.y });
+  }
+
+  // Build steam pressure and lift gate
+  if (a.steamPressureBuilding) {
+    a.steamPressureTimer += dt;
+    if (a.steamPressureTimer >= 2.5) {
+      a.steamPressureBuilding = false;
+      a.gateLiftedBySteam = true;
+      a.gateIntact = false;
+      a.events.push({ kind: 'gate', x: GATE.x, y: GATE.y });
+    }
+  }
+
+  // ===== WC8: Gear Jam Sabotage =====
+  // Ancient brick drops from ceiling periodically
+  if (!a.ancientBrickCollected && !a.ancientBrickDropping && a.elapsed >= 5.0 && Math.random() < 0.01) {
+    a.ancientBrickDropping = true;
+    a.ancientBrickX = CH2_ANCIENT_BRICK_SPAWN.x;
+    a.ancientBrickY = CH2_ANCIENT_BRICK_SPAWN.y;
+  }
+
+  // Brick falling animation
+  if (a.ancientBrickDropping) {
+    a.ancientBrickY += 400 * dt;
+    if (a.ancientBrickY >= C.floor) {
+      a.ancientBrickDropping = false;
+      a.ancientBrickY = C.floor;
+    }
+  }
+
+  // Collect ancient brick
+  if (!a.ancientBrickCollected && !a.ancientBrickDropping && Math.abs(p.centerX - a.ancientBrickX) <= 40 && Math.abs(p.feetY - a.ancientBrickY) <= 40) {
+    a.ancientBrickCollected = true;
+    gameState.addItem('ancient_brick');
+    a.events.push({ kind: 'brick_collect', x: a.ancientBrickX, y: a.ancientBrickY });
+  }
+
+  // Insert brick into crusher gear housing during Beat 1
+  if (input.taunt && a.ancientBrickCollected && !a.crusherGearJammed && !a.gearJammedPermanently && a.machine.state === 'READY' && Math.abs(p.centerX - CH2_CRUSHER_START_POS.x) <= 40 && Math.abs(p.feetY - CH2_CRUSHER_START_POS.y) <= 40) {
+    a.crusherGearJammed = true;
+    a.gearJammedPermanently = true;
+    a.machine.state = 'LOCKED';
+    a.events.push({ kind: 'gear_jam', x: CH2_CRUSHER_START_POS.x, y: CH2_CRUSHER_START_POS.y });
+  }
+
+  // When crusher is jammed, gate can be opened with half_bottle on steam nozzle
+  if (a.gearJammedPermanently && input.taunt && Math.abs(p.centerX - CH2_STEAM_NOZZLE_POS.x) <= 85 && Math.abs(p.feetY - CH2_STEAM_NOZZLE_POS.y) <= 40) {
+    const hasHalfBottle = gameState.hasItem('half_bottle') || store.campaign.inventory.includes('half_bottle');
+    if (hasHalfBottle) {
+      a.gateIntact = false;
+      a.events.push({ kind: 'gate', x: GATE.x, y: GATE.y });
+    }
+  }
+
+  // Completion check - includes WC5 and WC8
   if (p.grounded && Math.abs(p.feetY - C.floor) <= C.epsilon && p.centerX >= 1234) {
     a.status = 'COMPLETE'; p.control = 'EXITING'; a.events.push({ kind: 'complete' });
   }

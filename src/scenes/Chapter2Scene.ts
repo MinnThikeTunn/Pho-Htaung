@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { C } from '../content/chapter1';
+import { C, CH2_STEAM_NOZZLE_POS, CH2_CRUSHER_START_POS, CH2_ANCIENT_BRICK_SPAWN } from '../content/chapter1';
 import { DIALOGUE } from '../content/dialogue.my';
 import { preview } from '../domain/step';
 import type { ChapterResult, Input, Mode, Preset } from '../domain/types';
@@ -46,6 +46,9 @@ export default class Chapter2Scene extends Phaser.Scene {
   private cogItem: Phaser.GameObjects.Image | null = null;
   private gearBoxItem: Phaser.GameObjects.GameObject | null = null;
   private slingshotItem: Phaser.GameObjects.Image | null = null;
+  private ancientBrickItem: Phaser.GameObjects.Image | null = null;
+  private steamNozzleRedirectorItem: Phaser.GameObjects.Image | null = null;
+  private steamNozzleSprite: Phaser.GameObjects.Sprite | null = null;
   private heldItemSprite: Phaser.GameObjects.Image | null = null;
   private targetX: number | null = null;
   private pendingAction: (() => void) | null = null;
@@ -261,6 +264,11 @@ export default class Chapter2Scene extends Phaser.Scene {
 
     this.createInteractivePickups();
 
+    // WC5: Steam Nozzle Sprite
+    this.steamNozzleSprite = this.add.sprite(CH2_STEAM_NOZZLE_POS.x, CH2_STEAM_NOZZLE_POS.y, 'ch2_steam_nozzle')
+      .setScale(0.8)
+      .setDepth(100);
+
     const onDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
       if (key === 'escape') {
@@ -303,12 +311,13 @@ export default class Chapter2Scene extends Phaser.Scene {
           try { soundEngine.playLongyiRustle(); } catch {}
         }
         if (key === 'e') {
-          this.tauntEdge = true;
           const px = this.session?.attempt?.player?.centerX ?? 0;
           const py = (this.session?.attempt?.player?.feetY ?? 576) - 40;
           const grabbed = this.diegeticGrab.handleProximityVerb(px, py);
           if (!grabbed && Math.abs(px - 1108) <= 85) {
             this.interactWithGearBox();
+          } else {
+            this.tauntEdge = true;
           }
         }
         if (key === 'f3') this.debug = !this.debug;
@@ -357,7 +366,10 @@ export default class Chapter2Scene extends Phaser.Scene {
       this.bambooItem = null;
       this.cogItem = null;
       this.slingshotItem = null;
+      this.ancientBrickItem = null;
+      this.steamNozzleRedirectorItem = null;
       if (this.gearBoxItem) { this.gearBoxItem.destroy(); this.gearBoxItem = null; }
+      if (this.steamNozzleSprite) { this.steamNozzleSprite.destroy(); this.steamNozzleSprite = null; }
       this.hideHeldItem();
     });
 
@@ -430,6 +442,37 @@ export default class Chapter2Scene extends Phaser.Scene {
     if (a.platformsRevealed && !a.hasSlingshot && !this.slingshotItem) {
       this.spawnSlingshotPickup();
     }
+
+    // WC5/WC8: Steam Nozzle Redirector (crafted item - appears when crafted)
+    if (a.hasSteamNozzleRedirector && !gameState.hasItem('steam_nozzle_redirector') && !this.steamNozzleRedirectorItem) {
+      this.steamNozzleRedirectorItem = this.diegeticGrab.createPickup({
+        id: 'steam_nozzle_redirector',
+        x: CH2_STEAM_NOZZLE_POS.x,
+        y: CH2_STEAM_NOZZLE_POS.y - 20,
+        textureKey: 'ch2_vector_steam_redirector',
+        scale: 0.6,
+        hoverScale: 0.7,
+        bobRange: 3,
+        bobDuration: 1000,
+        voiceoverText: 'ရေနွေးငွေ့ ပ 말이야 נמצא Studiengebhr! စက်ယန္တရားကို ဖြော့စေနိုင်တယ်။',
+        voiceoverDuration: 2.5,
+        campaignKey: 'steam_nozzle_redirector',
+        onBagged: () => {
+          this.steamNozzleRedirectorItem = null;
+        }
+      });
+    }
+
+    // WC8: Ancient Brick (appears when dropping from ceiling)
+    if (a.ancientBrickDropping && !this.ancientBrickItem) {
+      this.ancientBrickItem = this.add.image(a.ancientBrickX, a.ancientBrickY, 'ch1_vector_brick')
+        .setScale(0.6)
+        .setDepth(200);
+    }
+    if (!a.ancientBrickDropping && a.ancientBrickCollected && this.ancientBrickItem) {
+      this.ancientBrickItem.destroy();
+      this.ancientBrickItem = null;
+    }
   }
 
   private resetInteractivePickups() {
@@ -437,6 +480,8 @@ export default class Chapter2Scene extends Phaser.Scene {
     this.bambooItem = null;
     this.cogItem = null;
     this.slingshotItem = null;
+    this.ancientBrickItem = null;
+    this.steamNozzleRedirectorItem = null;
     this.hideHeldItem();
     this.targetX = null;
     this.pendingAction = null;
@@ -497,28 +542,77 @@ export default class Chapter2Scene extends Phaser.Scene {
   private interactWithGearBox() {
     if (!this.session?.attempt) return;
     const a = this.session.attempt;
-    if (a.gearBoxActive) {
-      this.speak('ဂီယာ box တပ်ဆင်ထားပြီးသားပါ။ စင်တွေ အပေါ်မှာ ရှိနေပြီ!', 1.8);
+    const p = a.player;
+
+    if (p.feetY > 400) {
+      this.cameras.main.shake(80, 0.002);
+      soundEngine.playPing();
+      this.speak(DIALOGUE.gearbox_too_high, 2.5);
       return;
     }
+
     const hasPole = a.hasPole || gameState.hasItem('bamboo_pole') || store.campaign.inventory.includes('bamboo_pole');
     const hasCog = a.hasCog || gameState.hasItem('rusty_cog') || gameState.hasItem('cog') || store.campaign.inventory.includes('cog');
 
-    if (hasPole && hasCog) {
-      a.hasPole = true;
-      a.hasCog = true;
-      a.gearBoxActive = true;
-      a.platformsRevealed = true;
-      soundEngine.playGearClick();
-      soundEngine.playClang();
-      this.hideHeldItem();
-      this.inventoryBar?.clearSelected();
-      this.inventoryBar?.refresh();
-      this.spawnSlingshotPickup();
-      this.speak('ဟား... ဂီယာ box တပ်ဆင်လိုက်တော့ အပေါ်စင်တွေ ထွက်လာပြီဟေ့! အပေါ်တက်ကြည့်ဦး!', 2.5);
-    } else {
-      soundEngine.playPing();
-      this.speak('တံခါးဖွင့်ဖို့ ဂီယာ box မှာ ဝါးလုံးနဲ့ ဂီယာခွေ တပ်ဆင်ရမယ်။ အရင်ရှာဦး!', 2.2);
+    const state = a.gearboxState ?? (a.gearBoxActive ? 'ACTIVE' : 'EMPTY');
+
+    switch (state) {
+      case 'EMPTY':
+        if (hasCog) {
+          a.hasCog = true;
+          a.gearboxState = 'COG_MOUNTED';
+          soundEngine.playGearClick();
+          this.hideHeldItem();
+          this.inventoryBar?.clearSelected();
+          this.inventoryBar?.refresh();
+          this.speak(DIALOGUE.gearbox_rusted, 2.5);
+        } else {
+          soundEngine.playPing();
+          this.speak(DIALOGUE.gearbox_needs_cog, 2.5);
+        }
+        break;
+
+      case 'COG_MOUNTED':
+        if (hasPole && !a.gearboxSlapped) {
+          a.gearboxSlapped = true;
+          p.control = 'TAUNTING';
+          p.tauntLeft = 0.6;
+          soundEngine.playPoleSnapback();
+          this.speak(DIALOGUE.gearbox_slapstick, 2.5);
+        } else {
+          a.gearboxState = 'LUBRICATED';
+          soundEngine.playRustSizzle();
+          this.speak(DIALOGUE.gearbox_lubed, 2.5);
+        }
+        break;
+
+      case 'LUBRICATED':
+        if (hasPole) {
+          a.hasPole = true;
+          a.gearboxState = 'ARMED';
+          soundEngine.playWoodTap();
+          this.hideHeldItem();
+          this.inventoryBar?.clearSelected();
+          this.inventoryBar?.refresh();
+          this.speak(DIALOGUE.gearbox_armed, 2.5);
+        } else {
+          soundEngine.playPing();
+          this.speak('မောင်းတံလုပ်ဖို့ ဝါးလုံးလိုသေးတယ်!', 2.0);
+        }
+        break;
+
+      case 'ARMED':
+        a.gearboxState = 'ACTIVE';
+        a.gearBoxActive = true;
+        a.platformsRevealed = true;
+        soundEngine.playHeavyRatchet();
+        this.spawnSlingshotPickup();
+        this.speak(DIALOGUE.gearbox_cranked, 2.5);
+        break;
+
+      case 'ACTIVE':
+        this.speak('ဂီယာ box တပ်ဆင်ထားပြီးသားပါ။ စင်တွေ အပေါ်မှာ ရှိနေပြီ!', 1.8);
+        break;
     }
   }
 
@@ -661,11 +755,67 @@ export default class Chapter2Scene extends Phaser.Scene {
         if (event.kind === 'gear_box') {
           this.interactWithGearBox();
         }
+        if (event.kind === 'gear_too_high') {
+          soundEngine.playPing();
+          this.speak(DIALOGUE.gearbox_too_high, 2.5);
+        }
+        if (event.kind === 'gear_slapstick') {
+          soundEngine.playPoleSnapback();
+          this.speak(DIALOGUE.gearbox_slapstick, 2.5);
+        }
+        if (event.kind === 'gear_lube') {
+          soundEngine.playRustSizzle();
+          this.speak(DIALOGUE.gearbox_lubed, 2.5);
+        }
+        if (event.kind === 'gear_lever') {
+          soundEngine.playWoodTap();
+          this.speak(DIALOGUE.gearbox_armed, 2.5);
+        }
+        if (event.kind === 'gear_crank') {
+          soundEngine.playHeavyRatchet();
+          this.spawnSlingshotPickup();
+          this.speak(DIALOGUE.gearbox_cranked, 2.5);
+        }
         if (event.kind === 'beehive') {
           this.speak('အမယ်လေး ပျားအုံကျလာပြီဟေ့! ရှောင်ပြေးတော့ ဖိုးထောင်ရေ!', 2.0);
         }
         if (event.kind === 'trap') {
           this.speak('ဟားဟားဟား! တံခါးဝရောက်ခါမှ အငိုက်မိပြီး တွင်းထဲကျသွားပြန်ပြီ!', 2.0);
+        }
+        if (event.kind === 'bomb') {
+          soundEngine.playExplosion();
+          this.cameras.main.shake(250, 0.015);
+          MicroInteractions.triggerSootPuff(this, { x: event.x ?? s.attempt.player.centerX, y: (event.y ?? s.attempt.player.feetY) - 64 });
+          this.speak(DIALOGUE.ch2_bomb_coin_death, 2.5);
+        }
+        if (event.kind === 'bomb_disarm') {
+          soundEngine.playSteam();
+          this.speak(DIALOGUE.ch2_bomb_coin_disarm, 2.0);
+        }
+        // WC5: Steam Lift Hydraulics
+        if (event.kind === 'steam_nozzle_attach') {
+          soundEngine.playSteam();
+          this.speak('ရေနွေးငွေ့ ပ မုတ်တန်းကို ရိပ်တန့်ထုတ်လိုက်ပြီ! သံတံခါးက လွ်ကလာမယ်။', 2.0);
+          // Visual: Animate steam flow reversal
+          if (this.steamNozzleSprite) {
+            this.tweens.add({
+              targets: this.steamNozzleSprite,
+              angle: 180,
+              duration: 300,
+              ease: 'Back.Out'
+            });
+          }
+        }
+        // WC8: Gear Jam Sabotage
+        if (event.kind === 'brick_collect') {
+          soundEngine.playPickup();
+          this.speak('ရှေးဟောင်း အုတ်ခဲ ကောက်ရလိုက်ပြီ! စက်ပစ္စည်းကို ဖျက်ဆီထိုးနိုင်မယ်။', 2.0);
+        }
+        if (event.kind === 'gear_jam') {
+          soundEngine.playGearClick();
+          soundEngine.playPoleSnapback();
+          this.speak('ကျောက်ဆစ်နဲ့ စက်ပစ္စည်းကို ဖျက်ဆီထိုးလိုက်တယ်ဆို ကျောက်တုံးတွေ အာဟ طریق!', 2.0);
+          this.cameras.main.shake(100, 0.005);
         }
         if (event.kind === 'complete') {
           this.result = store.complete(s.attempt, this.mode, s.sessionDeaths);
@@ -702,6 +852,12 @@ export default class Chapter2Scene extends Phaser.Scene {
       });
     }
 
+    // WC8: Ancient brick dropping animation
+    if (this.ancientBrickItem && s.attempt.ancientBrickDropping) {
+      this.ancientBrickItem.setPosition(s.attempt.ancientBrickX, s.attempt.ancientBrickY);
+      this.ancientBrickItem.setAlpha(1);
+    }
+
     // Update held item position with player
     if (this.heldItemSprite && s.attempt?.player) {
       const p = s.attempt.player;
@@ -715,6 +871,22 @@ export default class Chapter2Scene extends Phaser.Scene {
 
     this.world.render(s.attempt, s.paused ? 0 : dt, this.debug, this.shade);
     const a = s.attempt;
+    if (a.hasSlingshot) {
+      if (!store.campaign.inventory.includes('slingshot')) {
+        store.campaign.inventory.push('slingshot');
+      }
+      if (!store.campaign.ownedTools.includes('slingshot')) {
+        store.campaign.ownedTools.push('slingshot');
+      }
+    }
+    // WC8: Add ancient_brick to inventory when collected
+    if (a.ancientBrickCollected && !store.campaign.inventory.includes('ancient_brick')) {
+      store.campaign.inventory.push('ancient_brick');
+    }
+    // WC5: Add steam_nozzle_redirector to inventory when crafted
+    if (a.hasSteamNozzleRedirector && !store.campaign.inventory.includes('steam_nozzle_redirector')) {
+      store.campaign.inventory.push('steam_nozzle_redirector');
+    }
     const fade = ui().querySelector<HTMLElement>('#reset-fade');
     if (fade) {
       fade.style.opacity = String(

@@ -11,12 +11,13 @@ export interface Stone {
   id: string; centerX: number; bottomY: number; vy: number;
   state: 'FALLING' | 'SETTLED' | 'SUPPORTED'; support: string | null;
 }
-export interface Pickup { id: string; x: number; y: number; value: number; size: number; collected: boolean; vy: number }
+export interface Pickup { id: string; x: number; y: number; value: number; size: number; collected: boolean; vy: number; isBomb?: boolean; disarmed?: boolean }
 export interface Machine {
   state: 'READY' | 'TRACK' | 'LOCKED' | 'DROP' | 'RECOVER';
   elapsed: number; readyDuration: number; targetX: number; shotId: string | null;
 }
-export type EventKind = 'start' | 'lock' | 'drop' | 'land' | 'shatter' | 'gate' | 'shelf' | 'plate' | 'coin' | 'death' | 'complete' | 'taunt' | 'puzzle_item' | 'gear_box' | 'platforms' | 'beehive' | 'trap' | 'slingshot';
+export type EventKind = 'start' | 'lock' | 'drop' | 'land' | 'shatter' | 'gate' | 'shelf' | 'plate' | 'coin' | 'death' | 'complete' | 'taunt' | 'puzzle_item' | 'gear_box' | 'platforms' | 'beehive' | 'trap' | 'slingshot' | 'bomb' | 'bomb_disarm' | 'gear_slapstick' | 'gear_lube' | 'gear_lever' | 'gear_crank' | 'gear_too_high' | 'steam_nozzle_attach' | 'brick_collect' | 'gear_jam';
+export type GearboxState = 'EMPTY' | 'COG_MOUNTED' | 'LUBRICATED' | 'ARMED' | 'ACTIVE';
 export interface GameEvent { kind: EventKind; x?: number; y?: number; value?: number }
 export interface Attempt {
   id: string; preset: Preset; status: 'WAITING' | 'ACTIVE' | 'DEAD' | 'COMPLETE';
@@ -26,12 +27,29 @@ export interface Attempt {
   hasCog: boolean;
   hasPole: boolean;
   gearBoxActive: boolean;
+  gearboxState: GearboxState;
+  gearboxSlapped?: boolean;
   platformsRevealed: boolean;
   hasSlingshot: boolean;
   beehiveTriggered: boolean;
   beehiveX: number;
   beehiveY: number;
   trapFloorOpen: boolean;
+  bombDetonated: boolean;
+  bombX: number;
+  // WC5: Steam Lift Hydraulics
+  hasSteamNozzleRedirector: boolean;
+  steamNozzleRedirectorAttached: boolean;
+  steamPressureBuilding: boolean;
+  steamPressureTimer: number;
+  gateLiftedBySteam: boolean;
+  // WC8: Gear Jam Sabotage
+  ancientBrickCollected: boolean;
+  ancientBrickX: number;
+  ancientBrickY: number;
+  ancientBrickDropping: boolean;
+  crusherGearJammed: boolean;
+  gearJammedPermanently: boolean;
 }
 export interface Input { left: boolean; right: boolean; jump: boolean; taunt: boolean; down?: boolean }
 export const NO_INPUT: Readonly<Input> = { left: false, right: false, jump: false, taunt: false, down: false };
