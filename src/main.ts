@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import './style.css';
+import './fantasy-theme.css';
 import { C } from './content/chapter1';
 import { DIALOGUE } from './content/dialogue.my';
 import { createAttempt } from './domain/createAttempt';

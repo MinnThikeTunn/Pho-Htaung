@@ -296,7 +296,7 @@ export default class ScaleChapterScene extends Phaser.Scene {
           <div><span>သေဆုံး</span><b id="scale-deaths"></b></div>
           <div><span>ကစားချိန်</span><b id="scale-time">0.00</b></div>
         </div>
-        <button id="bag-btn" class="hud-pill-button" aria-label="လွယ်အိတ်">🎒 လွယ်အိတ်</button>
+        <button id="bag-btn" class="hud-pill-button" aria-label="လွယ်အိတ်"><span class="hud-pill-icon" aria-hidden="true">🎒</span><span>လွယ်အိတ်</span></button>
         <button id="scale-journal" class="icon-button" aria-label="ပြောပြီးသောစကားများ ပြန်ဖတ်">စာ</button>
         <button id="scale-pause" class="icon-button" aria-label="Pause">Ⅱ</button>
       </div>

@@ -1,15 +1,7 @@
 import Phaser from 'phaser';
 import { gameState, ITEM_NAMES_MY, ITEM_TEXTURE_KEYS } from '../utils/AdventureState.js';
 import { soundEngine } from '../utils/SoundEngine.js';
-import {
-  INK,
-  CREAM,
-  GOLD,
-  STONE,
-  SHAN_RED,
-  SHAN_DARK,
-  drawMyanmarTraditionalBag
-} from '../view/BridgeView.js';
+import { CREAM, drawMyanmarTraditionalBag } from '../view/BridgeView.js';
 
 export default class InventoryBar {
   constructor(scene, options = {}) {
@@ -137,8 +129,8 @@ export default class InventoryBar {
         fontFamily: 'Noto Sans Myanmar, Plus Jakarta Sans, sans-serif',
         fontSize: '12px',
         fontStyle: '900',
-        color: '#e9dfbd',
-        backgroundColor: '#182720',
+        color: '#f4e3c1',
+        backgroundColor: '#2b1a0c',
         padding: { x: 10, y: 4 }
       })
       .setOrigin(0.5)
@@ -317,24 +309,24 @@ export default class InventoryBar {
 
     g.clear();
     if (isSelected) {
-      // Glowing active gold border
-      g.fillStyle(0x2d4337, 1);
+      // Glowing active brass border on a warm wood slot
+      g.fillStyle(0x5d3a1e, 1);
       g.fillRoundedRect(sx - 21, -21, 42, 42, 10);
       g.fillStyle(CREAM, 0.2).fillRect(sx - 17, -17, 34, 3);
-      g.lineStyle(2, GOLD, 1);
+      g.lineStyle(2, 0xf6d68a, 1);
       g.strokeRoundedRect(sx - 21, -21, 42, 42, 10);
     } else if (hasItem) {
-      // Clean tactile slate slot matching Chapter 2 blocks
-      g.fillStyle(STONE, 1);
+      // Carved wood slot with brass trim
+      g.fillStyle(0x3a2410, 1);
       g.fillRoundedRect(sx - 21, -21, 42, 42, 10);
       g.fillStyle(CREAM, 0.12).fillRect(sx - 17, -17, 34, 3);
-      g.lineStyle(1.5, INK, 1);
+      g.lineStyle(1.5, 0xb07c34, 0.9);
       g.strokeRoundedRect(sx - 21, -21, 42, 42, 10);
     } else {
-      // Empty slot - subtle recessed appearance (no bright placeholder)
-      g.fillStyle(0x0e1713, 0.6);
+      // Empty slot - recessed dark wood (no bright placeholder)
+      g.fillStyle(0x1a1008, 0.75);
       g.fillRoundedRect(sx - 21, -21, 42, 42, 10);
-      g.lineStyle(1, INK, 0.3);
+      g.lineStyle(1, 0x7c5320, 0.45);
       g.strokeRoundedRect(sx - 21, -21, 42, 42, 10);
     }
   }
@@ -492,9 +484,11 @@ export default class InventoryBar {
 
     // Draw tray rounded backing capsule
     this.trayBg.clear();
-    this.trayBg.fillStyle(0x0e1713, 0.94);
+    this.trayBg.fillStyle(0x241608, 0.95);
     this.trayBg.fillRoundedRect(0, -25, trayWidth, 50, 25);
-    this.trayBg.lineStyle(1.5, GOLD, 0.65);
+    this.trayBg.fillStyle(0xf6d68a, 0.06);
+    this.trayBg.fillRoundedRect(0, -25, trayWidth, 18, { tl: 25, tr: 25, bl: 0, br: 0 });
+    this.trayBg.lineStyle(1.5, 0xb07c34, 0.85);
     this.trayBg.strokeRoundedRect(0, -25, trayWidth, 50, 25);
 
     // Update hit zone width
