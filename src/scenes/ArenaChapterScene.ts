@@ -98,34 +98,6 @@ export default class ArenaChapterScene extends Phaser.Scene {
     const onDown = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
       const key = event.key.toLowerCase();
-<<<<<<< HEAD
-      if (key === 'b' && !event.repeat && !this.finished && !this.failureShown) {
-        event.preventDefault();
-        if (this.bagOpen) {
-          this.inventoryBar?.hide();
-          this.pause(false);
-        } else {
-          this.openBag();
-        }
-        return;
-      }
-      if (key === 'escape' && !event.repeat && !this.finished) {
-        event.preventDefault();
-        if (this.inventoryBar?.isRevealed || this.bagOpen) {
-          this.inventoryBar?.hide();
-          this.pause(false);
-          return;
-        }
-        if (!this.failureShown) this.pause(!this.session.paused);
-        return;
-      }
-      if (['a','d','arrowleft','arrowright',' '].includes(key) && this.inventoryBar?.isRevealed) {
-        this.inventoryBar.hide();
-      }
-=======
-      if (key === 'b' && !event.repeat && !this.finished && !this.failureShown) { event.preventDefault(); try { (soundEngine as any).playBagRustle?.() || (soundEngine as any).playPickup?.(); } catch {} if (this.bagOpen) this.pause(false); else this.openBag(); return; }
-      if (key === 'escape' && !event.repeat && !this.finished) { event.preventDefault(); if (!this.failureShown) this.pause(!this.session.paused); return; }
->>>>>>> 76262a7 (Add Fantasy UI main menu, audio system, and volume control)
       if (this.finished || this.session.paused || !['a','d','arrowleft','arrowright',' ','j','k','l','r'].includes(key)) return;
       event.preventDefault();
       if (event.repeat) return;

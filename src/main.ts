@@ -16,11 +16,8 @@ import Chapter2Scene from './scenes/Chapter2Scene';
 import ScaleChapterScene from './scenes/ScaleChapterScene';
 import { SCALE_ART } from './content/chapter3Art';
 import ArenaChapterScene from './scenes/ArenaChapterScene';
-<<<<<<< HEAD
 import FinalChapterScene, { CampaignEndingScene } from './scenes/FinalChapterScene';
-=======
 import { soundEngine } from './utils/SoundEngine.js';
->>>>>>> 76262a7 (Add Fantasy UI main menu, audio system, and volume control)
 
 const uid = () => crypto.randomUUID();
 
@@ -172,78 +169,9 @@ class MenuScene extends Phaser.Scene {
       if (!soundEngine.muted && bgmVolume > 0) soundEngine.startBGM?.(); 
     } catch {}
     new WorldView(this).render(createAttempt('A','menu'));
-<<<<<<< HEAD
-    const c=store.campaign;
-    ui.innerHTML=`<div class="menu-scrim"></div><section class="title-panel adventure-menu"><span class="eyebrow">ပုဂံရွှေမြို့တော် စွန့်စားခန်း</span><h1 id="game-title">ဖိုးထောင်။</h1><p class="chapter-name">တံတား → ကျောက်တုံးချစက် → ချိန်ခွင်ခန်း</p><p class="intro">အကြွေးဆပ်ဖို့ ရွှေမြို့တော်ရှာရင်း ဦးကြီးနောက်လိုက်လာတယ်။<br>ဒီတစ်ခါ ရွှေရုပ်ပါ ယူထွက်နိုင်မလား။</p>${buttons(button('start',c.bridgeCompleted?'ဆက်ကစားမယ်':'စကစားမယ်',true)+(c.bridgeCompleted?button('bridge-replay','အခန်း ၁ ပြန်စမ်း'):'')+(c.chapter2Completed?button('action-replay','အခန်း ၂ ပြန်စမ်း'):'')+(c.chapter3Completed?button('scale-replay','အခန်း ၃ ပြန်စမ်း'):''))}<div class="key-guide"><span><kbd>A</kbd><kbd>D</kbd> ရွေ့</span><span><kbd>SPACE</kbd> ခုန်</span><span>အခန်း ၁ / ၃ · နှိပ်ပြီး ကောက် / သုံး</span></div><small class="prototype-note">တူညီသော character · ယာယီ scenery နှင့်အသံများ။<br>အခန်း ၄ တိုက်ခိုက်ရေးကို မတည်ဆောက်ရသေးပါ။</small>${c.chapter2Completed?buttons(button('practice-b','အခန်း ၂ လေ့ကျင့် B')+button('practice-c','အခန်း ၂ လေ့ကျင့် C')):''}${buttons(button('new-game','Campaign အသစ်စမယ်'))}<p class="warning" id="load-error" hidden></p></section><div class="corner-label">01 / 03 <span>PUZZLE → ACTION → PUZZLE</span></div>`;
-    ui.querySelector('.chapter-name')!.textContent='တံတား → ကျောက်တုံးချစက် → ချိန်ခွင် → လူဝံအစောင့် → ဦးကြီး';
-    ui.querySelector('.prototype-note')!.textContent='J လက်သီး / B အိတ်ဖွင့်ထုတ် / K လေးခွဆွဲပစ် / L ရှောင်။ အခန်း ၅ မှာ ဦးကြီးနဲ့ရင်ဆိုင်ပြီး ဇာတ်သိမ်းမယ်။';
-    ui.querySelector('.corner-label')!.innerHTML='01 / 05 <span>PUZZLE → ACTION → FINAL BOSS</span>';
-    if(c.chapter3Completed)ui.querySelector('.actions')!.insertAdjacentHTML('beforeend',button('arena-replay','အခန်း ၄ ပြန်စမ်း'));
-    if(c.chapter4Completed)ui.querySelector('.actions')!.insertAdjacentHTML('beforeend',button('final-replay','အခန်း ၅ ပြန်စမ်း'));
-    const start=()=>{if(!c.bridgeCompleted)this.scene.start('Chapter1Scene');else if(c.chapter5Completed)this.scene.start('CAMPAIGN_END');else if(c.chapter4Completed)this.scene.start('CHAPTER_5');else if(c.chapter3Completed)this.scene.start('CHAPTER_4');else if(c.resumeAt==='CH2_EXIT_LINK')this.scene.start('CH2_EXIT_LINK',{mode:'CAMPAIGN'});else if(c.chapter2Completed)this.scene.start('CHAPTER_3');else enter(this,'A','CAMPAIGN');};
-    bind('start',start);bind('bridge-replay',()=>this.scene.start('Chapter1Scene',{replay:true}));bind('action-replay',()=>enter(this,'A','REPLAY'));bind('practice-b',()=>enter(this,'B','PRACTICE'));bind('practice-c',()=>enter(this,'C','PRACTICE'));
-    bind('scale-replay',()=>this.scene.start('CHAPTER_3',{replay:true}));
-    bind('arena-replay',()=>this.scene.start('CHAPTER_4'));
-    bind('final-replay',()=>this.scene.start('CHAPTER_5'));
-    bind('new-game',()=>{if(confirm('လက်ရှိ combined campaign နှင့် သိမ်းပြီးရွှေကို အသစ်စမယ်။ သေချာလား?')){store.reset(uid());this.scene.restart();}});
-    if(store.loadError){const warning=ui.querySelector<HTMLElement>('#load-error')!;warning.hidden=false;warning.textContent=store.loadError+' Start ကိုနှိပ်လျှင် မသိမ်းဘဲ ယာယီစမ်းနိုင်သည်။';}
-=======
-    ui.innerHTML=`<style>
-      .fantasy-menu{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:url('/assets/ui-fantasy.png') center/cover, radial-gradient(ellipse at 50% 40%,#2a241f 0%,#15100c 55%,#0c0a08 100%);background-blend-mode:overlay;z-index:1;}
-      .fantasy-title{font-size:clamp(42px,8cqw,96px);color:#f8f3e7;text-shadow:0 20px 60px rgba(0,0,0,0.9),0 0 40px rgba(245,158,11,0.4);letter-spacing:12px;margin-bottom:40px;font-family:'Noto Sans Myanmar',serif;}
-      .fantasy-buttons{display:flex;flex-direction:column;gap:16px;align-items:center;}
-      .fantasy-btn{min-width:320px;padding:16px 40px;font-size:clamp(16px,2cqw,22px);background:linear-gradient(90deg,rgba(120,53,15,0.9),rgba(180,83,9,0.9));color:#fff7ed;border:2px solid rgba(251,191,36,0.8);border-radius:8px;font-weight:800;letter-spacing:6px;text-transform:uppercase;box-shadow:0 20px 60px rgba(0,0,0,0.7),0 0 30px rgba(245,158,11,0.3);transition:all .2s;cursor:pointer;text-align:center;}
-      .fantasy-btn:hover{transform:scale(1.05);box-shadow:0 25px 70px rgba(245,158,11,0.4),0 0 40px rgba(251,191,36,0.5);}
-      .fantasy-modal{position:fixed;inset:0;background:rgba(12,10,8,0.98);display:flex;align-items:center;justify-content:center;z-index:999999;overflow:hidden;pointer-events:auto;}
-      .fantasy-modal-content{max-width:900px;width:95%;max-height:85vh;height:85vh;overflow-y:auto;overflow-x:hidden;background:linear-gradient(180deg,rgba(28,24,21,0.98),rgba(12,10,8,0.98));border:2px solid rgba(245,158,11,0.6);border-radius:12px;padding:40px 50px 60px 50px;box-shadow:0 60px 140px rgba(0,0,0,0.9);-webkit-overflow-scrolling:touch;touch-action:pan-y;scrollbar-width:none;-ms-overflow-style:none;overscroll-behavior:contain;pointer-events:auto;}
-      .fantasy-modal-content::-webkit-scrollbar{display:none;width:0;height:0;}
-      .fantasy-modal h2{color:#f8f3e7;font-size:32px;margin-bottom:24px;text-align:center;letter-spacing:8px;}
-      .fantasy-modal h3{color:#fbbf24;margin:28px 0 12px;font-size:22px;}
-      .fantasy-modal p{color:#d9ccb5;line-height:2.4;margin:10px 0;font-size:16px;}
-      .fantasy-modal kbd{background:rgba(245,158,11,0.2);padding:4px 12px;border:1px solid rgba(245,158,11,0.5);border-radius:4px;margin:0 4px;}
-      .fantasy-close{margin-top:40px;display:block;margin-left:auto;margin-right:auto;}
-    </style>
-    <div class="fantasy-menu">
-      <div class="fantasy-title">ဖိုးထောင်</div>
-      <div class="fantasy-buttons">
-        <button class="fantasy-btn" id="play-btn">PLAY</button>
-        <button class="fantasy-btn" id="restart-btn">RESTART</button>
-        <button class="fantasy-btn" id="mechanic-btn">MECHANIC</button>
-      </div>
-    </div>
-    <div class="fantasy-modal" id="mechanic-modal" style="display:none;" onclick="if(event.target.id==='mechanic-modal'){document.getElementById('mechanic-modal').style.display='none';}">
-      <div class="fantasy-modal-content" id="mechanic-content" onclick="event.stopPropagation();">
-        <h2>MECHANICS & CONTROLS</h2>
-        <h3>Universal Movement</h3>
-        <p><kbd>A</kbd> / <kbd>←</kbd> - Move Left</p>
-        <p><kbd>D</kbd> / <kbd>→</kbd> - Move Right</p>
-        <p><kbd>SPACE</kbd> - Jump</p>
-        <h3>Chapter 1 - Bridge Puzzle</h3>
-        <p>Click and interact with objects to solve puzzles. Follow the story and use your environment to progress.</p>
-        <h3>Chapter 2 - Rock Crushing Machine</h3>
-        <p><kbd>E</kbd> - Pull/Switch mechanism</p>
-        <p><kbd>R</kbd> - Hold to reset/restart sequence</p>
-        <p>Time the crushing machine correctly and dodge falling rocks. Collect coins while avoiding traps.</p>
-        <h3>Chapter 3 - Scale Puzzle</h3>
-        <p>Balance ancient scales by placing weights correctly. Solve each chamber using logic and observation.</p>
-        <h3>Chapter 4 - Arena Combat</h3>
-        <p><kbd>J</kbd> - Punch/Attack</p>
-        <p><kbd>K</kbd> - Throw Boulder</p>
-        <p><kbd>L</kbd> - Dodge/Roll</p>
-        <p><kbd>B</kbd> - Open Bag/Inventory</p>
-        <p>Defeat waves of enemies using combos, projectiles, and dodging mechanics.</p>
-        <h3>General Controls</h3>
-        <p><kbd>ESC</kbd> - Pause Menu/Settings</p>
-        <p><kbd>F3</kbd> - Debug Mode (Developer)</p>
-        <button class="fantasy-btn fantasy-close" id="close-mechanic">CLOSE</button>
-      </div>
-    </div>
-    `;
-    bind('play-btn',()=>{try{soundEngine.playPing?.();}catch{}const c=store.campaign;if(!c.bridgeCompleted)this.scene.start('Chapter1Scene');else if(c.chapter4Completed)this.scene.start('CHAPTER_5_PENDING');else if(c.chapter3Completed)this.scene.start('CHAPTER_4');else if(c.resumeAt==='CH2_EXIT_LINK')this.scene.start('CH2_EXIT_LINK',{mode:'CAMPAIGN'});else if(c.chapter2Completed)this.scene.start('CHAPTER_3');else enter(this,'A','CAMPAIGN');});
-    bind('restart-btn',()=>{try{soundEngine.playPing?.();}catch{}if(confirm('Restart from Chapter 1? This will reset your campaign progress.')){store.reset(uid());this.scene.start('Chapter1Scene');}});
-    bind('mechanic-btn',()=>{try{soundEngine.playPing?.();}catch{}const modal=document.getElementById('mechanic-modal'); if(modal) { modal.style.display='flex'; const content=document.getElementById('mechanic-content'); if(content) content.scrollTop=0; }});
-    bind('close-mechanic',()=>{try{soundEngine.playPing?.();}catch{}const modal=document.getElementById('mechanic-modal'); if(modal) modal.style.display='none';});
->>>>>>> 76262a7 (Add Fantasy UI main menu, audio system, and volume control)
+import FinalChapterScene, { CampaignEndingScene } from './scenes/FinalChapterScene';
+import { soundEngine } from './utils/SoundEngine.js';
+ (Add Fantasy UI main menu, audio system, and volume control)
   }
 }
 class BridgeLinkScene extends Phaser.Scene {
