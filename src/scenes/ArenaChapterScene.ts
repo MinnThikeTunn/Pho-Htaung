@@ -187,6 +187,9 @@ export default class ArenaChapterScene extends Phaser.Scene {
   private result() {
     const r = store.campaign.lastChapter4Result;
     ui().innerHTML = `<section class="result-panel"><span class="eyebrow">အခန်း ၄ ပြီးပါပြီ</span><h1>လူဝံနှစ်ကောင်ကို ကျော်လာပြီ။</h1><p class="intro">ရှေးဟောင်းမြို့တော်ရဲ့ အတွင်းတံခါးဘက် ဆက်သွားနိုင်ပြီ။</p><div class="result-stats"><div><span>ကျန်သွေး</span><b>${r?.remainingHealth ?? 0}<small>/100</small></b></div><div><span>တိုက်ပွဲချိန်</span><b>${r?.activeSeconds.toFixed(2) ?? '—'}<small>s</small></b></div><div><span>သိမ်းပြီးရွှေ</span><b>${store.campaign.walletCoins}</b></div></div><p class="result-note">အခန်း ၅ ကို မတည်ဆောက်ရသေးပါ။ ဂိမ်းတစ်ခုလုံး၏ ဇာတ်သိမ်းမဟုတ်ပါ။</p>${store.unsaved ? '<p class="warning">Save မသိမ်းရသေးပါ။ Reload လုပ်ပါက ယာယီ progress ပျောက်နိုင်သည်။</p>' : ''}<div class="actions">${button('arena-again','အခန်း ၄ ပြန်စမ်း',true)}${store.unsaved ? button('arena-save','ထပ်သိမ်းမယ်') : ''}${button('arena-menu','ပင်မစာမျက်နှာ')}</div></section>`;
+    ui().querySelector('.result-note')!.textContent='အတွင်းမြို့တော်မှာ ဦးကြီး စောင့်နေတယ်။ အခန်း ၅ မှာ ဆက်ရင်ဆိုင်နိုင်ပြီ။';
+    ui().querySelector('.actions')!.insertAdjacentHTML('afterbegin',button('arena-next','အခန်း ၅ ဆက်မယ်',true));
+    this.bind('arena-next',()=>this.scene.start('CHAPTER_5',{equipment:{slingshot:this.session.hasSling}}));
     this.bind('arena-again',()=>this.scene.restart({equipment:{slingshot:this.session.hasSling}})); this.bind('arena-menu',()=>this.scene.start('MENU')); this.bind('arena-save',()=>{ if(store.save())this.result(); });
   }
   private sync() {

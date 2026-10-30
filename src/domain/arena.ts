@@ -167,5 +167,5 @@ export function settleArena(c: Campaign, a: ArenaAttempt): Campaign {
   const receipt = `arena:${a.id}`; if (c.completedAttemptIds.includes(receipt)) return c;
   const next = structuredClone(c); next.completedAttemptIds.push(receipt); next.chapter4Completed = true; next.revision++;
   next.lastChapter4Result = { attemptId: a.id, activeSeconds: a.combatSeconds, remainingHealth: a.hp, shotsFired: a.shotsFired };
-  next.resumeAt = 'CHAPTER_5_PENDING'; return next;
+  if(!c.chapter5Completed)next.resumeAt = 'CHAPTER_5_PENDING'; return next;
 }
