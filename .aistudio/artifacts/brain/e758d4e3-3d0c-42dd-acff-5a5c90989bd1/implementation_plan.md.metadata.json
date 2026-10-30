@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan for Chapter 4 Shortcut Customization & Guide UI and updated combat keybindings (Q for Slingshot equip/fire, Mouse Left Click or S for Fist Attack, W for Dodge/Evade, Space/Up for Jump, and C/Down for Crawl).",
-  "updatedAt":  "2026-10-30T08:12:40.204353934Z",
+  "summary":  "Comprehensive implementation plan for Chapter 5's 80-question tiered trivia pool (4 sets of 20), randomized 50/50 honest vs. deceptive U Gyi clues, and fresh checkpoint sampling without duplicates.",
+  "updatedAt":  "2026-10-30T17:02:01.353906905Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

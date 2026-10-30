@@ -405,9 +405,8 @@ export default class ArenaChapterScene extends Phaser.Scene {
     const pauseButton = ui().querySelector('#arena-pause')!;
     pauseButton.insertAdjacentHTML(
       'beforebegin',
-      '<button type="button" id="arena-shortcuts-btn" class="icon-button" aria-label="ခလုတ်များ">⌨ ခလုတ်များ</button><button type="button" id="arena-bag" class="icon-button" aria-label="လွယ်အိတ်">🎒 လွယ်အိတ်</button>'
+      '<button type="button" id="arena-bag" class="icon-button bag-icon-btn" aria-label="လွယ်အိတ်">🎒</button>'
     );
-    this.bind('arena-shortcuts-btn', () => this.openShortcutModal(false));
     this.bind('arena-bag', () => {
       if (this.shortcutsModalOpen) this.closeShortcutModal(false);
       this.openBag();
@@ -417,7 +416,6 @@ export default class ArenaChapterScene extends Phaser.Scene {
       this.pause(!this.session.paused);
     });
     this.speak(ARENA_LINES.entry, 4.5);
-    this.openShortcutModal(true);
 
     const onDown = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
@@ -729,10 +727,8 @@ export default class ArenaChapterScene extends Phaser.Scene {
     if (!value) this.inventoryBar?.hide();
     this.bagOpen = false; this.session.setPause(value); this.clear(); const el = ui().querySelector<HTMLDivElement>('#arena-modal'); if (!el) return;
     el.hidden = !value;
-    if (!value) { el.innerHTML = ''; this.focusGame(); this.sync(); return; }
-    el.innerHTML = `<section class="dialog"><h2>ခဏနားမယ်</h2><p>အစမှာ လက်ချည်းပဲ။ လောက်လေးခွပါလာလျှင် <b>${formatKeyLabel(this.shortcuts.sling)}</b> သို့မဟုတ် လွယ်အိတ်ဖွင့်ပြီး ထုတ်သုံးပါ။ လက်သီးတိုက်ခိုက်ရန် <b>Mouse Left Click / ${formatKeyLabel(this.shortcuts.attack)}</b> နှင့် ရှောင်တိမ်းရန် <b>${formatKeyLabel(this.shortcuts.dodge)}</b> ကို သုံးပါ။</p><div class="actions">${button('arena-resume','ဆက်ကစားမယ်',true)}${button('arena-pause-shortcuts','⌨ ခလုတ်များ ပြင်မယ်')}${button('arena-menu','ပင်မစာမျက်နှာ')}</div></section>`;
+    el.innerHTML = `<section class="dialog"><h2>ခဏနားမယ်</h2><p>အစမှာ လက်ချည်းပဲ။ လောက်လေးခွပါလာလျှင် လွယ်အိတ်ဖွင့်ပြီး ထုတ်သုံးနိုင်သည်။ ဦးကြီး၏ အသံနှင့် အရိပ်အယောင်များကို သတိထားပါ။</p><div class="actions">${button('arena-resume','ဆက်ကစားမယ်',true)}${button('arena-menu','ပင်မစာမျက်နှာ')}</div></section>`;
     this.bind('arena-resume',()=>this.pause(false));
-    this.bind('arena-pause-shortcuts',()=>this.openShortcutModal(false));
     this.bind('arena-menu',()=>this.scene.start('MENU'));
     this.sync();
   }

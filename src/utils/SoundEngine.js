@@ -598,6 +598,103 @@ class SoundEngine {
     osc.stop(now + 0.2);
   }
 
+  // U Gyi walking stick blunt impact crack (ဒုန်း! / ခွပ်!)
+  playStickWhack() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+
+    // 1. Heavy resonant wood body thud (ဒုန်း!)
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(180, now);
+    osc.frequency.exponentialRampToValueAtTime(38, now + 0.32);
+    gain.gain.setValueAtTime(0.42, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.32);
+
+    // 2. High-speed cane crack transient (ခွပ်!)
+    const snap = this.ctx.createOscillator();
+    const snapGain = this.ctx.createGain();
+    snap.type = 'triangle';
+    snap.frequency.setValueAtTime(520, now);
+    snap.frequency.exponentialRampToValueAtTime(80, now + 0.12);
+    snapGain.gain.setValueAtTime(0.35, now);
+    snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    snap.connect(snapGain);
+    snapGain.connect(this.ctx.destination);
+    snap.start(now);
+    snap.stop(now + 0.12);
+  }
+
+  // Quiz correct chime (ascending major chime)
+  playQuizCorrect() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+    notes.forEach((freq, idx) => {
+      const now = this.ctx.currentTime + idx * 0.08;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.35);
+    });
+  }
+
+  // Quiz wrong buzzer (dissonant low buzz)
+  playQuizWrong() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    [146.83, 155.56].forEach(freq => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, now);
+      gain.gain.setValueAtTime(0.22, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.36);
+    });
+  }
+
+  // Reverberating chuckle laugh (ဟား ဟား ဟား ဟား)
+  playReverbLaugh() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const chuckles = [220, 207, 196, 174];
+    chuckles.forEach((freq, idx) => {
+      const now = this.ctx.currentTime + idx * 0.22;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, now);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.7, now + 0.18);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.22);
+    });
+  }
+
   // Victory Fanfare (Major triad arpeggio: C4 - E4 - G4 - C5)
   playVictoryFanfare(onCrashCallback) {
     if (this.muted) return;

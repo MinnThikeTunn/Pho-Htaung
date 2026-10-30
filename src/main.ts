@@ -126,6 +126,44 @@ document.addEventListener('click', startBGMOnInteraction);
 document.addEventListener('keydown', startBGMOnInteraction);
 
 createVolumeControl();
+
+export function jumpToChapter5() {
+  try { (soundEngine as any).playPing?.(); } catch {}
+  store.campaign.bridgeCompleted = true;
+  store.campaign.chapter2Completed = true;
+  store.campaign.chapter3Completed = true;
+  store.campaign.chapter4Completed = true;
+  store.campaign.resumeAt = 'CHAPTER_5';
+  if (!store.campaign.ownedTools.includes('slingshot')) store.campaign.ownedTools.push('slingshot');
+  if (!store.campaign.inventory.includes('slingshot')) store.campaign.inventory.push('slingshot');
+  try { store.save(); } catch {}
+
+  const menuDiv = document.getElementById('fantasy-menu-overlay');
+  if (menuDiv) menuDiv.remove();
+  const modal = document.getElementById('fm-modal');
+  if (modal) modal.remove();
+  document.querySelectorAll('.game-flank').forEach((el: any) => { el.style.display = ''; el.style.visibility = ''; });
+
+  if (typeof game !== 'undefined' && game?.scene) {
+    const activeScenes = game.scene.getScenes(true);
+    for (const s of activeScenes) {
+      if (s.scene.key !== 'CHAPTER_5') {
+        try { s.scene.stop(); } catch {}
+      }
+    }
+    game.scene.start('CHAPTER_5', { equipment: { slingshot: true }, skipIntro: false });
+  }
+}
+
+// Quick test keyboard listener (Key 5) to jump directly to Chapter 5 during development
+window.addEventListener('keydown', (e: KeyboardEvent) => {
+  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+  if ((e.key === '5' || e.code === 'Digit5' || e.code === 'Numpad5') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault();
+    jumpToChapter5();
+  }
+});
+
 function focusGame(scene: Phaser.Scene) { scene.game.canvas.tabIndex = 0; scene.game.canvas.focus({ preventScroll: true }); }
 let liveSession: Session | null = null, currentMode: Mode = 'CAMPAIGN';
 
@@ -197,6 +235,10 @@ class MenuScene extends Phaser.Scene {
             <span class="fm-btn-label">PLAY</span>
             <small>ဆက်လက်ကစားမည်</small>
           </button>
+          <button type="button" id="menu-test-ch5" class="fm-btn fm-test" style="border: 2px solid #f59e0b; background: rgba(245, 158, 11, 0.22); box-shadow: 0 0 16px rgba(245, 158, 11, 0.35);">
+            <span class="fm-btn-label" style="color: #fde047; font-weight: 900;">⚡ TEST CHAPTER 5</span>
+            <small style="color: #fef08a;">အခန်း ၅ စမ်းရန် (Temporary Shortcut)</small>
+          </button>
           <button type="button" id="menu-restart" class="fm-btn">
             <span class="fm-btn-label">RESTART</span>
             <small>အခန်း ၁ မှ ပြန်စမည်</small>
@@ -210,6 +252,7 @@ class MenuScene extends Phaser.Scene {
     ui.appendChild(menuDiv);
 
     const playBtn = menuDiv.querySelector('#menu-play') as HTMLButtonElement | null;
+    const testCh5Btn = menuDiv.querySelector('#menu-test-ch5') as HTMLButtonElement | null;
     const restartBtn = menuDiv.querySelector('#menu-restart') as HTMLButtonElement | null;
     const mechanicBtn = menuDiv.querySelector('#menu-mechanic') as HTMLButtonElement | null;
 
@@ -217,6 +260,12 @@ class MenuScene extends Phaser.Scene {
       menuDiv.remove();
       document.querySelectorAll('.game-flank').forEach((el:any) => { el.style.display = ''; el.style.visibility = ''; });
     };
+
+    testCh5Btn?.addEventListener('click', () => {
+      try { (soundEngine as any).playPing?.(); } catch {}
+      closeMenu();
+      jumpToChapter5();
+    });
 
     playBtn?.addEventListener('click', () => {
       try { (soundEngine as any).playPing?.(); } catch {}

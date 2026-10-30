@@ -21,7 +21,7 @@ export default class PauseScene extends Phaser.Scene {
 
     // 2. High-End Perplexity Rounded-[32px] Dialog Box
     const boxW = 380;
-    const boxH = 340;
+    const boxH = 400;
     const box = this.add.graphics();
     box.fillStyle(0x14100c, 0.98);
     box.fillRoundedRect(width / 2 - boxW / 2, height / 2 - boxH / 2, boxW, boxH, 32);
@@ -29,7 +29,7 @@ export default class PauseScene extends Phaser.Scene {
     box.strokeRoundedRect(width / 2 - boxW / 2, height / 2 - boxH / 2, boxW, boxH, 32);
 
     // 3. Headings
-    this.add.text(width / 2, height / 2 - 110, '⏸️ ခေတ္တရပ်ထားသည်', {
+    this.add.text(width / 2, height / 2 - 145, '⏸️ ခေတ္တရပ်ထားသည်', {
       fontFamily: 'Noto Sans Myanmar, Plus Jakarta Sans, sans-serif',
       fontSize: '20px',
       fontStyle: '900',
@@ -37,7 +37,7 @@ export default class PauseScene extends Phaser.Scene {
       letterSpacing: '0.5px'
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, height / 2 - 82, 'GAME PAUSED', {
+    this.add.text(width / 2, height / 2 - 118, 'GAME PAUSED', {
       fontFamily: 'Plus Jakarta Sans, sans-serif',
       fontSize: '12px',
       fontWeight: '800',
@@ -78,20 +78,27 @@ export default class PauseScene extends Phaser.Scene {
     };
 
     // 1. Resume Button
-    createPillButton(height / 2 - 25, '▶ ဆက်လက်ကစားမည် / RESUME', true, () => {
+    createPillButton(height / 2 - 55, '▶ ဆက်လက်ကစားမည် / RESUME', true, () => {
       this.resumeGame();
     });
 
     // 2. Settings Button
-    createPillButton(height / 2 + 35, '⚙️ ရွေးချယ်စရာများ / SETTINGS', false, () => {
+    createPillButton(height / 2 + 5, '⚙️ ရွေးချယ်စရာများ / SETTINGS', false, () => {
       if (!this.settingsModal) {
         this.settingsModal = new SettingsModal(this);
       }
       this.settingsModal.show();
     });
 
-    // 3. Quit to Main Menu Button
-    createPillButton(height / 2 + 95, '🏠 ပင်မ မီနူး / MAIN MENU', false, () => {
+    // 3. Temporary Chapter 5 Shortcut
+    createPillButton(height / 2 + 65, '⚡ အခန်း ၅ စမ်းရန် / TEST CH 5', false, () => {
+      this.scene.stop(this.callingScene);
+      this.scene.stop('PauseScene');
+      this.scene.start('CHAPTER_5', { equipment: { slingshot: true }, skipIntro: false });
+    });
+
+    // 4. Quit to Main Menu Button
+    createPillButton(height / 2 + 125, '🏠 ပင်မ မီနူး / MAIN MENU', false, () => {
       this.scene.stop(this.callingScene);
       this.scene.stop('PauseScene');
       this.scene.start('IntroScene');
@@ -99,6 +106,11 @@ export default class PauseScene extends Phaser.Scene {
 
     // Keyboard Shortcuts
     this.input.keyboard.on('keydown-P', () => this.resumeGame());
+    this.input.keyboard.on('keydown-FIVE', () => {
+      this.scene.stop(this.callingScene);
+      this.scene.stop('PauseScene');
+      this.scene.start('CHAPTER_5', { equipment: { slingshot: true }, skipIntro: false });
+    });
     this.input.keyboard.on('keydown-ESC', () => {
       if (this.settingsModal && this.settingsModal.isOpen()) {
         this.settingsModal.close();

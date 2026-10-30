@@ -35,7 +35,11 @@ export function equipFinalWeapon(a:FinalAttempt,weapon:ArenaWeapon):boolean {
 }
 export const finalCartBody=(a:FinalAttempt):Body=>({id:'final_cart',x:a.cart.x-F5.cartW/2,y:C.floor-F5.cartH,w:F5.cartW,h:F5.cartH,vx:0,vy:0,kind:'solid'});
 export const finalBossBody=(a:FinalAttempt):Body=>({id:'ugyi',x:a.boss.x-F5.bossW/2,y:C.floor-F5.bossH,w:F5.bossW,h:F5.bossH,vx:0,vy:0,kind:'solid'});
-export const finalPlayerBody=(a:FinalAttempt):Body=>({id:'phoe',x:a.player.centerX-C.playerW/2,y:a.player.feetY-C.playerH,w:C.playerW,h:C.playerH,vx:0,vy:0,kind:'player'});
+export const finalPlayerBody=(a:FinalAttempt):Body=>{
+  const isCrouch=a.player.control==='LAYING'||a.dodgeLeft>0;
+  const h=isCrouch?Math.round(C.playerH*0.45):C.playerH;
+  return {id:'phoe',x:a.player.centerX-C.playerW/2,y:a.player.feetY-h,w:C.playerW,h,vx:0,vy:0,kind:'player'};
+};
 export const finalSlamArea=(a:FinalAttempt):Body=>({id:'slam',x:a.boss.targetX-F5.slamHalfWidth,y:C.floor-F5.slamHeight,w:F5.slamHalfWidth*2,h:F5.slamHeight,vx:0,vy:0,kind:'solid'});
 export function finalGuarded(a:FinalAttempt):boolean { return ['GUARD','SLAM_WINDUP','RUSH_WINDUP','RUSH','CART_APPROACH'].includes(a.boss.phase); }
 function hurt(a:FinalAttempt,amount:number,source:FinalHurtSource) {
@@ -79,7 +83,10 @@ function stepPlayer(a:FinalAttempt,input:ArenaInput) {
   if(dx&&!a.charge)p.facing=dx>0?1:-1;
   if(input.dodge&&a.dodgeCooldown<=0&&a.boss.hp>0){a.dodgeLeft=F5.dodgeTime;a.dodgeCooldown=F5.dodgeCooldown;a.dodgeDirection=dx?(dx>0?1:-1):p.facing===1?-1:1;a.charge=0;a.events.push('dodge');}
   const dodge=a.dodgeLeft>0;
-  if(!dodge&&a.boss.hp>0) {
+  const crawling=Boolean(input.crawl)&&p.grounded&&!dodge&&a.boss.hp>0&&a.charge===0;
+  if(crawling)p.control='LAYING';
+  else if(p.control==='LAYING')p.control='FREE';
+  if(!dodge&&!crawling&&a.boss.hp>0) {
     if(input.sling&&a.weapon==='SLING'&&a.hasSling&&a.slingLeft<=0&&a.staggerLeft<=0){if(!a.charge)a.aimFacing=p.facing;a.charge=Math.min(F5.chargeTime,a.charge+C.dt);}
     if(!input.sling&&a.wasSling){if(a.charge>=F5.minimumCharge&&a.slingLeft<=0)fire(a);a.charge=0;}
     if(input.punch&&a.punchLeft<=0&&!a.charge) {
@@ -90,8 +97,9 @@ function stepPlayer(a:FinalAttempt,input:ArenaInput) {
   }
   a.wasSling=input.sling&&a.weapon==='SLING';
   p.coyote=p.grounded?C.coyote:Math.max(0,p.coyote-C.dt);p.jumpBuffer=input.jump?C.buffer:Math.max(0,p.jumpBuffer-C.dt);
-  if(p.coyote>0&&p.jumpBuffer>0&&!dodge){p.vy=C.jump;p.coyote=0;p.jumpBuffer=0;p.grounded=false;}
-  p.vx=dodge?a.dodgeDirection*F5.dodgeSpeed:dx*C.speed*(a.charge>0?.5:1);p.pushing=false;
+  if(p.coyote>0&&p.jumpBuffer>0&&!dodge&&!crawling){p.vy=C.jump;p.coyote=0;p.jumpBuffer=0;p.grounded=false;}
+  const moveSpeed=crawling?C.speed*0.58:C.speed*(a.charge>0?.5:1);
+  p.vx=dodge?a.dodgeDirection*F5.dodgeSpeed:dx*moveSpeed;p.pushing=false;
   const oldX=p.centerX;let nextX=Math.max(F5.minX,Math.min(F5.maxX,oldX+p.vx*C.dt));
   const cb=finalCartBody(a),nextBody={...finalPlayerBody(a),x:nextX-C.playerW/2};
   if(overlaps(nextBody,cb)) {
