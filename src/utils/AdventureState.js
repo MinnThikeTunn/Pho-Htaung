@@ -5,7 +5,7 @@ import { toBurmeseNumeral } from './GameState.js';
  * Parts/flags are attempt-local, not replenished while loading a save. */
 class AdventureState {
   constructor(){this.resetAttempt();}
-  resetAttempt(){this.attemptId=crypto.randomUUID();this.state={currentScene:'Chapter1Scene',inventory:['betel_cutter'],flags:{ch1_tunnel_open:false},isPlayerDead:false,isDialoguePlaying:false,alwaysShowHints:false,fastDialogue:false};}
+  resetAttempt(){this.attemptId=crypto.randomUUID();this.state={currentScene:'Chapter1Scene',inventory:['betel_cutter', 'slingshot'],flags:{ch1_tunnel_open:false},isPlayerDead:false,isDialoguePlaying:false,alwaysShowHints:false,fastDialogue:false};}
   setCurrentScene(){this.resetAttempt();}
   saveToStorage(){return store.save();}
   hasSavedGame(){return store.campaign.bridgeCompleted;}

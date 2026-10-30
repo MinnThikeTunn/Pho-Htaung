@@ -60,7 +60,7 @@ it('bag selection cancels a held draw without a phantom shot or any combat-state
 });
 
 it('clears both apes from real spawn using charged shots and the actual exit, with attacks active', () => {
-  const a = clearRoute('real'); expect(a.shotsFired).toBeGreaterThanOrEqual(10); expect(a.hp).toBeGreaterThan(0); expect(a.apes.every(e => e.hp === 0)).toBe(true);
+  const a = clearRoute('real'); expect(a.shotsFired).toBeGreaterThanOrEqual(8); expect(a.hp).toBeGreaterThan(0); expect(a.apes.every(e => e.hp === 0)).toBe(true);
 });
 it.each([[9,30], [33,30], [34,32], [37,31], [120,32]])('stationary charge %i/release %i frames fails without defence', (hold, release) => {
   const a = armed('stationary');

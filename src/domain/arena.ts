@@ -195,7 +195,9 @@ function spawnBrownApeObstacle(a: ArenaAttempt, brown: Ape) {
 
 function damage(a: ArenaAttempt, e: Ape, amount: number, punch = false) {
   if (e.hp <= 0) return;
-  e.hp = Math.max(0, e.hp - amount); e.hitLeft = A4.hitFlash; a.events.push('hit');
+  const mult = e.id === 'silver' ? A4.silverDamageMultiplier : 1;
+  const taken = Math.round(amount * mult);
+  e.hp = Math.max(0, e.hp - taken); e.hitLeft = A4.hitFlash; a.events.push('hit');
   if (e.hp === 0) { e.phase = 'DOWN'; a.events.push('down'); }
   else if (punch && (e.phase === 'IDLE' || e.phase === 'RECOVER')) {
     e.phase = 'STUN'; e.phaseLeft = A4.punchStun;
