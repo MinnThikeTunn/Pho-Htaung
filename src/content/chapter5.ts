@@ -71,7 +71,8 @@ export const F5 = Object.freeze({
   // New Chapter 5: Quest to a Million Myanmar & Twist Ambush
   bossSpawnX: 840,
   treasureX: 1060,
-  triggerAmbushX: 920,
+  chestOpenX: 930,
+  escortGap: 120,
   maxHealth: 3,
   totalQuestions: 20,
 });
@@ -130,9 +131,26 @@ export const UGYI_OPENING_MONOLOGUE: readonly string[] = [
 ];
 
 export const TWIST_STRINGS = {
-  ugyiVictoryPrize: 'တော်တယ်ဟေ့ မောင်ဖိုးထောင်! မင်းက ငါ့မေးခွန်း ၂၀ စလုံးကို ဉာဏ်နီဉာဏ်နက်နဲ့ ကျော်ဖြတ်နိုင်ခဲ့ပြီ။ ရော့... ဒါက မြို့တော်တံခါးဖွင့် ရွှေသော့ပဲ။ ဟိုမှာ ရွှေပုံကြီး... သွားယူပေတော့!',
+  ugyiVictoryPrize: 'တော်တယ်ဟေ့ မောင်ဖိုးထောင်! မင်းက ငါ့မေးခွန်း ၂၀ စလုံးကို ဉာဏ်နီဉာဏ်နက်နဲ့ ကျော်ဖြတ်နိုင်ခဲ့ပြီ။ ရော့... ဒါက မြို့တော်တံခါးဖွင့် ရွှေသော့ပဲ။ ဟိုမှာ ရွှေသေတ္တာကြီး... သွားဖွင့်ကြည့်ပေတော့!',
+  ugyiEscortLine: 'ဟီးဟီး... လာလေ ဖိုးထောင်ရေ။ ငါ ဦးကြီးက မင်းကို ရွှေသေတ္တာကြီး လက်တွေ့ ဖွင့်ပြမယ်။ နှေးနှေးပဲ လာခဲ့။',
+  ugyiChestLine: 'ဖွင့်လိုက်... ဖွင့်လိုက်... အဖိုးတန် ရွှေတွေ အကုန်လုံး မင်းအတွက်ပဲ ဖိုးထောင်ရေ!',
+  ugyiStrikeLine: 'ဟားဟားဟား! ငါ့စကားကို တကယ်ယုံလိုက်တာလား ဖိုးထောင်ရေ!',
   typewriterReveal: 'တကယ်တော့ ဒါက ရွှေမြို့တော် မဟုတ်ဘူးဟေ့... ရွှေမြို့တော်က အဝေးကြီး ထပ်သွားရဦးမှာ! ငါက မင်းကို သက်သက် လှည့်စားပြီး စတာကွ...',
   laughCue: 'ဟား ဟား ဟား ဟား!',
-  endCardTitle: 'To Be Continued in Chapter 6',
-  endCardSub: 'ဟား ဟား ဟား ဟား',
+
+  // Post-quiz victory panel
+  victoryKicker: 'မေးခွန်း ၂၀ / ၂၀ · အောင်ပွဲ',
+  victoryTitle: 'ဉာဏ်စမ်းစိန်ခေါ်မှု အောင်မြင်ပြီ',
+  victoryPrizeLabel: 'ဆုလာဘ်',
+  victoryPrizeTitle: 'ရွှေမြို့တော်တံခါးဖွင့် ရွှေသော့',
+  victoryPrizeNote: 'ရွှေသော့ကို အသုံးပြုပြီး ရွှေသေတ္တာကို ဖွင့်နိုင်ပါပြီ။',
+  victoryChestNote: 'ဦးကြီးက ရွှေသေတ္တာဆီ လိုက်ပို့ပေးမည်ဟု ပြောသည်။',
+  victoryButton: 'ရွှေသေတ္တာဆီ သွားမယ်',
+
+  // End card
+  endCardKicker: 'အခန်း ၅ · ဇာတ်သိမ်း',
+  endCardTitle: 'Act I - Completed',
+  endCardSub: 'ပထမပိုင်း ပြီးဆုံးပါပြီ',
+  endCardNote: 'ဖိုးထောင်၏ ရှေးဟောင်းနန်းတော် စွန့်စားခန်း ရှေ့ဆက်ရန် ကျန်ရှိသေးသည်။',
+  endCardImageAlt: 'Trollface — ဦးကြီး၏ လှည့်စားသော အပြုံး',
 } as const;
