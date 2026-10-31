@@ -20,6 +20,14 @@ import { VISUAL_GROUND_Y } from '../view/FinalView';
 
 const ui = () => document.querySelector<HTMLDivElement>('#interface')!;
 
+const CHEST_SHEET = {
+  key: 'ch5-chest-open',
+  path: '/assets/chapter5/chest_open_sheet_v2.png',
+  frameWidth: 160,
+  frameHeight: 128,
+  frames: 10,
+} as const;
+
 interface Particle {
   x: number;
   y: number;
@@ -38,9 +46,11 @@ export default class FinalChapterScene extends Phaser.Scene {
   private activeQuestions: ActiveQuizQuestion[] = [];
 
   // Game State
+  private static readonly UGYI_MAX_HP = 200;
   private health = F5.maxHealth;
+  private ugyiHp = FinalChapterScene.UGYI_MAX_HP;
   private currentQIndex = 0;
-  private phase: 'OPENING' | 'QUIZ' | 'STRIKE' | 'VICTORY_KEY' | 'BAIT_WALK' | 'AMBUSH' | 'BLACKOUT' = 'OPENING';
+  private phase: 'OPENING' | 'QUIZ' | 'STRIKE' | 'VICTORY_KEY' | 'BAIT_WALK' | 'CHEST_OPEN' | 'AMBUSH' | 'BLACKOUT' = 'OPENING';
   private monologueIndex = 0;
   private isProcessingAnswer = false;
   private isHurt = false;
@@ -50,18 +60,34 @@ export default class FinalChapterScene extends Phaser.Scene {
   private clueTimer: Phaser.Time.TimerEvent | null = null;
 
   // Actors & Positions
-  private playerX = F5.spawnX;
+  private playerX: number = F5.spawnX;
   private playerFacing: -1 | 1 = 1;
   private playerControl = 'IDLE';
+  private heroLean = 0;
+  private isAttacking = false;
   private ugyiX: number = F5.bossSpawnX;
   private ugyiPose: keyof typeof UGYI_FRAMES = 'guard';
+  private ugyiHurtTimer = 0;
   private hasGoldenKey = false;
   private treasureRevealed = false;
+  private playerStunned = false;
+  private stunTimer = 0;
+  private ugyiWeaponVisible = false;
+  private ugyiWeaponPull = 0;
+  private escortSmileTimer = 0;
+  private escortLineShown = false;
+  private keyLerp = 0;
+  private keyTurn = 0;
 
   // Visuals
   private hero!: ReturnType<typeof createPhoe>;
   private ugyiSprite!: Phaser.GameObjects.Image;
+  private ugyiHpLabel!: Phaser.GameObjects.Text;
   private treasureContainer!: Phaser.GameObjects.Container;
+  private treasureChestGroup!: Phaser.GameObjects.Container;
+  private treasureChest!: Phaser.GameObjects.Sprite;
+  private treasureChestOutline!: Phaser.GameObjects.Sprite;
+  private treasureGlow?: Phaser.GameObjects.Graphics;
   private goldenKeySprite!: Phaser.GameObjects.Graphics;
   private fxG!: Phaser.GameObjects.Graphics;
   private bgDecorG!: Phaser.GameObjects.Graphics;
@@ -94,6 +120,12 @@ export default class FinalChapterScene extends Phaser.Scene {
         this.load.image(item.key, item.path);
       }
     }
+    if (!this.textures.exists(CHEST_SHEET.key)) {
+      this.load.spritesheet(CHEST_SHEET.key, CHEST_SHEET.path, {
+        frameWidth: CHEST_SHEET.frameWidth,
+        frameHeight: CHEST_SHEET.frameHeight,
+      });
+    }
   }
 
   init(data: {
@@ -111,6 +143,7 @@ export default class FinalChapterScene extends Phaser.Scene {
     try { store.save(); } catch {}
 
     this.health = F5.maxHealth;
+    this.ugyiHp = Math.max(0, FinalChapterScene.UGYI_MAX_HP - (data.startQuestion ?? 0) * 10);
     this.currentQIndex = data.startQuestion ?? 0;
     this.phase = data.skipIntro ? 'QUIZ' : 'OPENING';
     this.monologueIndex = 0;
@@ -121,11 +154,22 @@ export default class FinalChapterScene extends Phaser.Scene {
     this.keysHeld.clear();
     this.hasGoldenKey = false;
     this.treasureRevealed = false;
+    this.playerStunned = false;
+    this.stunTimer = 0;
+    this.ugyiWeaponVisible = false;
+    this.ugyiWeaponPull = 0;
+    this.escortSmileTimer = 0;
+    this.escortLineShown = false;
+    this.keyLerp = 0;
+    this.keyTurn = 0;
     this.playerX = F5.spawnX;
     this.playerFacing = 1;
     this.playerControl = 'IDLE';
+    this.heroLean = 0;
+    this.isAttacking = false;
     this.ugyiX = F5.bossSpawnX;
     this.ugyiPose = 'guard';
+    this.ugyiHurtTimer = 0;
     this.particles = [];
     this.confetti = [];
     this.elapsed = 0;
@@ -179,8 +223,18 @@ export default class FinalChapterScene extends Phaser.Scene {
         .setDepth(20);
     }
 
-    // 3. Treasure Mountain Container (Appears on Q20 Victory)
-    this.createTreasurePile();
+    // Boss health readout floating above U Gyi
+    this.ugyiHpLabel = this.add.text(this.ugyiX, VISUAL_GROUND_Y - 121, this.ugyiHpText(), {
+      fontFamily: '"Noto Sans Myanmar", "Padauk", system-ui, sans-serif',
+      fontSize: '13px',
+      color: '#f6d68a',
+      stroke: '#1d1208',
+      strokeThickness: 3,
+      align: 'center',
+    }).setOrigin(0.5, 1).setDepth(36);
+
+    // 3. Shiny Treasure Chest (Appears on Q20 Victory)
+    this.createTreasureChest();
 
     // 4. Golden Key graphic (floats near Pho Htung when awarded)
     this.goldenKeySprite = this.add.graphics().setDepth(28);
@@ -214,434 +268,81 @@ export default class FinalChapterScene extends Phaser.Scene {
     }
   }
 
-  private createTreasurePile() {
+  private createTreasureChest() {
+    const CHEST_SCALE = 1.25;
+    const CHEST_FLOAT_Y = -18;
+    const CHEST_ORIGIN_Y = 0.8125;
+
+    if (!this.anims.exists('ch5-chest-lid-open')) {
+      this.anims.create({
+        key: 'ch5-chest-lid-open',
+        frames: this.anims.generateFrameNumbers(CHEST_SHEET.key, {
+          start: 0,
+          end: CHEST_SHEET.frames - 1,
+        }),
+        frameRate: 13,
+        repeat: 0,
+      });
+    }
+
     // Ground anchor at VISUAL_GROUND_Y (576px)
     this.treasureContainer = this.add.container(F5.treasureX, VISUAL_GROUND_Y).setDepth(16);
     this.treasureContainer.setVisible(false);
 
-    // 1. Volumetric Golden Ambient Aura & Ground Warm Glow
+    // 1. Warm floor aura that breathes under the floating chest
     const auraG = this.add.graphics();
-    // Warm floor reflection
-    auraG.fillStyle(0xf59e0b, 0.22);
-    auraG.fillEllipse(0, 4, 380, 40);
-    auraG.fillStyle(0xfef08a, 0.15);
-    auraG.fillEllipse(-10, 0, 260, 26);
-    // Atmospheric god-ray cone angling down from upper vault
-    auraG.fillGradientStyle(0xfde047, 0xfacc15, 0xca8a04, 0x854d0e, 0.12, 0.08, 0, 0);
-    auraG.fillTriangle(-80, -320, 160, -320, -10, 0);
-    auraG.fillTriangle(0, -320, 240, -320, 80, 0);
+    auraG.fillStyle(0xf59e0b, 0.2);
+    auraG.fillEllipse(0, 0, 142, 18);
+    auraG.fillStyle(0xfef08a, 0.14);
+    auraG.fillEllipse(0, -1, 82, 11);
+    auraG.fillGradientStyle(0xfde047, 0xfacc15, 0xca8a04, 0x854d0e, 0.08, 0.05, 0, 0);
+    auraG.fillTriangle(-42, -170, 48, -170, 0, 0);
 
-    // Breathing glow animation
     this.tweens.add({
       targets: auraG,
-      alpha: 0.65,
-      scaleX: 1.05,
-      duration: 1800,
+      alpha: 0.55,
+      scaleX: 1.06,
+      duration: 2100,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
     });
 
-    // 2. Base Mountain of Heaped Antique Gold Coins (Layered Vector Silhouette)
-    const baseMoundG = this.add.graphics();
+    // 2. Separate ground shadow so the chest can bob above it
+    const shadowG = this.add.graphics();
+    shadowG.fillStyle(0x120a04, 0.5);
+    shadowG.fillEllipse(0, 2, 126, 14);
+    shadowG.fillStyle(0x120a04, 0.25);
+    shadowG.fillEllipse(0, 4, 154, 10);
 
-    // Dark foundational under-shadow
-    baseMoundG.fillStyle(0x1a0f05, 0.7);
-    baseMoundG.fillEllipse(0, 2, 340, 36);
+    // 3. The chest lives in a bobbing group; the baked FBX sheet supplies the 3D look
+    this.treasureChestGroup = this.add.container(0, CHEST_FLOAT_Y);
 
-    // Deep shadow mound of gold
-    baseMoundG.fillStyle(0x5c380e, 1);
-    baseMoundG.beginPath();
-    baseMoundG.moveTo(-180, 0);
-    baseMoundG.lineTo(-150, -22);
-    baseMoundG.lineTo(-110, -42);
-    baseMoundG.lineTo(-60, -68);
-    baseMoundG.lineTo(-10, -82);
-    baseMoundG.lineTo(40, -78);
-    baseMoundG.lineTo(95, -55);
-    baseMoundG.lineTo(145, -28);
-    baseMoundG.lineTo(175, 0);
-    baseMoundG.closePath();
-    baseMoundG.fillPath();
+    // 4. Closed chest from the supplied 3D model, baked to a low-res painted sheet
+    this.treasureChestOutline = this.add.sprite(0, 1, CHEST_SHEET.key, 0)
+      .setOrigin(0.5, CHEST_ORIGIN_Y)
+      .setScale(CHEST_SCALE * 1.025)
+      .setTint(0x1b0d06)
+      .setAlpha(0.55);
 
-    // Mid-tier warm amber-gold layer
-    baseMoundG.fillStyle(0x9a3412, 0.9);
-    baseMoundG.beginPath();
-    baseMoundG.moveTo(-160, 0);
-    baseMoundG.lineTo(-120, -30);
-    baseMoundG.lineTo(-70, -56);
-    baseMoundG.lineTo(-15, -74);
-    baseMoundG.lineTo(35, -68);
-    baseMoundG.lineTo(85, -46);
-    baseMoundG.lineTo(135, -20);
-    baseMoundG.lineTo(155, 0);
-    baseMoundG.closePath();
-    baseMoundG.fillPath();
+    this.treasureChest = this.add.sprite(0, 0, CHEST_SHEET.key, 0)
+      .setOrigin(0.5, CHEST_ORIGIN_Y)
+      .setScale(CHEST_SCALE)
+      .setTint(0xe8ccae);
 
-    // Luminous upper gold body
-    baseMoundG.fillStyle(0xca8a04, 1);
-    baseMoundG.beginPath();
-    baseMoundG.moveTo(-140, 0);
-    baseMoundG.lineTo(-100, -24);
-    baseMoundG.lineTo(-50, -48);
-    baseMoundG.lineTo(-10, -64);
-    baseMoundG.lineTo(30, -58);
-    baseMoundG.lineTo(75, -38);
-    baseMoundG.lineTo(120, -14);
-    baseMoundG.lineTo(135, 0);
-    baseMoundG.closePath();
-    baseMoundG.fillPath();
+    this.treasureChestGroup.add([this.treasureChestOutline, this.treasureChest]);
 
-    // 3. Royal Ancient Palace Teakwood & Brass Vault Chest
-    const chestG = this.add.graphics();
-    const cx = -18;
-    const cy = -68;
-    const cw = 114;
-    const ch = 68;
-
-    // Open Lid Shadow
-    chestG.fillStyle(0x110a04, 0.65);
-    chestG.fillRoundedRect(cx - 8, cy - 42, cw + 16, 38, 8);
-
-    // Open Lid (Tilted back at authentic perspective)
-    chestG.fillStyle(0x3b1f0c, 1);
-    chestG.fillRoundedRect(cx - 4, cy - 38, cw + 8, 34, 8);
-    chestG.lineStyle(2, 0x1a0d05, 1);
-    chestG.strokeRoundedRect(cx - 4, cy - 38, cw + 8, 34, 8);
-
-    // Lid Brass Bands & Rim
-    chestG.fillStyle(0xb45309, 1);
-    chestG.fillRect(cx + 12, cy - 38, 12, 34);
-    chestG.fillRect(cx + cw - 24, cy - 38, 12, 34);
-    chestG.fillStyle(0xfde047, 1);
-    chestG.fillRect(cx + 14, cy - 38, 8, 34);
-    chestG.fillRect(cx + cw - 22, cy - 38, 8, 34);
-
-    // Inner Velvet Chamber (Deep Royal Crimson)
-    chestG.fillStyle(0x4c0519, 1);
-    chestG.fillRoundedRect(cx + 4, cy - 4, cw - 8, 18, 4);
-
-    // Main Chest Teakwood Body
-    chestG.fillStyle(0x271407, 1);
-    chestG.fillRoundedRect(cx, cy + 4, cw, ch, 6);
-    chestG.lineStyle(2, 0x120803, 1);
-    chestG.strokeRoundedRect(cx, cy + 4, cw, ch, 6);
-
-    // Teakwood Planks Horizontal Bevels
-    chestG.lineStyle(1.5, 0x170b04, 0.85);
-    chestG.lineBetween(cx + 2, cy + 26, cx + cw - 2, cy + 26);
-    chestG.lineBetween(cx + 2, cy + 48, cx + cw - 2, cy + 48);
-    chestG.lineStyle(1, 0x4a2a14, 0.6);
-    chestG.lineBetween(cx + 2, cy + 28, cx + cw - 2, cy + 28);
-    chestG.lineBetween(cx + 2, cy + 50, cx + cw - 2, cy + 50);
-
-    // Heavy Brass Straps (Left & Right)
-    const drawBrassStrap = (bx: number) => {
-      chestG.fillStyle(0x92400e, 1);
-      chestG.fillRect(bx - 1, cy + 4, 16, ch);
-      chestG.fillStyle(0xf59e0b, 1);
-      chestG.fillRect(bx, cy + 4, 14, ch);
-      chestG.fillStyle(0xfef08a, 0.8);
-      chestG.fillRect(bx + 2, cy + 4, 4, ch);
-      chestG.lineStyle(1.5, 0x1a0e05, 0.9);
-      chestG.strokeRect(bx - 1, cy + 4, 16, ch);
-
-      // Brass dome rivets down the strap
-      const rivetYs = [cy + 12, cy + 24, cy + 37, cy + 50, cy + 62];
-      for (const ry of rivetYs) {
-        chestG.fillStyle(0x1a0e05, 1);
-        chestG.fillCircle(bx + 7, ry, 3.2);
-        chestG.fillStyle(0xfef08a, 1);
-        chestG.fillCircle(bx + 6.5, ry - 0.5, 2.2);
-        chestG.fillStyle(0xffffff, 1);
-        chestG.fillCircle(bx + 6, ry - 1, 1);
-      }
-    };
-    drawBrassStrap(cx + 14);
-    drawBrassStrap(cx + cw - 30);
-
-    // Brass Corner Reinforcement Brackets
-    chestG.fillStyle(0xf59e0b, 1);
-    chestG.fillTriangle(cx, cy + 4, cx + 18, cy + 4, cx, cy + 22);
-    chestG.fillTriangle(cx + cw, cy + 4, cx + cw - 18, cy + 4, cx + cw, cy + 22);
-    chestG.fillTriangle(cx, cy + ch + 4, cx + 18, cy + ch + 4, cx, cy + ch - 14);
-    chestG.fillTriangle(cx + cw, cy + ch + 4, cx + cw - 18, cy + ch + 4, cx + cw, cy + ch - 14);
-
-    // Central Ornate Royal Brass Lockplate & Keyhole
-    const lockX = cx + cw / 2;
-    const lockY = cy + 24;
-    chestG.fillStyle(0x78350f, 1);
-    chestG.fillRoundedRect(lockX - 16, lockY - 14, 32, 30, 4);
-    chestG.fillStyle(0xf59e0b, 1);
-    chestG.fillRoundedRect(lockX - 14, lockY - 12, 28, 26, 3);
-    chestG.fillStyle(0xfef08a, 0.9);
-    chestG.fillRoundedRect(lockX - 12, lockY - 10, 24, 6, 2);
-    chestG.lineStyle(1.5, 0x1f1105, 1);
-    chestG.strokeRoundedRect(lockX - 14, lockY - 12, 28, 26, 3);
-
-    // Ancient Royal Keyhole
-    chestG.fillStyle(0x0c0703, 1);
-    chestG.fillCircle(lockX, lockY + 2, 4);
-    chestG.fillTriangle(lockX - 2.5, lockY + 2, lockX + 2.5, lockY + 2, lockX, lockY + 11);
-
-    // 4. Overflowing Gold Bullion Bars, Chalices & Stacked Coins
-    const treasureG = this.add.graphics();
-
-    // Stamped Gold Bullion Bars
-    const drawGoldBar = (bx: number, by: number, w: number, h: number, rot = 0) => {
-      treasureG.save();
-      treasureG.translateCanvas(bx, by);
-      if (rot !== 0) treasureG.rotateCanvas(rot);
-      // Top face
-      treasureG.fillStyle(0xfef08a, 1);
-      treasureG.fillRect(-w / 2, -h / 2, w, h * 0.45);
-      // Front face
-      treasureG.fillStyle(0xeab308, 1);
-      treasureG.fillRect(-w / 2, -h / 2 + h * 0.45, w, h * 0.55);
-      // Outline
-      treasureG.lineStyle(1.5, 0x713f12, 1);
-      treasureG.strokeRect(-w / 2, -h / 2, w, h);
-      // Embossed Palace lotus mark
-      treasureG.fillStyle(0xca8a04, 1);
-      treasureG.fillCircle(0, 0, 2.5);
-      treasureG.restore();
-    };
-
-    drawGoldBar(cx + 25, cy - 2, 34, 12, -0.08);
-    drawGoldBar(cx + 56, cy - 5, 36, 13, 0.05);
-    drawGoldBar(cx + 86, cy + 2, 32, 12, 0.14);
-    drawGoldBar(cx + 40, cy - 12, 32, 11, -0.04);
-    drawGoldBar(cx + 70, cy - 14, 30, 11, 0.08);
-
-    // Royal Golden Chalice / Goblet
-    treasureG.fillStyle(0xfacc15, 1);
-    treasureG.beginPath();
-    treasureG.moveTo(cx + 20, cy - 22);
-    treasureG.lineTo(cx + 34, cy - 22);
-    treasureG.lineTo(cx + 31, cy - 8);
-    treasureG.lineTo(cx + 27, cy - 3);
-    treasureG.lineTo(cx + 27, cy + 5);
-    treasureG.lineTo(cx + 23, cy + 5);
-    treasureG.lineTo(cx + 23, cy - 3);
-    treasureG.lineTo(cx + 19, cy - 8);
-    treasureG.closePath();
-    treasureG.fillPath();
-    treasureG.lineStyle(1.2, 0x854d0e, 1);
-    treasureG.strokePath();
-
-    // 5. Individual Hand-Inked Gold Coins & Cascading Piles
-    const drawCoin = (x: number, y: number, rx = 7, ry = 4.5, rot = 0, tone = 0) => {
-      treasureG.save();
-      treasureG.translateCanvas(x, y);
-      if (rot !== 0) treasureG.rotateCanvas(rot);
-
-      // Under-shadow
-      treasureG.fillStyle(0x1a0f05, 0.5);
-      treasureG.fillEllipse(0, 1.2, rx * 2, ry * 2);
-
-      // Rim base
-      const rimColors = [0xb45309, 0xca8a04, 0x78350f];
-      treasureG.fillStyle(rimColors[tone % 3]!, 1);
-      treasureG.fillEllipse(0, 0, rx * 2, ry * 2);
-
-      // Coin face
-      const faceColors = [0xfacc15, 0xfde047, 0xeab308];
-      treasureG.fillStyle(faceColors[tone % 3]!, 1);
-      treasureG.fillEllipse(0, -0.8, (rx - 1.2) * 2, (ry - 0.8) * 2);
-
-      // Embossed inner ring
-      treasureG.lineStyle(0.8, 0xca8a04, 0.8);
-      treasureG.strokeEllipse(0, -0.8, (rx - 2.8) * 2, (ry - 1.8) * 2);
-
-      // Specular highlight crescent
-      treasureG.fillStyle(0xfffbeb, 0.9);
-      treasureG.fillCircle(-rx * 0.35, -ry * 0.45, 1.3);
-
-      treasureG.restore();
-    };
-
-    // Coin piles tumbling across the mound and floor
-    const coinCoords: [number, number, number, number, number, number][] = [
-      // Left foreground cascade towards player
-      [-175, -2, 7, 4, 0.1, 0], [-160, -6, 7.5, 4.5, -0.15, 1], [-145, -4, 8, 4.8, 0.2, 2],
-      [-155, -12, 7, 4.2, 0.05, 0], [-140, -14, 8, 4.6, -0.1, 1], [-125, -8, 8.5, 5, 0.15, 0],
-      [-135, -22, 7.5, 4.4, 0.25, 2], [-115, -18, 8, 4.5, -0.2, 0], [-100, -12, 8, 4.7, 0.05, 1],
-      [-120, -28, 7.2, 4.3, 0.1, 1], [-95, -26, 8, 4.6, -0.12, 2], [-80, -16, 8.5, 5, 0.18, 0],
-      // Center base pile
-      [-65, -8, 8.5, 5.2, 0.05, 0], [-50, -14, 8, 4.8, -0.08, 1], [-35, -6, 9, 5.2, 0.12, 2],
-      [-20, -10, 8.5, 5, -0.15, 0], [-5, -6, 9, 5.4, 0.02, 1], [15, -8, 8.5, 5.1, 0.14, 0],
-      [30, -12, 8, 4.7, -0.1, 2], [45, -6, 8.5, 5.2, 0.05, 1], [60, -14, 8, 4.8, 0.2, 0],
-      // Right edge cascade
-      [75, -8, 8.2, 4.9, -0.15, 1], [90, -16, 8, 4.6, 0.1, 0], [105, -10, 8.5, 5, -0.05, 2],
-      [120, -18, 7.8, 4.5, 0.22, 1], [135, -12, 7.5, 4.3, -0.18, 0], [150, -6, 7.2, 4.1, 0.08, 2],
-      [165, -2, 6.8, 3.8, -0.12, 1],
-      // Upper slope coins
-      [-80, -38, 7.8, 4.5, 0.14, 0], [-60, -48, 8, 4.6, -0.2, 1], [-45, -58, 8, 4.8, 0.05, 2],
-      [-30, -66, 7.5, 4.4, -0.1, 0], [-15, -74, 8, 4.7, 0.15, 1], [5, -72, 8, 4.6, -0.05, 0],
-      [25, -65, 8, 4.8, 0.12, 2], [45, -52, 7.8, 4.5, -0.18, 1], [65, -42, 8, 4.6, 0.08, 0],
-      [85, -32, 7.5, 4.3, -0.14, 2], [105, -24, 7.8, 4.5, 0.2, 1],
-      // Cascading down the front of the chest
-      [cx + 8, cy + 58, 7.5, 4.4, 0.15, 0], [cx + 24, cy + 64, 8, 4.7, -0.1, 1],
-      [cx + 42, cy + 62, 8.5, 5, 0.08, 2], [cx + 60, cy + 66, 8, 4.8, -0.15, 0],
-      [cx + 78, cy + 63, 8.2, 4.9, 0.2, 1], [cx + 96, cy + 59, 7.8, 4.5, -0.05, 2],
-      [cx + 110, cy + 54, 7.5, 4.3, 0.18, 0],
-    ];
-
-    for (const [x, y, rx, ry, rot, tone] of coinCoords) {
-      drawCoin(x, y, rx, ry, rot, tone);
-    }
-
-    // Stacks of gold coin rolls (cylindrical towers)
-    const drawCoinStack = (sx: number, sy: number, heightCoins: number) => {
-      for (let i = 0; i < heightCoins; i++) {
-        drawCoin(sx, sy - i * 3.8, 8, 4.4, 0, i % 2);
-      }
-    };
-    drawCoinStack(-130, -2, 5);
-    drawCoinStack(-118, -4, 7);
-    drawCoinStack(125, -4, 6);
-    drawCoinStack(138, -2, 4);
-    drawCoinStack(78, -12, 5);
-
-    // 6. Faceted Gemstones (Mogok Pigeon-Blood Rubies, Sapphires & Jade)
-    const gemG = this.add.graphics();
-
-    // Mogok Pigeon-Blood Ruby (Brilliant Cut Diamond Rhombus)
-    const drawRuby = (gx: number, gy: number, r = 7) => {
-      gemG.fillStyle(0x7f1d1d, 1);
-      gemG.fillCircle(gx, gy + 1, r * 1.1);
-      // Dark red body
-      gemG.fillStyle(0xdc2626, 1);
-      gemG.beginPath();
-      gemG.moveTo(gx, gy - r);
-      gemG.lineTo(gx + r, gy);
-      gemG.lineTo(gx, gy + r);
-      gemG.lineTo(gx - r, gy);
-      gemG.closePath();
-      gemG.fillPath();
-      // Bright facet highlight
-      gemG.fillStyle(0xef4444, 1);
-      gemG.beginPath();
-      gemG.moveTo(gx, gy - r);
-      gemG.lineTo(gx + r * 0.6, gy - r * 0.2);
-      gemG.lineTo(gx, gy + r * 0.2);
-      gemG.lineTo(gx - r * 0.6, gy - r * 0.2);
-      gemG.closePath();
-      gemG.fillPath();
-      // White glint
-      gemG.fillStyle(0xfff1f2, 1);
-      gemG.fillCircle(gx - r * 0.3, gy - r * 0.35, 1.8);
-      gemG.lineStyle(1.2, 0x450a0a, 0.8);
-      gemG.strokeCircle(gx, gy, r);
-    };
-
-    // Burmese Jade / Imperial Emerald
-    const drawEmerald = (gx: number, gy: number, w = 11, h = 8) => {
-      gemG.fillStyle(0x064e3b, 1);
-      gemG.fillRoundedRect(gx - w / 2, gy - h / 2, w, h, 2);
-      gemG.fillStyle(0x059669, 1);
-      gemG.fillRoundedRect(gx - w / 2 + 1, gy - h / 2 + 1, w - 2, h - 2, 1.5);
-      gemG.fillStyle(0x34d399, 1);
-      gemG.fillRect(gx - w / 2 + 2, gy - h / 2 + 1.5, w * 0.4, h - 3);
-      gemG.fillStyle(0xffffff, 0.9);
-      gemG.fillCircle(gx - w * 0.2, gy - h * 0.2, 1.3);
-    };
-
-    // Royal Blue Sapphire
-    const drawSapphire = (gx: number, gy: number, r = 6) => {
-      gemG.fillStyle(0x1e3a8a, 1);
-      gemG.fillCircle(gx, gy, r);
-      gemG.fillStyle(0x2563eb, 1);
-      gemG.fillCircle(gx - 0.8, gy - 0.8, r - 1.2);
-      gemG.fillStyle(0x60a5fa, 1);
-      gemG.fillCircle(gx - 1.8, gy - 1.8, (r - 1.5) * 0.5);
-      gemG.fillStyle(0xffffff, 1);
-      gemG.fillCircle(gx - 2, gy - 2, 1.2);
-    };
-
-    // Drooping Pearl Necklace over chest rim
-    const drawPearlString = () => {
-      const pearls: [number, number][] = [
-        [cx + 12, cy + 2], [cx + 16, cy + 8], [cx + 20, cy + 15],
-        [cx + 23, cy + 22], [cx + 25, cy + 30], [cx + 24, cy + 38],
-        [cx + 20, cy + 44], [cx + 15, cy + 48], [cx + 9, cy + 50],
-      ];
-      for (const [px, py] of pearls) {
-        gemG.fillStyle(0x1e150b, 0.4);
-        gemG.fillCircle(px, py + 1, 3.2);
-        gemG.fillStyle(0xf1f5f9, 1);
-        gemG.fillCircle(px, py, 3);
-        gemG.fillStyle(0xffffff, 1);
-        gemG.fillCircle(px - 0.8, py - 0.8, 1.2);
-      }
-    };
-
-    drawRuby(cx + 46, cy + 6, 8.5);
-    drawRuby(-70, -18, 7.5);
-    drawRuby(48, -16, 7);
-    drawRuby(-140, -8, 6.5);
-    drawRuby(cx + 92, cy - 8, 7.5);
-
-    drawEmerald(cx + 72, cy + 6, 13, 9);
-    drawEmerald(-40, -12, 12, 8);
-    drawEmerald(88, -22, 11, 7.5);
-    drawEmerald(-105, -16, 12, 8);
-
-    drawSapphire(cx + 34, cy - 10, 6.5);
-    drawSapphire(12, -18, 6);
-    drawSapphire(-88, -32, 6);
-    drawSapphire(112, -14, 5.5);
-
-    drawPearlString();
-
-    // 7. Animated Specular Shimmer Star Glints (✨)
-    const glintsG = this.add.graphics();
-    const drawStarGlint = (gx: number, gy: number, size = 10, color = 0xffffff) => {
-      glintsG.fillStyle(color, 0.95);
-      // Horizontal bar
-      glintsG.fillTriangle(gx - size, gy, gx + size, gy, gx, gy - 1.2);
-      glintsG.fillTriangle(gx - size, gy, gx + size, gy, gx, gy + 1.2);
-      // Vertical bar
-      glintsG.fillTriangle(gx, gy - size, gx, gy + size, gx - 1.2, gy);
-      glintsG.fillTriangle(gx, gy - size, gx, gy + size, gx + 1.2, gy);
-      // Center halo
-      glintsG.fillStyle(0xffffff, 1);
-      glintsG.fillCircle(gx, gy, size * 0.28);
-    };
-
-    drawStarGlint(cx + 46, cy + 4, 11, 0xfff1f2); // Ruby glint
-    drawStarGlint(cx + 72, cy + 5, 9, 0xa7f3d0);  // Emerald glint
-    drawStarGlint(cx + 34, cy - 12, 8, 0xbfdbfe); // Sapphire glint
-    drawStarGlint(-70, -20, 10, 0xfef08a);       // Coin mound glint
-    drawStarGlint(12, -22, 12, 0xfffbeb);        // Gold glint
-    drawStarGlint(-125, -12, 9, 0xfde047);       // Base coin glint
-    drawStarGlint(90, -20, 11, 0xfef08a);        // Right cascade glint
-    drawStarGlint(cx + cw / 2, cy + 18, 7, 0xfef08a); // Brass lock glint
-
-    // Continuous magical glint shimmer rotation & pulse
+    // Gentle float so the chest hovers above the floor
     this.tweens.add({
-      targets: glintsG,
-      alpha: 0.35,
-      scale: 1.15,
-      duration: 750,
+      targets: this.treasureChestGroup,
+      y: CHEST_FLOAT_Y - 5,
+      duration: 1650,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
     });
 
-    // Gentle chest jewel pulsation
-    this.tweens.add({
-      targets: gemG,
-      scaleX: 1.02,
-      scaleY: 1.02,
-      duration: 1100,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
-
-    // Assemble all hoard layers into container
-    this.treasureContainer.add([auraG, baseMoundG, chestG, treasureG, gemG, glintsG]);
+    this.treasureContainer.add([auraG, shadowG, this.treasureChestGroup]);
   }
 
   private setupDOM() {
@@ -657,7 +358,8 @@ export default class FinalChapterScene extends Phaser.Scene {
         <div class="ledger">
           <div><span>သိမ်းပြီးရွှေ</span><b id="final-wallet">${store.campaign.walletCoins}</b></div>
           <div><span>သေဆုံး</span><b id="final-deaths">${store.campaign.deathCount}</b></div>
-          <div><span>လက်ကျန်သွေး</span><b id="final-hp-text">${this.health} / 3</b></div>
+          <div><span>ဖိုးထောင် သွေး</span><b id="final-hp-text">${this.health} / 3</b></div>
+          <div><span>ဦးကြီး သွေး</span><b id="final-boss-hp">${this.ugyiHp} / ${FinalChapterScene.UGYI_MAX_HP}</b></div>
         </div>
         <button id="final-pause" class="icon-button" aria-label="Pause">Ⅱ</button>
       </div>
@@ -668,27 +370,31 @@ export default class FinalChapterScene extends Phaser.Scene {
         <p class="speaker-body" id="ugyi-speech-text">${q0Clue}</p>
       </div>
 
-      <!-- Quest to a Million Myanmar 4-Choice Question Panel -->
+      <!-- Turn-Based Battle Command Bar: never covers the fighters above the floor line -->
       <div class="quiz-panel-wrapper" id="quiz-wrapper" ${this.phase === 'QUIZ' ? '' : 'hidden'}>
         <div class="quiz-card" id="quiz-card">
-          <div class="quiz-header">
+          <div class="quiz-turnbar">
+            <span class="quiz-turn-badge">အလှည့် <b id="quiz-turn-num">1</b> / ${totalCount}</span>
             <span class="quiz-tier-badge" id="quiz-tier-label">${q0.tierName} · ${q0.category}</span>
-            <span class="quiz-progress-text" id="quiz-progress-label">မေးခွန်း ၁ / ${totalCount}</span>
+            <span class="quiz-turn-matchup"><b>ဖိုးထောင်</b><i>⚔</i><b>ဦးကြီး</b></span>
+            <span class="quiz-turn-state" id="quiz-turn-state">မင်းအလှည့် · အဖြေရွေးပါ</span>
           </div>
-          <p class="quiz-question-text" id="quiz-question-text">${q0.question}</p>
-          <div class="quiz-options-grid" id="quiz-options-grid">
-            <button type="button" class="quiz-opt-btn" data-opt="0">
-              <span class="opt-badge">က</span><span class="opt-label" id="opt-0-text">${q0.options[0]!.text}</span>
-            </button>
-            <button type="button" class="quiz-opt-btn" data-opt="1">
-              <span class="opt-badge">ခ</span><span class="opt-label" id="opt-1-text">${q0.options[1]!.text}</span>
-            </button>
-            <button type="button" class="quiz-opt-btn" data-opt="2">
-              <span class="opt-badge">ဂ</span><span class="opt-label" id="opt-2-text">${q0.options[2]!.text}</span>
-            </button>
-            <button type="button" class="quiz-opt-btn" data-opt="3">
-              <span class="opt-badge">ဃ</span><span class="opt-label" id="opt-3-text">${q0.options[3]!.text}</span>
-            </button>
+          <div class="quiz-body">
+            <p class="quiz-question-text" id="quiz-question-text">${q0.question}</p>
+            <div class="quiz-options-grid" id="quiz-options-grid">
+              <button type="button" class="quiz-opt-btn" data-opt="0">
+                <span class="opt-badge">က</span><span class="opt-label" id="opt-0-text">${q0.options[0]!.text}</span>
+              </button>
+              <button type="button" class="quiz-opt-btn" data-opt="1">
+                <span class="opt-badge">ခ</span><span class="opt-label" id="opt-1-text">${q0.options[1]!.text}</span>
+              </button>
+              <button type="button" class="quiz-opt-btn" data-opt="2">
+                <span class="opt-badge">ဂ</span><span class="opt-label" id="opt-2-text">${q0.options[2]!.text}</span>
+              </button>
+              <button type="button" class="quiz-opt-btn" data-opt="3">
+                <span class="opt-badge">ဃ</span><span class="opt-label" id="opt-3-text">${q0.options[3]!.text}</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -715,9 +421,18 @@ export default class FinalChapterScene extends Phaser.Scene {
         <p class="ch5-typewriter-text" id="ch5-typewriter"></p>
         <h2 class="ch5-laugh-cue" id="ch5-laugh">${TWIST_STRINGS.laughCue}</h2>
         <div class="ch5-end-card" id="ch5-end-card">
-          <h1 class="ch5-end-title">${TWIST_STRINGS.endCardTitle}</h1>
-          <p class="ch5-end-sub">${TWIST_STRINGS.endCardSub}</p>
-          <div class="actions">
+          <div class="ch5-end-panel">
+            <div class="ch5-end-portrait">
+              <img src="/assets/chapter5/trollface.png" alt="${TWIST_STRINGS.endCardImageAlt}" />
+            </div>
+            <div class="ch5-end-copy">
+              <span class="ch5-end-kicker">${TWIST_STRINGS.endCardKicker}</span>
+              <h1 class="ch5-end-title">${TWIST_STRINGS.endCardTitle}</h1>
+              <p class="ch5-end-sub">${TWIST_STRINGS.endCardSub}</p>
+              <p class="ch5-end-note">${TWIST_STRINGS.endCardNote}</p>
+            </div>
+          </div>
+          <div class="actions ch5-end-actions">
             <button type="button" id="btn-replay-ch5" class="primary">အခန်း ၅ ပြန်ကစားမယ်</button>
             <button type="button" id="btn-menu-ch5" class="secondary">ပင်မစာမျက်နှာ</button>
           </div>
@@ -886,15 +601,16 @@ export default class FinalChapterScene extends Phaser.Scene {
     const quizWrapper = ui().querySelector<HTMLElement>('#quiz-wrapper');
     const card = ui().querySelector<HTMLElement>('#quiz-card');
     const tierLabel = ui().querySelector<HTMLElement>('#quiz-tier-label');
-    const progressLabel = ui().querySelector<HTMLElement>('#quiz-progress-label');
+    const turnNum = ui().querySelector<HTMLElement>('#quiz-turn-num');
     const questionText = ui().querySelector<HTMLElement>('#quiz-question-text');
     const speechText = ui().querySelector<HTMLElement>('#ugyi-speech-text');
 
     if (quizWrapper) quizWrapper.hidden = false;
     if (card) card.classList.remove('hidden');
     if (tierLabel) tierLabel.textContent = `${q.tierName} · ${q.category}`;
-    if (progressLabel) progressLabel.textContent = `မေးခွန်း ${this.currentQIndex + 1} / ${totalCount}`;
+    if (turnNum) turnNum.textContent = String(this.currentQIndex + 1);
     if (questionText) questionText.textContent = q.question;
+    this.setTurnState('မင်းအလှည့် · အဖြေရွေးပါ');
 
     // Reset button states
     for (let i = 0; i < 4; i++) {
@@ -946,31 +662,181 @@ export default class FinalChapterScene extends Phaser.Scene {
     ui().querySelectorAll<HTMLButtonElement>('.quiz-opt-btn').forEach(b => (b.disabled = true));
 
     if (isCorrect) {
-      // Correct!
+      // Correct! Pho Htaung takes his turn and strikes U Gyi.
       buttonEl.classList.add('correct');
       soundEngine.playQuizCorrect();
       this.spawnSmallSparkles(this.playerX, VISUAL_GROUND_Y - 50, 0x22c55e);
+      this.setTurnState('ဖိုးထောင် တိုက်ခိုက်နေသည်!');
 
       const speechText = ui().querySelector<HTMLElement>('#ugyi-speech-text');
       if (speechText) {
-        speechText.textContent = `ဟေ့… မင်း အဖြေမှန်သွားပြန်ပြီလား! (မေးခွန်း ${this.currentQIndex + 1} အောင်မြင်သည်)`;
+        speechText.textContent = `အဖြေမှန်တယ်လို့ ဆိုပေမယ့်… ငါ့ကို လာရိုက်မယ်ပေါ့! (မေးခွန်း ${this.currentQIndex + 1} အောင်မြင်သည်)`;
       }
 
-      this.time.delayedCall(750, () => {
-        this.currentQIndex++;
-        this.renderCurrentQuestion();
-      });
+      this.time.delayedCall(140, () => this.performHeroAttack());
     } else {
       // Wrong! Turn-based stick punishment!
       buttonEl.classList.add('wrong');
       const correctBtn = ui().querySelector<HTMLButtonElement>(`[data-opt="${q.correctIndex}"]`);
       if (correctBtn) correctBtn.classList.add('correct');
+      this.setTurnState('ဦးကြီး တိုက်ခိုက်နေသည်!');
 
       soundEngine.playQuizWrong();
       this.time.delayedCall(450, () => {
         this.triggerPunishmentHit(q);
       });
     }
+  }
+
+  // ================= HERO ATTACK TURN =================
+  private performHeroAttack() {
+    if (this.isAttacking) return;
+    if (!this.ugyiSprite || !this.ugyiSprite.active) {
+      this.time.delayedCall(500, () => {
+        this.currentQIndex++;
+        this.renderCurrentQuestion();
+      });
+      return;
+    }
+
+    this.isAttacking = true;
+    this.setTurnState('ဖိုးထောင် တိုက်ခိုက်နေသည်!');
+
+    const dir: -1 | 1 = this.ugyiX >= this.playerX ? 1 : -1;
+    this.playerFacing = dir;
+    this.playerControl = 'IDLE';
+
+    const startX = this.playerX;
+    const strikeX = this.ugyiX - dir * 96;
+
+    // Anticipation: lean back before the dash
+    this.heroLean = -11 * dir;
+    soundEngine.playWhoosh();
+
+    this.tweens.add({
+      targets: this,
+      playerX: strikeX,
+      delay: 140,
+      duration: 170,
+      ease: 'Quad.In',
+      onComplete: () => {
+        // Contact!
+        this.heroLean = 16 * dir;
+        soundEngine.playHit();
+        this.cameras.main.shake(170, 0.011);
+
+        const hitX = this.ugyiX - dir * 34;
+        const hitY = VISUAL_GROUND_Y - 58;
+        this.spawnImpactBurst(hitX, hitY);
+        this.spawnSlashArc(hitX, hitY, dir);
+
+        // U Gyi gets hurt: pose, flash, knockback, damage number
+        this.setUgyiPose('hit');
+        this.ugyiHurtTimer = 0.32;
+        this.applyDamageToUgyi(10);
+
+        const knockX = this.ugyiX + dir * 16;
+        this.tweens.add({
+          targets: this,
+          ugyiX: knockX,
+          duration: 110,
+          ease: 'Quad.Out',
+          yoyo: true,
+          hold: 60,
+        });
+
+        // Recover and hand the turn back
+        this.time.delayedCall(280, () => {
+          this.heroLean = 0;
+          this.setUgyiPose('recover');
+          this.tweens.add({
+            targets: this,
+            playerX: startX,
+            duration: 300,
+            ease: 'Quad.Out',
+          });
+
+          this.time.delayedCall(300, () => {
+            this.ugyiHurtTimer = 0;
+            this.isAttacking = false;
+            if (this.currentQIndex + 1 >= (this.activeQuestions.length || CHAPTER_5_QUIZ.length)) {
+              // Final blow: hand off to the victory sequence
+              this.currentQIndex++;
+              this.renderCurrentQuestion();
+              return;
+            }
+            if (!this.isDead) {
+              this.setUgyiPose('guard');
+              this.currentQIndex++;
+              this.renderCurrentQuestion();
+            }
+          });
+        });
+      },
+    });
+  }
+
+  private applyDamageToUgyi(amount: number) {
+    this.ugyiHp = Math.max(0, this.ugyiHp - amount);
+    if (this.ugyiHpLabel && this.ugyiHpLabel.active) {
+      this.ugyiHpLabel.setText(this.ugyiHpText());
+    }
+    const bossHp = ui().querySelector<HTMLElement>('#final-boss-hp');
+    if (bossHp) bossHp.textContent = `${this.ugyiHp} / ${FinalChapterScene.UGYI_MAX_HP}`;
+
+    const popup = this.add.text(this.ugyiX + 48, VISUAL_GROUND_Y - 136, `-${amount}`, {
+      fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
+      fontSize: '22px',
+      fontStyle: 'bold',
+      color: '#ffd166',
+      stroke: '#3b1607',
+      strokeThickness: 4,
+    }).setOrigin(0.5, 1).setDepth(40);
+
+    this.tweens.add({
+      targets: popup,
+      y: popup.y - 40,
+      x: popup.x + 12,
+      alpha: 0,
+      duration: 720,
+      ease: 'Cubic.Out',
+      onComplete: () => popup.destroy(),
+    });
+
+    if (this.ugyiHp <= 0) {
+      this.setUgyiPose('defeated');
+    }
+  }
+
+  private spawnSlashArc(x: number, y: number, dir: -1 | 1) {
+    const slash = this.add.graphics({ x, y }).setDepth(38);
+    slash.lineStyle(7, 0xfff3c4, 0.95);
+    slash.beginPath();
+    slash.arc(0, 0, 48, Phaser.Math.DegToRad(dir > 0 ? -75 : 75), Phaser.Math.DegToRad(dir > 0 ? 55 : 105), dir < 0);
+    slash.strokePath();
+    slash.lineStyle(3, 0xffb347, 0.8);
+    slash.beginPath();
+    slash.arc(0, 0, 58, Phaser.Math.DegToRad(dir > 0 ? -65 : 65), Phaser.Math.DegToRad(dir > 0 ? 45 : 115), dir < 0);
+    slash.strokePath();
+
+    this.tweens.add({
+      targets: slash,
+      alpha: 0,
+      scaleX: 1.35,
+      scaleY: 1.35,
+      duration: 260,
+      ease: 'Quad.Out',
+      onComplete: () => slash.destroy(),
+    });
+  }
+
+  private ugyiHpText() {
+    return `ဦးကြီး ${this.ugyiHp} / ${FinalChapterScene.UGYI_MAX_HP}`;
+  }
+
+  private setTurnState(text: string) {
+    const el = ui().querySelector<HTMLElement>('#quiz-turn-state');
+    if (el) el.textContent = text;
   }
 
   // ================= ACT III: TURN-BASED STICK HIT =================
@@ -1099,7 +965,7 @@ export default class FinalChapterScene extends Phaser.Scene {
     }
   }
 
-  // ================= ACT IV: QUESTION 20 VICTORY & PRIZE FIRST TWIST =================
+  // ================= ACT IV: QUESTION 20 VICTORY & THE GOLDEN CHEST =================
   private triggerQuestion20Victory() {
     this.phase = 'VICTORY_KEY';
     const card = ui().querySelector<HTMLElement>('#quiz-card');
@@ -1109,8 +975,8 @@ export default class FinalChapterScene extends Phaser.Scene {
     this.spawnConfettiBurst();
     soundEngine.playVictoryFanfare();
 
-    // U Gyi drops strict host persona, laughs, and presents Golden Key
-    this.setUgyiPose('recover');
+    // U Gyi has lost the quiz: hands raised, weapon stowed, no guard stance
+    this.setUgyiPose('defeated');
     this.hasGoldenKey = true;
 
     const speechText = ui().querySelector<HTMLElement>('#ugyi-speech-text');
@@ -1118,19 +984,34 @@ export default class FinalChapterScene extends Phaser.Scene {
       speechText.textContent = TWIST_STRINGS.ugyiVictoryPrize;
     }
 
-    // Modal dialogue presenting Golden Key
+    // Modal dialogue presenting the golden key and the treasure chest
     const modal = ui().querySelector<HTMLElement>('#ch5-modal');
     if (modal) {
       modal.hidden = false;
       modal.innerHTML = `
-        <section class="dialog" style="text-align:center;">
-          <span class="eyebrow" style="color:#fbbf24;">ဂုဏ်ယူပါသည် · အောင်ပွဲရပြီ</span>
-          <h2 style="color:#fde047;">🎉 မေးခွန်း ၂၀ စလုံး အောင်မြင်သည်!</h2>
-          <p style="font-size:16px;line-height:2;">${TWIST_STRINGS.ugyiVictoryPrize}</p>
-          <div style="font-size:42px;margin:14px 0;">🗝️✨</div>
-          <p style="color:#fde68a;">ရွှေမြို့တော်တံခါးဖွင့် ရွှေသော့ကို လက်ခံရရှိပါပြီ!</p>
-          <div class="actions" style="justify-content:center;margin-top:16px;">
-            <button type="button" id="btn-take-treasure" class="primary">ရွှေပုံကြီးဆီ သွားယူမယ်</button>
+        <section class="dialog ch5-victory-panel" aria-labelledby="ch5-victory-title">
+          <header class="ch5-victory-head">
+            <span class="ch5-victory-kicker">${TWIST_STRINGS.victoryKicker}</span>
+            <h2 class="ch5-victory-title" id="ch5-victory-title">${TWIST_STRINGS.victoryTitle}</h2>
+            <p class="ch5-victory-lead">${TWIST_STRINGS.ugyiVictoryPrize}</p>
+          </header>
+          <div class="ch5-prize-card">
+            <span class="ch5-prize-icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48" role="presentation" focusable="false">
+                <circle cx="15" cy="15" r="8.5" fill="none" stroke="currentColor" stroke-width="3" />
+                <path d="M21.5 21.5 L38 38" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" />
+                <path d="M31 31 L36 26 M36.5 36.5 L41.5 31.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" />
+              </svg>
+            </span>
+            <div class="ch5-prize-copy">
+              <span class="ch5-prize-label">${TWIST_STRINGS.victoryPrizeLabel}</span>
+              <strong>${TWIST_STRINGS.victoryPrizeTitle}</strong>
+              <p>${TWIST_STRINGS.victoryPrizeNote}</p>
+            </div>
+          </div>
+          <p class="ch5-victory-hint">${TWIST_STRINGS.victoryChestNote}</p>
+          <div class="actions ch5-victory-actions">
+            <button type="button" id="btn-take-treasure" class="primary">${TWIST_STRINGS.victoryButton}</button>
           </div>
         </section>
       `;
@@ -1143,55 +1024,211 @@ export default class FinalChapterScene extends Phaser.Scene {
   }
 
   private startBaitWalkPhase() {
+    if (this.phase !== 'VICTORY_KEY') return;
     this.phase = 'BAIT_WALK';
+    this.keyLerp = 0;
+    this.keyTurn = 0;
     this.treasureRevealed = true;
     this.treasureContainer.setVisible(true);
+    this.treasureContainer.setAlpha(0);
+    this.treasureContainer.setScale(0.82);
+
+    // Chest reveal: bounces up from the floor with a warm golden pop
+    this.tweens.add({
+      targets: this.treasureContainer,
+      alpha: 1,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 720,
+      ease: 'Back.easeOut',
+    });
+    this.spawnSmallSparkles(F5.treasureX, VISUAL_GROUND_Y - 78, 0xfff2a8);
+    this.spawnSmallSparkles(F5.treasureX, VISUAL_GROUND_Y - 46, 0xfde047);
+
+    // U Gyi is unarmed, relaxed, and smiling - he strolls to the escort mark
+    this.setUgyiPose('defeated');
+    this.ugyiWeaponVisible = false;
+    this.ugyiWeaponPull = 0;
+    this.ugyiHpLabel.setVisible(false);
+    this.tweens.add({
+      targets: this,
+      ugyiX: 700,
+      duration: 900,
+      ease: 'Sine.easeInOut',
+    });
 
     const speechText = ui().querySelector<HTMLElement>('#ugyi-speech-text');
     if (speechText) {
-      speechText.textContent = 'ဟောဟိုမှာ ရွှေပုံကြီး... မင်း ချမ်းသာပြီ ဖိုးထောင်ရေ! အနားသွားပြီး ကောက်စမ်း မောင်မင်းကြီးသား!';
+      speechText.textContent = TWIST_STRINGS.ugyiEscortLine;
     }
+    this.escortSmileTimer = 1.6;
 
-    // U Gyi standing watchfully at x = 780
-    this.ugyiX = 780;
-    this.setUgyiPose('guard');
+    // Leisurely side-to-side sway while he waits for Pho Htaung
+    this.tweens.add({
+      targets: this.ugyiSprite,
+      angle: 2.4,
+      duration: 1400,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
   }
 
-  // ================= ACT V: THE AMBUSH & INSTANT BLACKOUT =================
+  // ================= ACT V: THE TREASURE CHEST OPENING =================
+  private startChestOpening() {
+    if (this.phase !== 'BAIT_WALK') return;
+    this.phase = 'CHEST_OPEN';
+    this.walkTargetX = null;
+    this.keyLerp = 0;
+    this.keyTurn = 0;
+
+    // Pho Htaung steps to the chest and crouches down to work the lock
+    this.playerFacing = 1;
+    this.playerControl = 'PICKUP';
+    this.tweens.add({
+      targets: this,
+      playerX: F5.treasureX - 100,
+      duration: 380,
+      ease: 'Sine.easeOut',
+    });
+
+    const speechText = ui().querySelector<HTMLElement>('#ugyi-speech-text');
+    if (speechText) speechText.textContent = TWIST_STRINGS.ugyiChestLine;
+
+    // Camera pushes in slowly on the chest
+    this.cameras.main.zoomTo(1.16, 900);
+
+    // 1. The golden key travels from Pho Htaung's hand into the lock
+    this.time.delayedCall(260, () => {
+      if (this.phase !== 'CHEST_OPEN') return;
+      soundEngine.playPing();
+      this.tweens.add({
+        targets: this,
+        keyLerp: 1,
+        duration: 520,
+        ease: 'Sine.easeInOut',
+        onComplete: () => {
+          if (this.phase !== 'CHEST_OPEN') return;
+          this.spawnSmallSparkles(F5.treasureX - 2, VISUAL_GROUND_Y - 50, 0xfff2a8);
+        },
+      });
+    });
+
+    // 2. Turn the key in the lock - the mechanism gives way
+    this.time.delayedCall(860, () => {
+      if (this.phase !== 'CHEST_OPEN') return;
+      soundEngine.playPing();
+      this.tweens.add({
+        targets: this,
+        keyTurn: 1,
+        duration: 360,
+        ease: 'Back.easeInOut',
+      });
+      this.tweens.add({
+        targets: this.treasureChest,
+        x: 2,
+        duration: 45,
+        yoyo: true,
+        repeat: 5,
+        ease: 'Sine.easeInOut',
+        onComplete: () => {
+          this.treasureChest.x = 0;
+        },
+      });
+    });
+
+    // 3. The lid lifts from the lip and tips back on its hinge
+    this.time.delayedCall(1320, () => {
+      if (this.phase !== 'CHEST_OPEN') return;
+      soundEngine.playPing();
+
+      this.treasureChest.play('ch5-chest-lid-open');
+      this.treasureChestOutline.play('ch5-chest-lid-open');
+      this.spawnSmallSparkles(F5.treasureX, VISUAL_GROUND_Y - 106, 0xfff9c4);
+      this.spawnSmallSparkles(F5.treasureX, VISUAL_GROUND_Y - 74, 0xfde047);
+
+      // The moment Pho Htaung leans in, U Gyi reaches for his back
+      this.time.delayedCall(900, () => {
+        if (this.phase !== 'CHEST_OPEN') return;
+        this.triggerAmbush();
+      });
+    });
+  }
+
+  // ================= ACT VI: THE AMBUSH & STUN =================
   private triggerAmbush() {
     this.phase = 'AMBUSH';
     this.walkTargetX = null;
-    this.playerControl = 'BOW'; // Pho Htung bends forward toward chest
+    this.playerControl = 'PICKUP';
+    this.tweens.killTweensOf(this.ugyiSprite);
+    this.ugyiSprite.setAngle(0);
 
-    const speechBox = ui().querySelector<HTMLElement>('#ugyi-speech-box');
-    if (speechBox) speechBox.hidden = true;
+    const speechText = ui().querySelector<HTMLElement>('#ugyi-speech-text');
+    if (speechText) {
+      speechText.textContent = TWIST_STRINGS.ugyiStrikeLine;
+    }
 
     // Action camera zoom in
-    this.cameras.main.zoomTo(1.22, 500);
+    this.cameras.main.zoomTo(1.24, 500);
 
-    // U Gyi tiptoes behind Pho Htung with a wicked grin
-    this.setUgyiPose('rush');
+    // 1. U Gyi calmly pulls the hidden club out from behind his back
+    this.ugyiWeaponVisible = true;
+    this.ugyiWeaponPull = 0;
     this.tweens.add({
       targets: this,
-      ugyiX: this.playerX + 85,
-      duration: 520,
-      ease: 'Linear',
+      ugyiWeaponPull: 1,
+      duration: 620,
+      ease: 'Sine.easeInOut',
       onComplete: () => {
-        // U Gyi raises walking stick high with BOTH hands!
+        if (this.phase !== 'AMBUSH') return;
+        this.ugyiWeaponVisible = false;
         this.setUgyiPose('slam_windup');
 
-        this.time.delayedCall(450, () => {
-          // U Gyi swings down HARD!
+        // 2. He steps in close behind the crouching Pho Htaung
+        this.tweens.add({
+          targets: this,
+          ugyiX: this.playerX - 62,
+          duration: 300,
+          ease: 'Sine.easeOut',
+        });
+
+        this.time.delayedCall(430, () => {
+          if (this.phase !== 'AMBUSH') return;
+          // 3. The club comes down on the back of his head
           this.setUgyiPose('slam_strike');
           soundEngine.playStickWhack();
-          this.cameras.main.shake(450, 0.026);
-
-          // Explosive impact flash & immediate instant blackout!
-          this.time.delayedCall(160, () => {
-            this.triggerBlackoutTwist();
-          });
+          this.cameras.main.shake(480, 0.03);
+          this.spawnImpactBurst(this.playerX, VISUAL_GROUND_Y - 62);
+          this.stunPhoeHtaung();
         });
       },
+    });
+  }
+
+  private stunPhoeHtaung() {
+    this.playerStunned = true;
+    this.stunTimer = 1.25;
+    this.hero?.setTintFill(0xffffff);
+
+    // U Gyi steps back so the dazed Pho Htaung stays clearly visible
+    this.time.delayedCall(260, () => {
+      if (this.phase !== 'AMBUSH') return;
+      this.tweens.add({
+        targets: this,
+        ugyiX: this.playerX - 130,
+        duration: 460,
+        ease: 'Sine.easeOut',
+      });
+    });
+
+    // The blow drops Pho Htaung face-down after a dizzy wobble
+    this.time.delayedCall(1250, () => {
+      if (this.phase !== 'AMBUSH') return;
+      this.playerStunned = false;
+      this.playerControl = 'LAYING';
+      this.time.delayedCall(600, () => {
+        this.triggerBlackoutTwist();
+      });
     });
   }
 
@@ -1233,6 +1270,7 @@ export default class FinalChapterScene extends Phaser.Scene {
               // Fade in Chapter 5 title end card
               this.time.delayedCall(1200, () => {
                 if (endCardEl) endCardEl.classList.add('visible');
+                if (blackoutEl) blackoutEl.classList.add('show-end-card');
                 store.campaign.chapter5Completed = true;
                 store.save();
               });
@@ -1289,7 +1327,125 @@ export default class FinalChapterScene extends Phaser.Scene {
     }
   }
 
+  // ================= BOSS HEALTH BAR (200 HP) =================
+  private drawUgyiHealthBar(x: number, y: number) {
+    const fx = this.fxG;
+    const width = 116;
+    const height = 11;
+    const ratio = Phaser.Math.Clamp(this.ugyiHp / FinalChapterScene.UGYI_MAX_HP, 0, 1);
+    const left = Math.round(x - width / 2);
+    const top = Math.round(y);
+    const flashing = this.ugyiHurtTimer > 0;
+
+    // Deep drop shadow so the bar reads over the bright hall art
+    fx.fillStyle(0x000000, 0.45);
+    fx.fillRoundedRect(left - 5, top - 5, width + 10, height + 10, 5);
+
+    // Carved wood backing + brass rim
+    fx.fillStyle(0x2a1a0c, 0.96);
+    fx.fillRoundedRect(left - 3, top - 3, width + 6, height + 6, 4);
+    fx.lineStyle(1.5, flashing ? 0xffe4a3 : 0xb07c34, 0.95);
+    fx.strokeRoundedRect(left - 3, top - 3, width + 6, height + 6, 4);
+
+    // Recessed track
+    fx.fillStyle(0x140b04, 0.95);
+    fx.fillRect(left, top, width, height);
+
+    // Ember fill that darkens as U Gyi weakens
+    const fillW = Math.max(0, Math.round(width * ratio));
+    if (fillW > 0) {
+      const fillColor = flashing
+        ? 0xfff0c0
+        : ratio > 0.5
+          ? 0xc8412c
+          : ratio > 0.2
+            ? 0xa8551f
+            : 0x7c1f12;
+      fx.fillStyle(fillColor, 0.98);
+      fx.fillRect(left, top, fillW, height);
+      fx.fillStyle(0xffd9a0, 0.34);
+      fx.fillRect(left, top, fillW, Math.max(1, Math.floor(height * 0.32)));
+    }
+
+    // Ten notch marks (one per 20 HP)
+    fx.lineStyle(1, 0x1a0e04, 0.7);
+    for (let i = 1; i < 10; i++) {
+      const sx = Math.round(left + (width * i) / 10);
+      fx.lineBetween(sx, top, sx, top + height);
+    }
+  }
+
   // ================= UTILITIES & EFFECTS =================
+  // ================= ENDING CUTSCENE PROPS =================
+  private drawBackWeapon() {
+    const g = this.fxG;
+    const p = Phaser.Math.Clamp(this.ugyiWeaponPull, 0, 1);
+    const angle = 2.35 - p * 3.75;
+    const ox = this.ugyiX - 26 + p * 8;
+    const oy = VISUAL_GROUND_Y - 74 - p * 26;
+
+    g.save();
+    g.translateCanvas(ox, oy);
+    g.rotateCanvas(angle);
+    g.fillStyle(0x2b1a0c, 1);
+    g.fillCircle(-4, 0, 5);
+    g.fillStyle(0x6b3f1d, 1);
+    g.fillRoundedRect(-2, -4.5, 58, 9, 4);
+    g.fillStyle(0x9a5b2a, 1);
+    g.fillRoundedRect(0, -3.5, 54, 4, 2);
+    g.fillStyle(0xc2872f, 1);
+    g.fillRoundedRect(50, -5, 9, 10, 3);
+    g.lineStyle(1.2, 0x241407, 0.9);
+    g.strokeRoundedRect(-2, -4.5, 58, 9, 4);
+    g.restore();
+  }
+
+  private drawEscortSmile() {
+    const g = this.fxG;
+    const fade = Math.min(1, this.escortSmileTimer / 0.4);
+    const x = this.ugyiX + 22;
+    const y = VISUAL_GROUND_Y - 128 + Math.sin(this.elapsed * 3) * 3;
+
+    g.fillStyle(0xfff4c2, 0.95 * fade);
+    g.fillCircle(x, y, 11);
+    g.lineStyle(2, 0x8a5a12, 0.95 * fade);
+    g.strokeCircle(x, y, 11);
+    g.fillStyle(0x4a2a08, 0.95 * fade);
+    g.fillCircle(x - 3.5, y - 2, 1.5);
+    g.fillCircle(x + 3.5, y - 2, 1.5);
+    g.beginPath();
+    g.arc(x, y + 2, 5, Math.PI * 0.18, Math.PI * 0.82, false);
+    g.strokePath();
+  }
+
+  private drawDizzyStars() {
+    const t = this.elapsed * 5;
+    for (let i = 0; i < 3; i++) {
+      const a = t + (Math.PI * 2 * i) / 3;
+      const sx = this.playerX + Math.cos(a) * 30;
+      const sy = VISUAL_GROUND_Y - 96 + Math.sin(a) * 9;
+      this.drawStarShape(this.fxG, sx, sy, 6.5, i === 1 ? 0xfff9c4 : 0xfde047, 0.95);
+    }
+  }
+
+  private drawStarShape(
+    g: Phaser.GameObjects.Graphics,
+    cx: number,
+    cy: number,
+    radius: number,
+    color: number,
+    alpha: number
+  ) {
+    const points: Phaser.Geom.Point[] = [];
+    for (let i = 0; i < 10; i++) {
+      const rad = i % 2 === 0 ? radius : radius * 0.42;
+      const angle = -Math.PI / 2 + (i * Math.PI) / 5;
+      points.push(new Phaser.Geom.Point(cx + Math.cos(angle) * rad, cy + Math.sin(angle) * rad));
+    }
+    g.fillStyle(color, alpha);
+    g.fillPoints(points, true);
+  }
+
   private setUgyiPose(pose: keyof typeof UGYI_FRAMES) {
     this.ugyiPose = pose;
     if (this.ugyiSprite && this.ugyiSprite.active) {
@@ -1298,7 +1454,9 @@ export default class FinalChapterScene extends Phaser.Scene {
   }
 
   private togglePause() {
-    if (this.phase === 'BLACKOUT') return;
+    if (this.phase === 'BLACKOUT' || this.phase === 'VICTORY_KEY' || this.phase === 'CHEST_OPEN' || this.phase === 'AMBUSH') {
+      return;
+    }
     const modal = ui().querySelector<HTMLElement>('#ch5-modal');
     if (!modal) return;
 
@@ -1417,17 +1575,56 @@ export default class FinalChapterScene extends Phaser.Scene {
         this.playerControl = 'IDLE';
       }
 
-      // Check Ambush Trigger condition
-      if (this.playerX >= F5.triggerAmbushX) {
-        this.triggerAmbush();
+      // Check the chest-opening trigger
+      this.playerX = Phaser.Math.Clamp(this.playerX, F5.minX + 20, F5.treasureX - 90);
+
+      // U Gyi strolls behind Pho Htaung, smiling the whole way
+      const escortTargetX = this.playerX - F5.escortGap;
+      if (escortTargetX > this.ugyiX + 1) {
+        this.ugyiX = Math.min(escortTargetX, this.ugyiX + 205 * dt);
+        if (!this.escortLineShown) {
+          this.escortLineShown = true;
+          this.escortSmileTimer = 1.8;
+          const speechText = ui().querySelector<HTMLElement>('#ugyi-speech-text');
+          if (speechText) speechText.textContent = TWIST_STRINGS.ugyiEscortLine;
+        }
       }
+
+      if (this.playerX >= F5.chestOpenX) {
+        this.startChestOpening();
+      }
+    }
+
+    if (this.escortSmileTimer > 0) {
+      this.escortSmileTimer = Math.max(0, this.escortSmileTimer - dt);
+    }
+    if (this.stunTimer > 0) {
+      this.stunTimer = Math.max(0, this.stunTimer - dt);
     }
 
     // 2. Position Actors
     if (this.ugyiSprite && this.ugyiSprite.active) {
-      this.ugyiSprite.setPosition(this.ugyiX, VISUAL_GROUND_Y);
+      const escortWalking = this.phase === 'BAIT_WALK' && this.ugyiX < this.playerX - F5.escortGap - 1;
+      const escortBob = escortWalking ? -Math.abs(Math.sin(this.elapsed * 9)) * 4 : 0;
+      this.ugyiSprite.setPosition(this.ugyiX, VISUAL_GROUND_Y + escortBob);
       // U Gyi faces player
       this.ugyiSprite.setFlipX(this.playerX > this.ugyiX);
+
+      // Hurt reaction flash
+      if (this.ugyiHurtTimer > 0) {
+        this.ugyiHurtTimer = Math.max(0, this.ugyiHurtTimer - dt);
+        if (this.ugyiHurtTimer > 0.2) {
+          this.ugyiSprite.setTintFill(0xffffff);
+        } else {
+          this.ugyiSprite.setTint(0xff8a6a);
+        }
+      } else {
+        this.ugyiSprite.clearTint();
+      }
+    }
+
+    if (this.ugyiHpLabel && this.ugyiHpLabel.active) {
+      this.ugyiHpLabel.setPosition(this.ugyiX, VISUAL_GROUND_Y - 121);
     }
 
     // Render Phoe Htung
@@ -1439,7 +1636,7 @@ export default class FinalChapterScene extends Phaser.Scene {
           feetY: VISUAL_GROUND_Y,
           facing: this.playerFacing,
           control: this.playerControl as any,
-          holding: this.hasGoldenKey,
+          holding: this.hasGoldenKey && this.keyLerp < 0.4,
           pushing: false,
           vx: this.playerControl === 'WALK' ? this.playerFacing * 180 : 0,
           grounded: true,
@@ -1447,38 +1644,98 @@ export default class FinalChapterScene extends Phaser.Scene {
         this.elapsed
       );
 
-      if (this.isHurt) {
+      if (this.playerStunned) {
+        const wobble = Math.sin(this.elapsed * 34) * 11 * Math.min(1, this.stunTimer / 0.35);
+        this.hero.setAngle(wobble);
+        if (this.stunTimer > 0.8) {
+          this.hero.setTintFill(0xffffff);
+        } else {
+          this.hero.setTint(0xffb0a0);
+        }
+      } else if (this.isHurt) {
         this.hero.setTintFill(0xff8888);
       } else {
         this.hero.clearTint();
       }
+
+      // Attack lean is applied after the shared renderer so it is not overwritten
+      if (this.heroLean !== 0) {
+        this.hero.setAngle(this.heroLean);
+      }
     }
 
-    // 3. Draw Golden Key in Pho Htung's hands
+    // 3. Draw the golden key - carried in hand, then turned in the chest lock
     if (this.hasGoldenKey && !this.isDead) {
-      const keyX = this.playerX + this.playerFacing * 22;
-      const keyY = VISUAL_GROUND_Y - 48;
+      const handX = this.playerX + this.playerFacing * 22;
+      const handY = VISUAL_GROUND_Y - 48;
+      const lockX = F5.treasureX - 2;
+      const lockY = VISUAL_GROUND_Y - 54;
+      const t = Phaser.Math.Easing.Sine.InOut(Phaser.Math.Clamp(this.keyLerp, 0, 1));
+      const keyX = Phaser.Math.Linear(handX, lockX, t);
+      const keyY = Phaser.Math.Linear(handY, lockY, t);
+      const rotation = Phaser.Math.Linear(0, -Math.PI / 2, t) + this.keyTurn * 0.78;
       const g = this.goldenKeySprite;
 
-      g.fillStyle(0xfde047, 1);
-      g.fillCircle(keyX, keyY, 6);
-      g.fillStyle(0x78350f, 1);
-      g.fillCircle(keyX, keyY, 3);
-      g.fillStyle(0xf59e0b, 1);
-      g.fillRect(keyX - 1, keyY + 4, 3, 14);
-      g.fillRect(keyX - 1, keyY + 14, 5, 3);
-      g.fillRect(keyX - 1, keyY + 9, 4, 2.5);
+      // Warm flare once the key reaches the lock
+      if (t > 0.55) {
+        const pulse = Math.sin(this.elapsed * 7) * 2.2;
+        g.fillStyle(0xfff3ad, 0.16);
+        g.fillCircle(lockX + 10, lockY, 16 + pulse);
+        g.fillStyle(0xfffbeb, 0.3);
+        g.fillCircle(lockX + 10, lockY, 8 + pulse * 0.5);
+      }
 
-      // Sparkling golden rays
-      const pulse = Math.sin(this.elapsed * 6) * 3;
-      g.lineStyle(1.5, 0xfffbeb, 0.85);
-      g.lineBetween(keyX - 8 - pulse, keyY, keyX + 8 + pulse, keyY);
-      g.lineBetween(keyX, keyY - 8 - pulse, keyX, keyY + 8 + pulse);
+      g.save();
+      g.translateCanvas(keyX, keyY);
+      g.rotateCanvas(rotation);
+      g.fillStyle(0xfde047, 1);
+      g.fillCircle(0, 0, 5.8);
+      g.fillStyle(0x78350f, 1);
+      g.fillCircle(0, 0, 2.8);
+      g.fillStyle(0xf59e0b, 1);
+      g.fillRect(-1.4, 4, 2.8, 15);
+      g.fillRect(-1.4, 15, 5, 3);
+      g.fillRect(-1.4, 9.5, 4, 2.4);
+      g.fillStyle(0xfff3ad, 1);
+      g.fillRect(-0.6, 5, 1.1, 12);
+      g.restore();
+
+      // Sparkling golden rays while carried
+      if (t < 0.6) {
+        const pulse = Math.sin(this.elapsed * 6) * 3;
+        g.lineStyle(1.5, 0xfffbeb, 0.85);
+        g.lineBetween(keyX - 8 - pulse, keyY, keyX + 8 + pulse, keyY);
+        g.lineBetween(keyX, keyY - 8 - pulse, keyX, keyY + 8 + pulse);
+      }
     }
 
-    // 4. Draw Overhead Palace Health Bar (3 Segments)
-    if (!this.isDead && this.phase !== 'OPENING') {
+    // 4. Draw Overhead Palace Health Bar (3 Segments) during the quiz battle only
+    const battleHud = this.phase === 'QUIZ' || this.phase === 'STRIKE' || this.phase === 'VICTORY_KEY';
+    if (this.ugyiHpLabel && this.ugyiHpLabel.active) {
+      this.ugyiHpLabel.setVisible(battleHud);
+    }
+    if (!this.isDead && battleHud) {
       this.drawOverheadHealthBar(this.playerX, VISUAL_GROUND_Y - 98);
+    }
+
+    // 4b. U Gyi's 200 HP boss bar, anchored above the sprite
+    if (this.ugyiSprite && this.ugyiSprite.active && battleHud) {
+      this.drawUgyiHealthBar(this.ugyiX, VISUAL_GROUND_Y - 111);
+    }
+
+    // 4c. Ambush weapon prop being pulled from U Gyi's back
+    if (this.ugyiWeaponVisible && this.phase === 'AMBUSH') {
+      this.drawBackWeapon();
+    }
+
+    // 4d. Leisurely smile emote while U Gyi escorts Pho Htaung
+    if (this.escortSmileTimer > 0) {
+      this.drawEscortSmile();
+    }
+
+    // 4e. Dizzy stars orbiting the stunned Pho Htaung
+    if (this.playerStunned) {
+      this.drawDizzyStars();
     }
 
     // 5. Update & Draw Particles (Impact Sparks)
