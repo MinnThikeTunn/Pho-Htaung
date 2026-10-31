@@ -432,7 +432,7 @@
 .quiz-panel-wrapper{
   justify-content:flex-end!important;
   align-items:center!important;
-  padding:0 clamp(10px,2.2cqw,30px) clamp(4px,.7cqw,10px)!important;
+  padding:0 clamp(10px,2.2cqw,30px) clamp(8px,.9cqw,12px)!important;
   z-index:26;
 }
 .quiz-card{
@@ -505,9 +505,11 @@
 /* --- prompt + 2x2 action grid --- */
 .quiz-body{
   display:grid;
-  grid-template-columns:minmax(0,1.06fr) minmax(0,1.2fr);
-  gap:clamp(8px,1.1cqw,18px);
+  grid-template-columns:minmax(0,1.14fr) minmax(0,1.08fr);
+  gap:clamp(10px,1.25cqw,20px);
   align-items:center;
+  padding:clamp(2px,.3cqw,5px) clamp(2px,.4cqw,6px) clamp(3px,.45cqw,7px);
+  min-height:clamp(56px,8.4vh,92px);
 }
 .quiz-tier-badge{
   font-size:clamp(8px,.7cqw,10.5px)!important;
@@ -516,14 +518,19 @@
   white-space:nowrap;
 }
 .quiz-question-text{
-  font-size:clamp(8px,1.35vh,13.5px)!important;
-  line-height:1.5!important;
+  font-size:clamp(9px,1.42vh,14px)!important;
+  line-height:1.62!important;
   text-align:left!important;
   margin:0!important;
+  padding:clamp(4px,.5cqw,8px) clamp(6px,.7cqw,11px)!important;
   color:var(--fui-parchment)!important;
   text-shadow:0 1px 4px rgba(0,0,0,.85)!important;
+  background:linear-gradient(180deg,rgba(255,240,200,.055),rgba(0,0,0,.2));
+  border:1px solid rgba(246,214,138,.17);
+  border-radius:8px;
+  box-shadow:inset 0 1px 0 rgba(255,235,190,.1);
   display:-webkit-box;
-  -webkit-line-clamp:6;
+  -webkit-line-clamp:8;
   -webkit-box-orient:vertical;
   overflow:hidden;
 }
@@ -572,8 +579,177 @@
 
 /* Tighter tables on short screens so the bar always stays under the floor line */
 @media (max-height:760px){
-  .quiz-question-text{font-size:clamp(8px,1.25vh,12px)!important}
+  .quiz-question-text{font-size:clamp(9.5px,1.45vh,13px)!important}
   .quiz-turnbar{font-size:clamp(7px,.64cqw,9.5px)}
   .quiz-opt-btn{font-size:clamp(8px,.74cqw,11px)!important;padding:3px 6px!important}
   .quiz-opt-btn .opt-badge{width:16px!important;height:16px!important;font-size:8.5px!important}
+}
+
+/* --------------------------------------------------- chapter 5 victory panel */
+.ch5-victory-panel{
+  width:min(92%,780px)!important;
+  max-height:88vh;
+  overflow:auto;
+  display:flex!important;
+  flex-direction:column;
+  gap:clamp(14px,1.8cqw,22px);
+  padding:clamp(22px,3cqw,40px) clamp(22px,3.4cqw,44px)!important;
+  border:2px solid var(--fui-brass-hi)!important;
+  border-radius:16px!important;
+  background:var(--fui-stud-tl),var(--fui-stud-tr),var(--fui-stud-bl),var(--fui-stud-br),var(--fui-plank)!important;
+  box-shadow:0 34px 100px rgba(0,0,0,.9),0 0 48px rgba(245,158,11,.2),inset 0 1px 0 rgba(255,230,160,.28)!important;
+  text-align:left;
+}
+.ch5-victory-head{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding-bottom:clamp(10px,1.3cqw,16px);
+  border-bottom:1px solid rgba(246,214,138,.28);
+}
+.ch5-victory-kicker{
+  font:900 clamp(10px,1cqw,13px) 'Plus Jakarta Sans',sans-serif;
+  color:var(--fui-brass-hi);
+  letter-spacing:.16em;
+  text-transform:uppercase;
+}
+.ch5-victory-panel .ch5-victory-title{
+  margin:0;
+  font-family:'Cormorant Upright',Georgia,serif;
+  font-size:clamp(24px,3.4cqw,42px);
+  line-height:1.18;
+  letter-spacing:.02em;
+  color:#fde68a;
+  text-shadow:0 2px 12px rgba(0,0,0,.6);
+}
+.ch5-victory-lead{
+  margin:0!important;
+  color:var(--fui-parchment)!important;
+  font-size:clamp(13px,1.3cqw,17px)!important;
+  line-height:1.95!important;
+}
+.ch5-prize-card{
+  display:flex;
+  align-items:center;
+  gap:clamp(14px,1.8cqw,22px);
+  padding:clamp(14px,1.8cqw,20px) clamp(16px,2cqw,24px);
+  border:1px solid rgba(246,214,138,.42);
+  border-radius:12px;
+  background:linear-gradient(135deg,rgba(245,158,11,.18),rgba(18,12,7,.72) 62%);
+  box-shadow:inset 0 1px 0 rgba(255,235,190,.18),0 12px 30px rgba(0,0,0,.35);
+}
+.ch5-prize-icon{
+  flex:0 0 auto;
+  display:grid;
+  place-items:center;
+  width:clamp(52px,6cqw,68px);
+  height:clamp(52px,6cqw,68px);
+  border-radius:50%;
+  color:#2a1608;
+  background:radial-gradient(circle at 34% 28%,#fff4c9,#f2c14e 48%,#b9781f 100%);
+  border:2px solid #ffe9a8;
+  box-shadow:0 0 26px rgba(245,158,11,.38),inset 0 2px 4px rgba(255,255,255,.6);
+}
+.ch5-prize-icon svg{width:58%;height:58%}
+.ch5-prize-copy{display:flex;flex-direction:column;gap:4px;min-width:0}
+.ch5-prize-label{
+  font:900 clamp(9px,.9cqw,12px) 'Plus Jakarta Sans',sans-serif;
+  color:var(--fui-brass-hi);
+  letter-spacing:.18em;
+  text-transform:uppercase;
+}
+.ch5-prize-copy strong{
+  color:#fde68a;
+  font-size:clamp(16px,1.8cqw,24px);
+  line-height:1.45;
+}
+.ch5-prize-copy p{
+  margin:0!important;
+  color:var(--fui-parchment-dim)!important;
+  font-size:clamp(11px,1.15cqw,15px)!important;
+  line-height:1.8!important;
+}
+.ch5-victory-hint{
+  margin:0!important;
+  padding-left:12px;
+  border-left:2px solid rgba(246,214,138,.36);
+  color:var(--fui-parchment-dim)!important;
+  font-size:clamp(11px,1.1cqw,15px)!important;
+  line-height:1.8!important;
+}
+.ch5-victory-actions{justify-content:flex-end;gap:12px}
+
+/* --------------------------------------------------- chapter 5 end card */
+.ch5-end-card{
+  width:min(92%,780px);
+  max-height:86vh;
+  overflow:auto;
+  gap:clamp(18px,2.4cqw,28px);
+  padding:4px;
+}
+.ch5-end-panel{
+  display:flex;
+  align-items:center;
+  gap:clamp(20px,3cqw,38px);
+  width:100%;
+  padding:clamp(20px,2.8cqw,36px) clamp(22px,3.4cqw,46px);
+  border:1.5px solid rgba(246,214,138,.42);
+  border-radius:18px;
+  background:linear-gradient(180deg,rgba(26,19,12,.94),rgba(10,8,6,.97));
+  box-shadow:0 30px 90px rgba(0,0,0,.78),inset 0 1px 0 rgba(255,235,190,.15);
+  text-align:left;
+}
+.ch5-end-portrait{
+  flex:0 0 auto;
+  display:grid;
+  place-items:center;
+  width:clamp(112px,14cqw,168px);
+  height:clamp(112px,14cqw,168px);
+  overflow:hidden;
+  border-radius:50%;
+  background:radial-gradient(circle at 42% 32%,#fdf6e3,#efdfba 58%,#d4bd8d 100%);
+  border:3px solid rgba(251,191,36,.72);
+  box-shadow:0 0 0 6px rgba(245,158,11,.1),0 18px 40px rgba(0,0,0,.5),inset 0 2px 8px rgba(255,255,255,.8);
+}
+.ch5-end-portrait img{
+  width:84%;
+  height:84%;
+  object-fit:contain;
+  filter:contrast(1.05);
+}
+.ch5-end-copy{display:flex;flex-direction:column;gap:8px;min-width:0}
+.ch5-end-kicker{
+  font:900 clamp(10px,1cqw,13px) 'Plus Jakarta Sans',sans-serif;
+  color:var(--fui-brass-hi);
+  letter-spacing:.18em;
+  text-transform:uppercase;
+}
+.ch5-end-card .ch5-end-title{
+  margin:0;
+  font-family:'Cormorant Upright',Georgia,serif;
+  font-size:clamp(26px,4cqw,50px);
+  line-height:1.12;
+  letter-spacing:.04em;
+  color:#fbbf24;
+  text-shadow:0 2px 18px rgba(251,191,36,.35);
+}
+.ch5-end-card .ch5-end-sub{
+  margin:0;
+  color:#fde68a;
+  font-size:clamp(14px,1.6cqw,21px);
+  font-weight:800;
+  letter-spacing:.04em;
+}
+.ch5-end-note{
+  margin:2px 0 0;
+  color:var(--fui-parchment-dim);
+  font-size:clamp(11px,1.15cqw,15px);
+  line-height:1.85;
+}
+.ch5-end-actions{justify-content:center;gap:14px}
+
+@media (max-width:760px){
+  .ch5-end-panel{flex-direction:column;text-align:center}
+  .ch5-end-copy{align-items:center}
+  .ch5-victory-actions{justify-content:center}
 }

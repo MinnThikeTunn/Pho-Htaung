@@ -137,6 +137,20 @@ export const TWIST_STRINGS = {
   ugyiStrikeLine: 'ဟားဟားဟား! ငါ့စကားကို တကယ်ယုံလိုက်တာလား ဖိုးထောင်ရေ!',
   typewriterReveal: 'တကယ်တော့ ဒါက ရွှေမြို့တော် မဟုတ်ဘူးဟေ့... ရွှေမြို့တော်က အဝေးကြီး ထပ်သွားရဦးမှာ! ငါက မင်းကို သက်သက် လှည့်စားပြီး စတာကွ...',
   laughCue: 'ဟား ဟား ဟား ဟား!',
-  endCardTitle: 'To Be Continued in Chapter 6',
-  endCardSub: 'ဟား ဟား ဟား ဟား',
+
+  // Post-quiz victory panel
+  victoryKicker: 'မေးခွန်း ၂၀ / ၂၀ · အောင်ပွဲ',
+  victoryTitle: 'ဉာဏ်စမ်းစိန်ခေါ်မှု အောင်မြင်ပြီ',
+  victoryPrizeLabel: 'ဆုလာဘ်',
+  victoryPrizeTitle: 'ရွှေမြို့တော်တံခါးဖွင့် ရွှေသော့',
+  victoryPrizeNote: 'ရွှေသော့ကို အသုံးပြုပြီး ရွှေသေတ္တာကို ဖွင့်နိုင်ပါပြီ။',
+  victoryChestNote: 'ဦးကြီးက ရွှေသေတ္တာဆီ လိုက်ပို့ပေးမည်ဟု ပြောသည်။',
+  victoryButton: 'ရွှေသေတ္တာဆီ သွားမယ်',
+
+  // End card
+  endCardKicker: 'အခန်း ၅ · ဇာတ်သိမ်း',
+  endCardTitle: 'Act I - Completed',
+  endCardSub: 'ပထမပိုင်း ပြီးဆုံးပါပြီ',
+  endCardNote: 'ဖိုးထောင်၏ ရှေးဟောင်းနန်းတော် စွန့်စားခန်း ရှေ့ဆက်ရန် ကျန်ရှိသေးသည်။',
+  endCardImageAlt: 'Trollface — ဦးကြီး၏ လှည့်စားသော အပြုံး',
 } as const;

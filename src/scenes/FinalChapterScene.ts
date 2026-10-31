@@ -68,13 +68,18 @@ export default class FinalChapterScene extends Phaser.Scene {
   private ugyiWeaponPull = 0;
   private escortSmileTimer = 0;
   private escortLineShown = false;
+  private keyLerp = 0;
+  private keyTurn = 0;
 
   // Visuals
   private hero!: ReturnType<typeof createPhoe>;
   private ugyiSprite!: Phaser.GameObjects.Image;
   private ugyiHpLabel!: Phaser.GameObjects.Text;
   private treasureContainer!: Phaser.GameObjects.Container;
+  private treasureChestGroup!: Phaser.GameObjects.Container;
   private treasureLid!: Phaser.GameObjects.Container;
+  private treasureLidOpen!: Phaser.GameObjects.Image;
+  private treasureInterior!: Phaser.GameObjects.Container;
   private treasureGlow!: Phaser.GameObjects.Graphics;
   private goldenKeySprite!: Phaser.GameObjects.Graphics;
   private fxG!: Phaser.GameObjects.Graphics;
@@ -142,6 +147,8 @@ export default class FinalChapterScene extends Phaser.Scene {
     this.ugyiWeaponPull = 0;
     this.escortSmileTimer = 0;
     this.escortLineShown = false;
+    this.keyLerp = 0;
+    this.keyTurn = 0;
     this.playerX = F5.spawnX;
     this.playerFacing = 1;
     this.playerControl = 'IDLE';
@@ -248,196 +255,452 @@ export default class FinalChapterScene extends Phaser.Scene {
     }
   }
 
+  private paintChestTexture(
+    key: string,
+    width: number,
+    height: number,
+    paint: (ctx: CanvasRenderingContext2D) => void
+  ) {
+    if (this.textures.exists(key)) return;
+    const texture = this.textures.createCanvas(key, width, height);
+    if (!texture) return;
+    const ctx = texture.getContext();
+    ctx.clearRect(0, 0, width, height);
+    paint(ctx);
+    texture.refresh();
+  }
+
+  private paintChestBodyTexture() {
+    this.paintChestTexture('ch5-chest-body', 88, 52, (ctx) => {
+      const W = 88;
+      const H = 52;
+
+      // Painted teak base, lit from the upper right
+      const base = ctx.createLinearGradient(0, 0, 0, H);
+      base.addColorStop(0, '#5b3a21');
+      base.addColorStop(.45, '#452a16');
+      base.addColorStop(1, '#2a170b');
+      ctx.fillStyle = base;
+      ctx.fillRect(0, 0, W, H);
+
+      // Loose painterly brushwork (the low resolution softens it when scaled)
+      const palette = ['#6b4728', '#3a2312', '#7c512c', '#2c190c', '#8a5c33'];
+      for (let i = 0; i < 240; i++) {
+        ctx.globalAlpha = 0.05 + Math.random() * 0.13;
+        ctx.fillStyle = palette[Math.floor(Math.random() * palette.length)]!;
+        ctx.fillRect(
+          Math.random() * W,
+          Math.random() * H,
+          2 + Math.random() * 11,
+          1 + Math.random() * 3
+        );
+      }
+      ctx.globalAlpha = 1;
+
+      // Horizontal plank seams
+      ctx.strokeStyle = 'rgba(20, 10, 4, .55)';
+      ctx.lineWidth = 1;
+      for (const y of [15, 28, 41]) {
+        ctx.beginPath();
+        ctx.moveTo(1, y + .5);
+        ctx.lineTo(W - 1, y + .5);
+        ctx.stroke();
+      }
+
+      // Top rim catching the light
+      const rim = ctx.createLinearGradient(0, 0, 0, 7);
+      rim.addColorStop(0, '#a97843');
+      rim.addColorStop(1, '#5c3a20');
+      ctx.fillStyle = rim;
+      ctx.fillRect(1, 0, W - 2, 7);
+      ctx.fillStyle = 'rgba(255, 226, 168, .5)';
+      ctx.fillRect(2, 1, W - 4, 1.5);
+
+      // Side shading for a rounded, three-dimensional body
+      const side = ctx.createLinearGradient(0, 0, W, 0);
+      side.addColorStop(0, 'rgba(8, 4, 2, .58)');
+      side.addColorStop(.16, 'rgba(8, 4, 2, .08)');
+      side.addColorStop(.72, 'rgba(255, 220, 160, .05)');
+      side.addColorStop(1, 'rgba(255, 220, 160, .24)');
+      ctx.fillStyle = side;
+      ctx.fillRect(0, 0, W, H);
+
+      // Soft bottom occlusion
+      const foot = ctx.createLinearGradient(0, H - 10, 0, H);
+      foot.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      foot.addColorStop(1, 'rgba(0, 0, 0, .45)');
+      ctx.fillStyle = foot;
+      ctx.fillRect(0, H - 10, W, 10);
+
+      const strap = (x: number) => {
+        const brass = ctx.createLinearGradient(x, 0, x + 8, 0);
+        brass.addColorStop(0, '#7c4a12');
+        brass.addColorStop(.38, '#e3a63a');
+        brass.addColorStop(.62, '#f7d47a');
+        brass.addColorStop(1, '#8a5418');
+        ctx.fillStyle = brass;
+        ctx.fillRect(x, 3, 8, H - 7);
+        ctx.strokeStyle = 'rgba(32, 17, 5, .85)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + .5, 3.5, 7, H - 8);
+        for (let y = 11; y < H - 5; y += 11) {
+          ctx.fillStyle = '#2a1608';
+          ctx.beginPath();
+          ctx.arc(x + 4, y, 1.6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = 'rgba(255, 245, 200, .9)';
+          ctx.beginPath();
+          ctx.arc(x + 3.5, y - .5, .7, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      };
+      strap(12);
+      strap(68);
+
+      // Corner brass brackets
+      ctx.fillStyle = '#b9781f';
+      ctx.beginPath();
+      ctx.moveTo(1, H - 1);
+      ctx.lineTo(15, H - 1);
+      ctx.lineTo(1, H - 13);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(W - 1, H - 1);
+      ctx.lineTo(W - 15, H - 1);
+      ctx.lineTo(W - 1, H - 13);
+      ctx.closePath();
+      ctx.fill();
+
+      // Ornate lock plate
+      const lockX = 32;
+      const lockY = 25;
+      const lock = ctx.createLinearGradient(lockX, lockY, lockX, lockY + 22);
+      lock.addColorStop(0, '#f6cf72');
+      lock.addColorStop(.5, '#d99a2e');
+      lock.addColorStop(1, '#8c5616');
+      ctx.fillStyle = '#3a2009';
+      ctx.fillRect(lockX - 2, lockY - 2, 28, 25);
+      ctx.fillStyle = lock;
+      ctx.fillRect(lockX, lockY, 24, 21);
+      ctx.strokeStyle = 'rgba(38, 20, 6, .9)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(lockX + .5, lockY + .5, 23, 20);
+      ctx.fillStyle = 'rgba(255, 244, 200, .75)';
+      ctx.fillRect(lockX + 3, lockY + 2, 18, 2);
+      ctx.fillStyle = '#1b0d04';
+      ctx.beginPath();
+      ctx.arc(lockX + 12, lockY + 8, 2.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(lockX + 10, lockY + 9);
+      ctx.lineTo(lockX + 14, lockY + 9);
+      ctx.lineTo(lockX + 12.5, lockY + 16);
+      ctx.lineTo(lockX + 11.5, lockY + 16);
+      ctx.closePath();
+      ctx.fill();
+    });
+  }
+
+  private paintChestLidTexture() {
+    this.paintChestTexture('ch5-chest-lid', 104, 38, (ctx) => {
+      const W = 104;
+      const H = 38;
+      const dome = () => {
+        ctx.beginPath();
+        ctx.moveTo(1, H);
+        ctx.lineTo(1, 19);
+        ctx.quadraticCurveTo(1, 1, 22, 1);
+        ctx.lineTo(W - 22, 1);
+        ctx.quadraticCurveTo(W - 1, 1, W - 1, 19);
+        ctx.lineTo(W - 1, H);
+        ctx.closePath();
+      };
+
+      dome();
+      const base = ctx.createLinearGradient(0, 0, 0, H);
+      base.addColorStop(0, '#77502c');
+      base.addColorStop(.55, '#4c2e18');
+      base.addColorStop(1, '#2b170a');
+      ctx.fillStyle = base;
+      ctx.fill();
+
+      ctx.save();
+      dome();
+      ctx.clip();
+      const palette = ['#8a5c33', '#3c2412', '#6c4725', '#28150a'];
+      for (let i = 0; i < 170; i++) {
+        ctx.globalAlpha = 0.05 + Math.random() * 0.12;
+        ctx.fillStyle = palette[Math.floor(Math.random() * palette.length)]!;
+        ctx.fillRect(
+          Math.random() * W,
+          Math.random() * H,
+          2 + Math.random() * 12,
+          1 + Math.random() * 3
+        );
+      }
+      ctx.globalAlpha = 1;
+
+      // Domed top light
+      const sheen = ctx.createLinearGradient(0, 1, 0, 17);
+      sheen.addColorStop(0, 'rgba(255, 220, 160, .3)');
+      sheen.addColorStop(1, 'rgba(255, 220, 160, 0)');
+      ctx.fillStyle = sheen;
+      ctx.fillRect(0, 1, W, 16);
+
+      // Side shading
+      const side = ctx.createLinearGradient(0, 0, W, 0);
+      side.addColorStop(0, 'rgba(0, 0, 0, .5)');
+      side.addColorStop(.18, 'rgba(0, 0, 0, .05)');
+      side.addColorStop(.8, 'rgba(255, 220, 160, .06)');
+      side.addColorStop(1, 'rgba(255, 220, 160, .22)');
+      ctx.fillStyle = side;
+      ctx.fillRect(0, 0, W, H);
+
+      const strap = (x: number) => {
+        const brass = ctx.createLinearGradient(x, 0, x + 8, 0);
+        brass.addColorStop(0, '#7c4a12');
+        brass.addColorStop(.4, '#e3a63a');
+        brass.addColorStop(.62, '#f7d47a');
+        brass.addColorStop(1, '#8a5418');
+        ctx.fillStyle = brass;
+        ctx.fillRect(x, 3, 8, H - 3);
+        ctx.strokeStyle = 'rgba(32, 17, 5, .8)';
+        ctx.strokeRect(x + .5, 3.5, 7, H - 4);
+        for (let y = 11; y < H - 3; y += 10) {
+          ctx.fillStyle = '#2a1608';
+          ctx.beginPath();
+          ctx.arc(x + 4, y, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      };
+      strap(25);
+      strap(71);
+      ctx.restore();
+
+      // Bright front lip that meets the body
+      const lip = ctx.createLinearGradient(0, H - 8, 0, H);
+      lip.addColorStop(0, '#f4cf76');
+      lip.addColorStop(.45, '#c78a2b');
+      lip.addColorStop(1, '#6f430f');
+      ctx.fillStyle = lip;
+      ctx.fillRect(1, H - 8, W - 2, 7);
+      ctx.fillStyle = 'rgba(255, 246, 205, .8)';
+      ctx.fillRect(2, H - 8, W - 4, 1.5);
+
+      // Small centre boss
+      ctx.fillStyle = '#8a5418';
+      ctx.beginPath();
+      ctx.arc(W / 2, 17, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#f3c964';
+      ctx.beginPath();
+      ctx.arc(W / 2, 17, 4.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#a56a19';
+      ctx.beginPath();
+      ctx.arc(W / 2, 17, 2, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  private paintChestLidOpenTexture() {
+    this.paintChestTexture('ch5-chest-lid-open', 100, 44, (ctx) => {
+      const W = 100;
+      const H = 44;
+      const dome = () => {
+        ctx.beginPath();
+        ctx.moveTo(1, H);
+        ctx.lineTo(1, 22);
+        ctx.quadraticCurveTo(1, 1, 22, 1);
+        ctx.lineTo(W - 22, 1);
+        ctx.quadraticCurveTo(W - 1, 1, W - 1, 22);
+        ctx.lineTo(W - 1, H);
+        ctx.closePath();
+      };
+
+      dome();
+      const inner = ctx.createLinearGradient(0, 0, 0, H);
+      inner.addColorStop(0, '#3b2412');
+      inner.addColorStop(.5, '#27150a');
+      inner.addColorStop(1, '#150b04');
+      ctx.fillStyle = inner;
+      ctx.fill();
+
+      ctx.save();
+      dome();
+      ctx.clip();
+      // Inner planks and brushed shadow
+      ctx.strokeStyle = 'rgba(120, 82, 46, .32)';
+      ctx.lineWidth = 1;
+      for (let x = 12; x < W; x += 13) {
+        ctx.beginPath();
+        ctx.moveTo(x + .5, 4);
+        ctx.lineTo(x + .5, H);
+        ctx.stroke();
+      }
+      const shade = ctx.createLinearGradient(0, 0, W, 0);
+      shade.addColorStop(0, 'rgba(0, 0, 0, .45)');
+      shade.addColorStop(.5, 'rgba(0, 0, 0, .05)');
+      shade.addColorStop(1, 'rgba(0, 0, 0, .4)');
+      ctx.fillStyle = shade;
+      ctx.fillRect(0, 0, W, H);
+
+      const strap = (x: number) => {
+        const brass = ctx.createLinearGradient(x, 0, x + 7, 0);
+        brass.addColorStop(0, '#6d400f');
+        brass.addColorStop(.5, '#b67a22');
+        brass.addColorStop(1, '#6a3d0e');
+        ctx.fillStyle = brass;
+        ctx.fillRect(x, 4, 7, H - 4);
+      };
+      strap(20);
+      strap(73);
+      ctx.restore();
+
+      // Highlighted inner lip
+      ctx.fillStyle = '#d9a13c';
+      ctx.fillRect(1, H - 5, W - 2, 4);
+      ctx.fillStyle = 'rgba(255, 232, 166, .85)';
+      ctx.fillRect(2, H - 5, W - 4, 1.2);
+    });
+  }
+
   private createTreasureChest() {
+    this.paintChestBodyTexture();
+    this.paintChestLidTexture();
+    this.paintChestLidOpenTexture();
+
+    const CHEST_SCALE = 1.2;
+    const BODY_H = 52 * CHEST_SCALE;
+    const CHEST_FLOAT_Y = -16;
+
     // Ground anchor at VISUAL_GROUND_Y (576px)
     this.treasureContainer = this.add.container(F5.treasureX, VISUAL_GROUND_Y).setDepth(16);
     this.treasureContainer.setVisible(false);
 
-    // 1. Warm floor glow + soft vault light behind the chest
+    // 1. Warm floor aura that breathes under the floating chest
     const auraG = this.add.graphics();
-    auraG.fillStyle(0xf59e0b, 0.26);
-    auraG.fillEllipse(0, 2, 250, 26);
-    auraG.fillStyle(0xfef08a, 0.18);
-    auraG.fillEllipse(0, 0, 150, 16);
-    auraG.fillGradientStyle(0xfde047, 0xfacc15, 0xca8a04, 0x854d0e, 0.1, 0.07, 0, 0);
-    auraG.fillTriangle(-72, -300, 86, -300, 0, 0);
+    auraG.fillStyle(0xf59e0b, 0.2);
+    auraG.fillEllipse(0, 0, 152, 20);
+    auraG.fillStyle(0xfef08a, 0.14);
+    auraG.fillEllipse(0, -1, 88, 12);
+    auraG.fillGradientStyle(0xfde047, 0xfacc15, 0xca8a04, 0x854d0e, 0.08, 0.05, 0, 0);
+    auraG.fillTriangle(-46, -190, 52, -190, 0, 0);
 
     this.tweens.add({
       targets: auraG,
-      alpha: 0.62,
-      scaleX: 1.05,
-      duration: 1900,
+      alpha: 0.55,
+      scaleX: 1.06,
+      duration: 2100,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
     });
 
-    // 2. Golden light that spills out once the lid is opened
+    // 2. Separate ground shadow so the chest can bob above it
+    const shadowG = this.add.graphics();
+    shadowG.fillStyle(0x120a04, 0.5);
+    shadowG.fillEllipse(0, 2, 96, 13);
+    shadowG.fillStyle(0x120a04, 0.25);
+    shadowG.fillEllipse(0, 4, 122, 9);
+
+    // 3. The chest itself lives in a bobbing group
+    this.treasureChestGroup = this.add.container(0, CHEST_FLOAT_Y);
+
+    // Lid interior standing open behind the body
+    this.treasureLidOpen = this.add.image(0, -BODY_H, 'ch5-chest-lid-open')
+      .setOrigin(0.5, 1)
+      .setScale(CHEST_SCALE)
+      .setAlpha(0)
+      .setScale(CHEST_SCALE, 0);
+
+    // Painted low-res body, upscaled with smooth filtering
+    const body = this.add.image(0, 0, 'ch5-chest-body')
+      .setOrigin(0.5, 1)
+      .setScale(CHEST_SCALE);
+
+    // 4. Dark interior with a modest hoard and faint golden light
+    this.treasureInterior = this.add.container(0, -BODY_H + 2);
+    const interiorG = this.add.graphics();
+    interiorG.fillStyle(0x100803, 0.98);
+    interiorG.fillEllipse(0, -1, 76, 16);
+    interiorG.fillGradientStyle(0x2a1709, 0x2a1709, 0x0c0602, 0x0c0602, 0.95, 0.95, 0.98, 0.98);
+    interiorG.fillRoundedRect(-38, -10, 76, 13, 5);
+    interiorG.fillStyle(0x3a2412, 0.8);
+    interiorG.fillEllipse(0, -9, 58, 6);
+
+    const coinAt = (cx: number, cy: number, r: number, bright = false) => {
+      interiorG.fillStyle(0xb9781f, 1);
+      interiorG.fillEllipse(cx, cy + 1, r * 2, r * 1.25);
+      interiorG.fillStyle(bright ? 0xfff3ad : 0xf2c14e, 1);
+      interiorG.fillEllipse(cx, cy, r * 1.85, r * 1.05);
+      interiorG.fillStyle(0xfffbdc, 0.85);
+      interiorG.fillEllipse(cx - r * 0.3, cy - r * 0.25, r * 0.7, r * 0.35);
+    };
+    coinAt(-20, -4, 3.2);
+    coinAt(-12, -7, 2.7, true);
+    coinAt(-5, -3, 3.4);
+    coinAt(3, -8, 2.9);
+    coinAt(11, -4, 3.1, true);
+    coinAt(19, -6, 2.6);
+    coinAt(-27, -7, 2.3);
+
+    // A couple of small painted gems
+    const gem = (gx: number, gy: number, color: number) => {
+      interiorG.fillStyle(color, 1);
+      interiorG.fillTriangle(gx - 3, gy + 1, gx + 3, gy + 1, gx, gy - 4);
+      interiorG.fillStyle(0xffffff, 0.45);
+      interiorG.fillTriangle(gx - 1.5, gy, gx + .5, gy, gx - .4, gy - 2.4);
+    };
+    gem(-9, -11, 0xef4444);
+    gem(8, -12, 0x38bdf8);
+    gem(16, -10, 0x22c55e);
+
+    interiorG.fillStyle(0xffe9a8, 0.18);
+    interiorG.fillEllipse(0, -8, 56, 10);
+
+    this.treasureInterior.add(interiorG);
+    this.treasureInterior.setAlpha(0);
+    this.treasureInterior.setScale(1, 0.45);
+
+    // 5. Closed lid on a hinge at the back lip of the body
+    this.treasureLid = this.add.container(0, -BODY_H);
+    const lid = this.add.image(0, 0, 'ch5-chest-lid')
+      .setOrigin(0.5, 1)
+      .setScale(CHEST_SCALE);
+    this.treasureLid.add(lid);
+
+    // 6. Faint golden light that rises out once the lid is opened
     const innerGlowG = this.add.graphics();
     this.treasureGlow = innerGlowG;
     innerGlowG.setAlpha(0);
-    innerGlowG.fillGradientStyle(0xfff9c4, 0xfde047, 0xf59e0b, 0xca8a04, 0.95, 0.9, 0.55, 0.2);
-    innerGlowG.fillTriangle(-78, -86, 78, -86, 0, -236);
-    innerGlowG.fillStyle(0xfffbeb, 0.9);
-    innerGlowG.fillEllipse(0, -86, 156, 20);
+    innerGlowG.fillGradientStyle(0xfff9c4, 0xfde047, 0xf59e0b, 0xca8a04, 0.02, 0.02, 0.32, 0.12);
+    innerGlowG.fillTriangle(-34, -BODY_H - 1, 34, -BODY_H - 1, 0, -BODY_H - 96);
+    innerGlowG.fillStyle(0xfff4c2, 0.2);
+    innerGlowG.fillEllipse(0, -BODY_H - 2, 70, 10);
+    innerGlowG.fillStyle(0xfffbeb, 0.28);
+    innerGlowG.fillEllipse(0, -BODY_H - 5, 34, 6);
 
-    // 3. Chest body (teakwood + brass)
-    const bodyG = this.add.graphics();
-    const halfW = 95;
-    const bodyTop = -88;
-    const bodyH = 88;
+    this.treasureChestGroup.add([
+      this.treasureLidOpen,
+      body,
+      this.treasureInterior,
+      this.treasureLid,
+      innerGlowG,
+    ]);
 
-    // Soft contact shadow
-    bodyG.fillStyle(0x120a04, 0.62);
-    bodyG.fillEllipse(0, 2, 220, 24);
-
-    // Body silhouette
-    bodyG.fillStyle(0x2a1608, 1);
-    bodyG.fillRoundedRect(-halfW, bodyTop, halfW * 2, bodyH, { tl: 8, tr: 8, bl: 10, br: 10 });
-    bodyG.lineStyle(2.5, 0x120803, 1);
-    bodyG.strokeRoundedRect(-halfW, bodyTop, halfW * 2, bodyH, { tl: 8, tr: 8, bl: 10, br: 10 });
-
-    // Teak planks
-    bodyG.fillStyle(0x3d2110, 1);
-    bodyG.fillRect(-halfW + 2, bodyTop + 16, halfW * 2 - 4, 18);
-    bodyG.fillRect(-halfW + 2, bodyTop + 50, halfW * 2 - 4, 18);
-    bodyG.lineStyle(1.5, 0x1a0d05, 0.9);
-    for (const y of [bodyTop + 16, bodyTop + 34, bodyTop + 50, bodyTop + 68]) {
-      bodyG.lineBetween(-halfW + 2, y, halfW - 2, y);
-    }
-    bodyG.lineStyle(1, 0x5b3318, 0.5);
-    for (const y of [bodyTop + 18, bodyTop + 36, bodyTop + 52, bodyTop + 70]) {
-      bodyG.lineBetween(-halfW + 2, y, halfW - 2, y);
-    }
-    // Wood grain
-    bodyG.lineStyle(1, 0x160b04, 0.35);
-    bodyG.lineBetween(-halfW + 14, bodyTop + 22, halfW - 30, bodyTop + 22);
-    bodyG.lineBetween(-halfW + 24, bodyTop + 58, halfW - 18, bodyTop + 58);
-
-    // Brass straps
-    const drawStrap = (sx: number, top: number, h: number) => {
-      bodyG.fillStyle(0x92400e, 1);
-      bodyG.fillRect(sx - 8, top, 16, h);
-      bodyG.fillStyle(0xf59e0b, 1);
-      bodyG.fillRect(sx - 6, top, 12, h);
-      bodyG.fillStyle(0xfef08a, 0.85);
-      bodyG.fillRect(sx - 4, top, 3, h);
-      bodyG.lineStyle(1, 0x1a0e05, 0.85);
-      bodyG.strokeRect(sx - 8, top, 16, h);
-      for (let ry = top + 12; ry < top + h; ry += 18) {
-        bodyG.fillStyle(0x1a0e05, 1);
-        bodyG.fillCircle(sx, ry, 2.6);
-        bodyG.fillStyle(0xfef08a, 1);
-        bodyG.fillCircle(sx - 0.4, ry - 0.4, 1.7);
-      }
-    };
-    drawStrap(-58, bodyTop + 2, bodyH - 4);
-    drawStrap(58, bodyTop + 2, bodyH - 4);
-
-    // Corner brass brackets
-    bodyG.fillStyle(0xf59e0b, 1);
-    bodyG.fillTriangle(-halfW, 0, -halfW + 24, 0, -halfW, -24);
-    bodyG.fillTriangle(halfW, 0, halfW - 24, 0, halfW, -24);
-    bodyG.fillStyle(0xfef08a, 0.7);
-    bodyG.fillTriangle(-halfW, 0, -halfW + 10, 0, -halfW, -10);
-    bodyG.fillTriangle(halfW, 0, halfW - 10, 0, halfW, -10);
-
-    // Ornate lock plate
-    const lockY = bodyTop + 34;
-    bodyG.fillStyle(0x78350f, 1);
-    bodyG.fillRoundedRect(-22, lockY - 16, 44, 40, 5);
-    bodyG.fillStyle(0xf59e0b, 1);
-    bodyG.fillRoundedRect(-19, lockY - 13, 38, 34, 4);
-    bodyG.fillStyle(0xfef08a, 0.9);
-    bodyG.fillRoundedRect(-15, lockY - 10, 30, 6, 2);
-    bodyG.lineStyle(1.5, 0x1f1105, 1);
-    bodyG.strokeRoundedRect(-19, lockY - 13, 38, 34, 4);
-    bodyG.fillStyle(0x0c0703, 1);
-    bodyG.fillCircle(0, lockY + 3, 4.5);
-    bodyG.fillTriangle(-3, lockY + 3, 3, lockY + 3, 0, lockY + 14);
-
-    // 4. Domed lid on its own pivot so it can swing open
-    this.treasureLid = this.add.container(0, bodyTop + 4);
-    const lidG = this.add.graphics();
-    lidG.fillStyle(0x1c0f06, 0.55);
-    lidG.fillRoundedRect(-101, -54, 202, 66, { tl: 48, tr: 48, bl: 8, br: 8 });
-    lidG.fillStyle(0x34200e, 1);
-    lidG.fillRoundedRect(-98, -58, 196, 64, { tl: 46, tr: 46, bl: 7, br: 7 });
-    lidG.lineStyle(2.5, 0x120803, 1);
-    lidG.strokeRoundedRect(-98, -58, 196, 64, { tl: 46, tr: 46, bl: 7, br: 7 });
-
-    // Lid panel highlight
-    lidG.fillStyle(0x4b2d14, 1);
-    lidG.fillRoundedRect(-88, -50, 176, 22, { tl: 40, tr: 40, bl: 0, br: 0 });
-    lidG.fillStyle(0x6b4422, 0.55);
-    lidG.fillRoundedRect(-74, -46, 140, 8, 4);
-
-    // Brass rim across the lid mouth
-    lidG.fillStyle(0x92400e, 1);
-    lidG.fillRect(-98, -6, 196, 10);
-    lidG.fillStyle(0xf59e0b, 1);
-    lidG.fillRect(-96, -4, 192, 6);
-    lidG.fillStyle(0xfef08a, 0.8);
-    lidG.fillRect(-92, -3, 184, 2);
-
-    // Lid straps
-    const drawLidStrap = (sx: number) => {
-      lidG.fillStyle(0xb45309, 1);
-      lidG.fillRect(sx - 8, -58, 16, 60);
-      lidG.fillStyle(0xf59e0b, 1);
-      lidG.fillRect(sx - 6, -58, 12, 60);
-      lidG.fillStyle(0xfef08a, 0.8);
-      lidG.fillRect(sx - 4, -58, 3, 60);
-      lidG.lineStyle(1, 0x1a0e05, 0.8);
-      lidG.strokeRect(sx - 8, -58, 16, 60);
-      for (let ry = -48; ry < 0; ry += 16) {
-        lidG.fillStyle(0x1a0e05, 1);
-        lidG.fillCircle(sx, ry, 2.4);
-        lidG.fillStyle(0xfef08a, 1);
-        lidG.fillCircle(sx - 0.4, ry - 0.4, 1.5);
-      }
-    };
-    drawLidStrap(-58);
-    drawLidStrap(58);
-
-    // Lid center emblem
-    lidG.fillStyle(0xfacc15, 1);
-    lidG.fillCircle(0, -30, 13);
-    lidG.fillStyle(0xb45309, 1);
-    lidG.fillCircle(0, -30, 9);
-    lidG.fillStyle(0xfde047, 1);
-    lidG.fillCircle(0, -30, 6);
-
-    this.treasureLid.add(lidG);
-
-    // 5. Animated sparkles to sell the "shiny" look
-    const glintsG = this.add.graphics();
-    const drawGlint = (gx: number, gy: number, size: number, color: number, alpha: number) => {
-      glintsG.fillStyle(color, alpha);
-      glintsG.fillTriangle(gx - size, gy, gx + size, gy, gx, gy - size * 0.16);
-      glintsG.fillTriangle(gx - size, gy, gx + size, gy, gx, gy + size * 0.16);
-      glintsG.fillTriangle(gx, gy - size, gx, gy + size, gx - size * 0.16, gy);
-      glintsG.fillTriangle(gx, gy - size, gx, gy + size, gx + size * 0.16, gy);
-      glintsG.fillStyle(0xffffff, alpha);
-      glintsG.fillCircle(gx, gy, size * 0.24);
-    };
-    drawGlint(-34, -116, 11, 0xfffbeb, 0.95);
-    drawGlint(46, -104, 8, 0xfef08a, 0.9);
-    drawGlint(84, -44, 7, 0xfff1a8, 0.85);
-    drawGlint(-82, -52, 6, 0xfff8d0, 0.8);
-    drawGlint(0, -30, 8, 0xffffff, 0.9);
-
+    // Gentle float so the chest hovers above the floor
     this.tweens.add({
-      targets: glintsG,
-      alpha: 0.4,
-      scale: 1.08,
-      duration: 820,
+      targets: this.treasureChestGroup,
+      y: CHEST_FLOAT_Y - 5,
+      duration: 1650,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
     });
 
-    this.treasureContainer.add([auraG, innerGlowG, bodyG, this.treasureLid, glintsG]);
+    this.treasureContainer.add([auraG, shadowG, this.treasureChestGroup]);
   }
 
   private setupDOM() {
@@ -516,9 +779,18 @@ export default class FinalChapterScene extends Phaser.Scene {
         <p class="ch5-typewriter-text" id="ch5-typewriter"></p>
         <h2 class="ch5-laugh-cue" id="ch5-laugh">${TWIST_STRINGS.laughCue}</h2>
         <div class="ch5-end-card" id="ch5-end-card">
-          <h1 class="ch5-end-title">${TWIST_STRINGS.endCardTitle}</h1>
-          <p class="ch5-end-sub">${TWIST_STRINGS.endCardSub}</p>
-          <div class="actions">
+          <div class="ch5-end-panel">
+            <div class="ch5-end-portrait">
+              <img src="/assets/chapter5/trollface.png" alt="${TWIST_STRINGS.endCardImageAlt}" />
+            </div>
+            <div class="ch5-end-copy">
+              <span class="ch5-end-kicker">${TWIST_STRINGS.endCardKicker}</span>
+              <h1 class="ch5-end-title">${TWIST_STRINGS.endCardTitle}</h1>
+              <p class="ch5-end-sub">${TWIST_STRINGS.endCardSub}</p>
+              <p class="ch5-end-note">${TWIST_STRINGS.endCardNote}</p>
+            </div>
+          </div>
+          <div class="actions ch5-end-actions">
             <button type="button" id="btn-replay-ch5" class="primary">အခန်း ၅ ပြန်ကစားမယ်</button>
             <button type="button" id="btn-menu-ch5" class="secondary">ပင်မစာမျက်နှာ</button>
           </div>
@@ -1075,14 +1347,29 @@ export default class FinalChapterScene extends Phaser.Scene {
     if (modal) {
       modal.hidden = false;
       modal.innerHTML = `
-        <section class="dialog" style="text-align:center;">
-          <span class="eyebrow" style="color:#fbbf24;">ဂုဏ်ယူပါသည် · အောင်ပွဲရပြီ</span>
-          <h2 style="color:#fde047;">🎉 မေးခွန်း ၂၀ စလုံး အောင်မြင်သည်!</h2>
-          <p style="font-size:16px;line-height:2;">${TWIST_STRINGS.ugyiVictoryPrize}</p>
-          <div style="font-size:42px;margin:14px 0;">🗝️✨</div>
-          <p style="color:#fde68a;">ရွှေမြို့တော်တံခါးဖွင့် ရွှေသော့နဲ့အတူ ရွှေသေတ္တာကြီးကို ဆုလာဘ်အဖြစ် ရရှိပါပြီ!</p>
-          <div class="actions" style="justify-content:center;margin-top:16px;">
-            <button type="button" id="btn-take-treasure" class="primary">ရွှေသေတ္တာကြီးဆီ သွားကြည့်မယ်</button>
+        <section class="dialog ch5-victory-panel" aria-labelledby="ch5-victory-title">
+          <header class="ch5-victory-head">
+            <span class="ch5-victory-kicker">${TWIST_STRINGS.victoryKicker}</span>
+            <h2 class="ch5-victory-title" id="ch5-victory-title">${TWIST_STRINGS.victoryTitle}</h2>
+            <p class="ch5-victory-lead">${TWIST_STRINGS.ugyiVictoryPrize}</p>
+          </header>
+          <div class="ch5-prize-card">
+            <span class="ch5-prize-icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48" role="presentation" focusable="false">
+                <circle cx="15" cy="15" r="8.5" fill="none" stroke="currentColor" stroke-width="3" />
+                <path d="M21.5 21.5 L38 38" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" />
+                <path d="M31 31 L36 26 M36.5 36.5 L41.5 31.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" />
+              </svg>
+            </span>
+            <div class="ch5-prize-copy">
+              <span class="ch5-prize-label">${TWIST_STRINGS.victoryPrizeLabel}</span>
+              <strong>${TWIST_STRINGS.victoryPrizeTitle}</strong>
+              <p>${TWIST_STRINGS.victoryPrizeNote}</p>
+            </div>
+          </div>
+          <p class="ch5-victory-hint">${TWIST_STRINGS.victoryChestNote}</p>
+          <div class="actions ch5-victory-actions">
+            <button type="button" id="btn-take-treasure" class="primary">${TWIST_STRINGS.victoryButton}</button>
           </div>
         </section>
       `;
@@ -1097,10 +1384,12 @@ export default class FinalChapterScene extends Phaser.Scene {
   private startBaitWalkPhase() {
     if (this.phase !== 'VICTORY_KEY') return;
     this.phase = 'BAIT_WALK';
+    this.keyLerp = 0;
+    this.keyTurn = 0;
     this.treasureRevealed = true;
     this.treasureContainer.setVisible(true);
     this.treasureContainer.setAlpha(0);
-    this.treasureContainer.setScale(0.72);
+    this.treasureContainer.setScale(0.82);
 
     // Chest reveal: bounces up from the floor with a warm golden pop
     this.tweens.add({
@@ -1148,7 +1437,8 @@ export default class FinalChapterScene extends Phaser.Scene {
     if (this.phase !== 'BAIT_WALK') return;
     this.phase = 'CHEST_OPEN';
     this.walkTargetX = null;
-    this.hasGoldenKey = false;
+    this.keyLerp = 0;
+    this.keyTurn = 0;
 
     // Pho Htaung steps to the chest and crouches down to work the lock
     this.playerFacing = 1;
@@ -1166,16 +1456,38 @@ export default class FinalChapterScene extends Phaser.Scene {
     // Camera pushes in slowly on the chest
     this.cameras.main.zoomTo(1.16, 900);
 
-    // Rattle the lid: Pho Htaung is taking his time with the lock
-    this.time.delayedCall(420, () => {
+    // 1. The golden key travels from Pho Htaung's hand into the lock
+    this.time.delayedCall(260, () => {
       if (this.phase !== 'CHEST_OPEN') return;
       soundEngine.playPing();
       this.tweens.add({
+        targets: this,
+        keyLerp: 1,
+        duration: 520,
+        ease: 'Sine.easeInOut',
+        onComplete: () => {
+          if (this.phase !== 'CHEST_OPEN') return;
+          this.spawnSmallSparkles(F5.treasureX, VISUAL_GROUND_Y - 48, 0xfff2a8);
+        },
+      });
+    });
+
+    // 2. Turn the key in the lock - the mechanism gives way
+    this.time.delayedCall(860, () => {
+      if (this.phase !== 'CHEST_OPEN') return;
+      soundEngine.playPing();
+      this.tweens.add({
+        targets: this,
+        keyTurn: 1,
+        duration: 360,
+        ease: 'Back.easeInOut',
+      });
+      this.tweens.add({
         targets: this.treasureLid,
-        x: 2,
-        duration: 55,
+        x: 1.5,
+        duration: 45,
         yoyo: true,
-        repeat: 9,
+        repeat: 5,
         ease: 'Sine.easeInOut',
         onComplete: () => {
           this.treasureLid.x = 0;
@@ -1183,35 +1495,44 @@ export default class FinalChapterScene extends Phaser.Scene {
       });
     });
 
-    // A second, harder tug on the old lock
-    this.time.delayedCall(980, () => {
+    // 3. The lid lifts from the lip and tips back into the open position
+    this.time.delayedCall(1320, () => {
       if (this.phase !== 'CHEST_OPEN') return;
       soundEngine.playPing();
-      this.spawnSmallSparkles(F5.treasureX - 60, VISUAL_GROUND_Y - 60, 0xffe9a8);
-    });
 
-    // Lid finally swings open and golden light floods out
-    this.time.delayedCall(1450, () => {
-      if (this.phase !== 'CHEST_OPEN') return;
-      soundEngine.playPing();
       this.tweens.add({
         targets: this.treasureLid,
-        y: -104,
-        rotation: -0.42,
-        duration: 620,
+        scaleY: 0.12,
+        y: 2,
+        alpha: 0.35,
+        duration: 380,
+        ease: 'Sine.easeIn',
+      });
+      this.tweens.add({
+        targets: this.treasureLidOpen,
+        scaleY: 1,
+        alpha: 1,
+        duration: 540,
+        ease: 'Back.easeOut',
+      });
+      this.tweens.add({
+        targets: this.treasureInterior,
+        alpha: 1,
+        scaleY: 1,
+        duration: 520,
         ease: 'Back.easeOut',
       });
       this.tweens.add({
         targets: this.treasureGlow,
-        alpha: 1,
-        duration: 700,
+        alpha: 0.78,
+        duration: 900,
         ease: 'Sine.easeOut',
       });
-      this.spawnSmallSparkles(F5.treasureX, VISUAL_GROUND_Y - 110, 0xfff9c4);
-      this.spawnSmallSparkles(F5.treasureX, VISUAL_GROUND_Y - 80, 0xfde047);
+      this.spawnSmallSparkles(F5.treasureX, VISUAL_GROUND_Y - 118, 0xfff9c4);
+      this.spawnSmallSparkles(F5.treasureX, VISUAL_GROUND_Y - 82, 0xfde047);
 
       // The moment Pho Htaung leans in, U Gyi reaches for his back
-      this.time.delayedCall(760, () => {
+      this.time.delayedCall(900, () => {
         if (this.phase !== 'CHEST_OPEN') return;
         this.triggerAmbush();
       });
@@ -1698,7 +2019,7 @@ export default class FinalChapterScene extends Phaser.Scene {
           feetY: VISUAL_GROUND_Y,
           facing: this.playerFacing,
           control: this.playerControl as any,
-          holding: this.hasGoldenKey,
+          holding: this.hasGoldenKey && this.keyLerp < 0.4,
           pushing: false,
           vx: this.playerControl === 'WALK' ? this.playerFacing * 180 : 0,
           grounded: true,
@@ -1726,26 +2047,49 @@ export default class FinalChapterScene extends Phaser.Scene {
       }
     }
 
-    // 3. Draw Golden Key in Pho Htung's hands
+    // 3. Draw the golden key - carried in hand, then turned in the chest lock
     if (this.hasGoldenKey && !this.isDead) {
-      const keyX = this.playerX + this.playerFacing * 22;
-      const keyY = VISUAL_GROUND_Y - 48;
+      const handX = this.playerX + this.playerFacing * 22;
+      const handY = VISUAL_GROUND_Y - 48;
+      const lockX = F5.treasureX - 20;
+      const lockY = VISUAL_GROUND_Y - 48;
+      const t = Phaser.Math.Easing.Sine.InOut(Phaser.Math.Clamp(this.keyLerp, 0, 1));
+      const keyX = Phaser.Math.Linear(handX, lockX, t);
+      const keyY = Phaser.Math.Linear(handY, lockY, t);
+      const rotation = Phaser.Math.Linear(0, -Math.PI / 2, t) + this.keyTurn * 0.78;
       const g = this.goldenKeySprite;
 
-      g.fillStyle(0xfde047, 1);
-      g.fillCircle(keyX, keyY, 6);
-      g.fillStyle(0x78350f, 1);
-      g.fillCircle(keyX, keyY, 3);
-      g.fillStyle(0xf59e0b, 1);
-      g.fillRect(keyX - 1, keyY + 4, 3, 14);
-      g.fillRect(keyX - 1, keyY + 14, 5, 3);
-      g.fillRect(keyX - 1, keyY + 9, 4, 2.5);
+      // Warm flare once the key reaches the lock
+      if (t > 0.55) {
+        const pulse = Math.sin(this.elapsed * 7) * 2.2;
+        g.fillStyle(0xfff3ad, 0.16);
+        g.fillCircle(lockX + 10, lockY, 16 + pulse);
+        g.fillStyle(0xfffbeb, 0.3);
+        g.fillCircle(lockX + 10, lockY, 8 + pulse * 0.5);
+      }
 
-      // Sparkling golden rays
-      const pulse = Math.sin(this.elapsed * 6) * 3;
-      g.lineStyle(1.5, 0xfffbeb, 0.85);
-      g.lineBetween(keyX - 8 - pulse, keyY, keyX + 8 + pulse, keyY);
-      g.lineBetween(keyX, keyY - 8 - pulse, keyX, keyY + 8 + pulse);
+      g.save();
+      g.translateCanvas(keyX, keyY);
+      g.rotateCanvas(rotation);
+      g.fillStyle(0xfde047, 1);
+      g.fillCircle(0, 0, 5.8);
+      g.fillStyle(0x78350f, 1);
+      g.fillCircle(0, 0, 2.8);
+      g.fillStyle(0xf59e0b, 1);
+      g.fillRect(-1.4, 4, 2.8, 15);
+      g.fillRect(-1.4, 15, 5, 3);
+      g.fillRect(-1.4, 9.5, 4, 2.4);
+      g.fillStyle(0xfff3ad, 1);
+      g.fillRect(-0.6, 5, 1.1, 12);
+      g.restore();
+
+      // Sparkling golden rays while carried
+      if (t < 0.6) {
+        const pulse = Math.sin(this.elapsed * 6) * 3;
+        g.lineStyle(1.5, 0xfffbeb, 0.85);
+        g.lineBetween(keyX - 8 - pulse, keyY, keyX + 8 + pulse, keyY);
+        g.lineBetween(keyX, keyY - 8 - pulse, keyX, keyY + 8 + pulse);
+      }
     }
 
     // 4. Draw Overhead Palace Health Bar (3 Segments) during the quiz battle only

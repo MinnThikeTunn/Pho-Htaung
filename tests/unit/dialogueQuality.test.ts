@@ -163,7 +163,8 @@ describe('Dialogue Quality & Regression Suite', () => {
 
     it('TWIST_STRINGS includes the canonical punchlines and laugh cue', () => {
       expect(TWIST_STRINGS.laughCue).toContain('ဟား');
-      expect(TWIST_STRINGS.endCardTitle).toBe('To Be Continued in Chapter 6');
+      expect(TWIST_STRINGS.endCardTitle).toBe('Act I - Completed');
+      expect(TWIST_STRINGS.endCardSub).toContain('ပထမပိုင်း');
       expect(TWIST_STRINGS.ugyiVictoryPrize).toContain('ရွှေသော့');
     });
   });
