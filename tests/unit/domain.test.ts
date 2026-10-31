@@ -41,9 +41,16 @@ describe('Chapter 1 canonical rules', () => {
     const a = active(); a.player.centerX = 160; a.stones.push(rock('r', 160, 580, true, 900)); step(a, NO_INPUT);
     expect(a.status).toBe('DEAD'); expect(a.coins).toBe(0); expect(a.events.filter(e => e.kind === 'death')).toHaveLength(1);
   });
-  it('A07: fast rock breaks gate and continues through wood', () => {
+  it('A07: falling rock does NOT break gate', () => {
     const a = active(); a.stones.push(rock('r', 1136, 350, true, 6000)); step(a, NO_INPUT);
-    expect(a.gateIntact).toBe(false); expect(a.stones[0]!.bottomY).toBeGreaterThan(360); expect(a.stones[0]!.state).toBe('FALLING');
+    expect(a.gateIntact).toBe(true);
+  });
+  it('A07b: pushing fallen rock horizontally into gate breaks it', () => {
+    const a = active();
+    a.player.centerX = 900;
+    a.stones.push(rock('r', 1000, 640, false));
+    run(a, 1.5, { right: true });
+    expect(a.gateIntact).toBe(false);
   });
   it('A08: pouch survives shelf destruction and falls to floor', () => {
     const a = active(); a.stones.push(rock('r', 896, 310, true, 1200)); run(a, 1.1);
@@ -185,7 +192,8 @@ describe('Chapter 2 enhancements (Pho-Htaung-Safe.docx specifications)', () => {
     step(a, { ...NO_INPUT, taunt: true });
     expect(a.hasCog).toBe(true);
 
-    a.player.centerX = 1104; a.player.feetY = 320;
+    a.player.centerX = 1104; a.player.feetY = 360;
+    a.player.grounded = true; a.player.support = 'wood_gate';
     step(a, { ...NO_INPUT, taunt: true }); // mount cog -> COG_MOUNTED
     step(a, { ...NO_INPUT, taunt: true }); // triggers slapstick daze when attempting with pole unlubricated
     run(a, 0.65); // recover from daze
@@ -309,7 +317,7 @@ describe('Chapter 2 Gearbox Puzzle & Slapstick mechanics', () => {
 
   it('taunt (E) lubricates with betel juice (LUBRICATED)', () => {
     const a = active();
-    a.player.centerX = 1104; a.player.feetY = 360;
+    a.player.centerX = 1060; a.player.feetY = 544;
     a.gearboxState = 'COG_MOUNTED';
     a.hasCog = true; a.hasPole = false;
     step(a, { ...NO_INPUT, taunt: true });
@@ -329,7 +337,7 @@ describe('Chapter 2 Gearbox Puzzle & Slapstick mechanics', () => {
 
   it('cranking completes to ACTIVE, sets gearBoxActive = true, and sets platformsRevealed = true', () => {
     const a = active();
-    a.player.centerX = 1104; a.player.feetY = 360;
+    a.player.centerX = 1060; a.player.feetY = 544;
     a.gearboxState = 'ARMED';
     a.hasCog = true; a.hasPole = true;
     step(a, { ...NO_INPUT, taunt: true });
@@ -343,6 +351,7 @@ describe('Chapter 2 Gearbox Puzzle & Slapstick mechanics', () => {
   it('trying to force unlubricated mechanism triggers gear_slapstick and daze without killing the player', () => {
     const a = active();
     a.player.centerX = 1104; a.player.feetY = 360;
+    a.player.grounded = true; a.player.support = 'wood_gate';
     a.gearboxState = 'COG_MOUNTED';
     a.hasCog = true; a.hasPole = true;
     step(a, { ...NO_INPUT, taunt: true });
@@ -350,5 +359,33 @@ describe('Chapter 2 Gearbox Puzzle & Slapstick mechanics', () => {
     expect(a.player.control).toBe('TAUNTING');
     expect(a.player.tauntLeft).toBe(0.6);
     expect(a.status).toBe('ACTIVE');
+  });
+
+  it('standing on door lintel (wood_gate) is SAFE to operate gearbox, but jumping into exit corridor past door triggers trap', () => {
+    const a = active();
+    // 1. Standing on top of the door is safe
+    a.player.centerX = 1104; a.player.feetY = 360;
+    a.player.grounded = true; a.player.support = 'wood_gate';
+    step(a, NO_INPUT);
+    expect(a.status).toBe('ACTIVE');
+    expect(a.doorTopTrapTriggered).toBe(false);
+
+    // 2. Jumping past the door into the exit corridor (x >= 1170) while gateIntact triggers trap
+    a.player.centerX = 1180; a.player.feetY = 360;
+    step(a, NO_INPUT);
+    expect(a.doorTopTrapTriggered).toBe(true);
+    expect(a.status).toBe('DEAD');
+    expect(a.events.some(e => e.kind === 'door_top_trap')).toBe(true);
+  });
+
+  it('exit strictly requires gateIntact to be false (cannot complete room while door is intact)', () => {
+    const a = active();
+    a.player.centerX = 1240; a.player.feetY = 640; a.player.grounded = true;
+    a.gateIntact = true;
+    step(a, NO_INPUT);
+    expect(a.status).toBe('ACTIVE');
+    a.gateIntact = false;
+    step(a, NO_INPUT);
+    expect(a.status).toBe('COMPLETE');
   });
 });

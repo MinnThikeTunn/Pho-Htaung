@@ -194,6 +194,11 @@ export function ensureBridgeTextures(scene: Phaser.Scene, bridgeLength: number =
     'ch1_vector_bridge',
     'ch1_vector_cog',
     'ch1_vector_bamboo',
+    'ch1_vector_bamboo_icon',
+    'ch1_vector_brick',
+    'ch2_vector_slingshot',
+    'ch2_steam_nozzle',
+    'ch2_vector_steam_redirector',
     'myanmar_traditional_bag'
   ];
   if (!force && sentinelKeys.every(k => textures.exists(k))) {
@@ -343,6 +348,24 @@ export function ensureBridgeTextures(scene: Phaser.Scene, bridgeLength: number =
   registerTexture('ch3_vector_slingshot', 44, 44, drawSlingshot);
   registerTexture('ch3_icon_slingshot', 44, 44, drawSlingshot);
   registerTexture('item-slingshot', 44, 44, drawSlingshot);
+
+  // Procedural Steam Nozzle & Redirector (Machinarium Brass)
+  const drawSteamNozzle = (g: Phaser.GameObjects.Graphics) => {
+    g.fillStyle(INK, 1).fillRoundedRect(4, 12, 36, 20, 3);
+    g.fillStyle(0x8a541d, 1).fillRect(6, 14, 32, 16);
+    g.fillStyle(GOLD, 0.4).fillRect(6, 14, 32, 4);
+    g.fillStyle(INK, 1).fillRect(32, 8, 8, 28);
+    g.fillStyle(0xb45309, 1).fillRect(34, 10, 4, 24);
+  };
+  registerTexture('ch2_steam_nozzle', 44, 44, drawSteamNozzle);
+
+  const drawSteamRedirector = (g: Phaser.GameObjects.Graphics) => {
+    g.fillStyle(0x75a3a3, 0.7).fillRoundedRect(6, 8, 20, 28, 4);
+    g.lineStyle(2, INK, 1).strokeRoundedRect(6, 8, 20, 28, 4);
+    g.fillStyle(0xb45309, 1).fillRect(24, 16, 14, 12);
+    g.lineStyle(1.5, INK, 1).strokeRect(24, 16, 14, 12);
+  };
+  registerTexture('ch2_vector_steam_redirector', 44, 44, drawSteamRedirector);
 
   // Phoe Htaung Bare Hand / Clenched Fist Icon (လက်ချည်း / FISTS)
   const drawBareHand = (g: Phaser.GameObjects.Graphics) => {
@@ -707,6 +730,28 @@ export function ensureBridgeTextures(scene: Phaser.Scene, bridgeLength: number =
   };
   registerTexture('ch1_betel_drop', 12, 12, drawBetelTextureFn);
   registerTexture('betel-spit', 12, 12, drawBetelTextureFn);
+
+  // 9b. Procedural Betel Nut Chunk (32x32)
+  const drawBetelNutFn = (g: Phaser.GameObjects.Graphics) => {
+    const cx = 16;
+    const cy = 16;
+    g.fillStyle(INK, 1).fillEllipse(cx, cy, 14, 11);
+    g.fillStyle(0x78350f, 1).fillEllipse(cx, cy, 13, 10);
+    g.fillStyle(0xfef3c7, 1).fillEllipse(cx - 1, cy, 10, 8);
+    g.lineStyle(1.4, 0x881337, 0.85);
+    g.beginPath();
+    g.moveTo(cx - 7, cy - 3);
+    g.lineTo(cx + 4, cy + 2);
+    g.moveTo(cx - 4, cy + 4);
+    g.lineTo(cx + 6, cy - 3);
+    g.strokePath();
+    g.fillStyle(CREAM, 0.4).fillEllipse(cx - 4, cy - 3, 5, 2.5);
+    g.lineStyle(1.2, INK, 0.8).strokeEllipse(cx, cy, 13, 10);
+  };
+  registerTexture('ch1_vector_betel_nut', 32, 32, drawBetelNutFn);
+  registerTexture('item-betel-nut', 44, 44, (g) => {
+    drawBetelNutFn(g);
+  });
 
   // 10. Fishing Hook Texture (16x24)
   registerTexture('ch1_fishing_hook', 16, 24, (g) => {

@@ -9,6 +9,11 @@
   "theme_color": "#0c0a08",
   "icons": [
     {
+      "src": "/logo_outside.jpg",
+      "sizes": "192x192 512x512",
+      "type": "image/jpeg"
+    },
+    {
       "src": "/favicon.svg",
       "sizes": "64x64 128x128 256x256 512x512",
       "type": "image/svg+xml",

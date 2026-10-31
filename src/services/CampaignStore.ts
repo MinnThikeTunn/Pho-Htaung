@@ -57,6 +57,11 @@ export class CampaignStore {
     if (this.deadAttempts.has(attemptId)) return;
     this.deadAttempts.add(attemptId); this.campaign.deathCount++; this.campaign.revision++; this.save();
   }
+  completeTutorial() {
+    this.campaign.tutorialCompleted = true;
+    this.campaign.revision++;
+    this.save();
+  }
   hint(id: string): boolean {
     if (this.campaign.hintsSeen.includes(id)) return false;
     this.campaign.hintsSeen.push(id); this.campaign.revision++; this.save(); return true;

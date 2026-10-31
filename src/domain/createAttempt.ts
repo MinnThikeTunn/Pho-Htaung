@@ -40,5 +40,6 @@ export function createAttempt(preset: Preset, id: string): Attempt {
     ancientBrickDropping: false,
     crusherGearJammed: false,
     gearJammedPermanently: false,
+    doorTopTrapTriggered: false,
   };
 }

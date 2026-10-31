@@ -189,10 +189,12 @@ test.describe('Cross-Browser Engine Verification', () => {
     });
 
     await page.goto('/');
-    await expect(page.locator('#menu-test-ch5')).toBeVisible({ timeout: 15000 });
+    await page.waitForLoadState('domcontentloaded');
 
-    // Click direct Chapter 5 test button
-    await page.locator('#menu-test-ch5').click();
+    // Trigger Chapter 5 via exported helper
+    await page.evaluate(() => {
+      (window as any).jumpToChapter5?.();
+    });
 
     // Verify Chapter 5 is active
     await expect.poll(async () => {

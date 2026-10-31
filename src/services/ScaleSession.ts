@@ -5,10 +5,10 @@ import type { ScaleAttempt, ScaleEvent, ScaleInput } from '../domain/scale';
 export class ScaleSession {
   attempt: ScaleAttempt;
   paused = false; accumulator = 0; generation = 0; restartTime = 0; restartArmed = true; droppedBacklog = 0;
-  constructor(private id: () => string) { this.attempt = createScaleAttempt(id()); }
+  constructor(private id: () => string, private initialInventory?: string[]) { this.attempt = createScaleAttempt(id(), this.initialInventory); }
   clearInput() { this.accumulator = 0; this.restartTime = 0; this.attempt.command = null; this.attempt.player.jumpBuffer = 0; }
   setPause(value: boolean) { this.paused = value; this.clearInput(); }
-  restart() { this.attempt = createScaleAttempt(this.id()); this.generation++; this.clearInput(); }
+  restart() { this.attempt = createScaleAttempt(this.id(), this.initialInventory); this.generation++; this.clearInput(); }
   tick(delta: number, input: ScaleInput, restartHeld = false): ScaleEvent[] {
     if (this.paused || this.attempt.status === 'COMPLETE') return [];
     if (!restartHeld) { this.restartTime = 0; this.restartArmed = true; }

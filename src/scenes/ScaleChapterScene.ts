@@ -12,10 +12,14 @@ import { store } from '../services/adventure';
 import { SAVE_KEY } from '../services/CampaignStore';
 import { ScaleView, VISUAL_GROUND_Y, toDomainY, vy } from '../view/ScaleView';
 import InventoryBar from '../ui/InventoryBar.js';
+import { VirtualTouchControls } from '../ui/VirtualTouchControls';
 import DiegeticGrab from '../ui/DiegeticGrab';
 import { ensureBridgeTextures } from '../view/BridgeView';
 import { MicroInteractions } from '../utils/MicroInteractions.js';
 import { StagedHintManager, PROGRESSIVE_HINTS } from '../utils/StagedHintManager';
+import { DieAgainDeathOverlay } from '../ui/DieAgainDeathOverlay';
+import { gameState } from '../utils/AdventureState.js';
+import { ITEM_NAMES_MY, ITEM_TEXTURE_KEYS } from '../utils/GameState.js';
 
 const ui = () => document.querySelector<HTMLDivElement>('#interface')!;
 const button = (id: string, text: string, primary = false) =>
@@ -24,6 +28,8 @@ const button = (id: string, text: string, primary = false) =>
 export default class ScaleChapterScene extends Phaser.Scene {
   private session!: ScaleSession;
   private view!: ScaleView;
+  private touchControls: VirtualTouchControls | null = null;
+  private prevTouchJump = false;
   private held = new Set<string>();
   private jumpEdge = false;
   private selected: ScaleItemId | null = null;
@@ -67,12 +73,15 @@ export default class ScaleChapterScene extends Phaser.Scene {
 
   init(_data: { replay?: boolean } = {}) {
     if (!store.campaign.chapter2Completed) throw Error('Chapter 3 is locked');
-    this.session = new ScaleSession(() => crypto.randomUUID());
+    const carried = store.campaign.inventory || [];
+    this.session = new ScaleSession(() => crypto.randomUUID(), carried);
     this.selected = null;
     this.history = [];
     this.finished = false;
     this.lastLine = '';
-    this.held.clear();
+    this.touchControls?.destroy();
+      this.touchControls = null;
+      this.held.clear();
     this.jumpEdge = false;
     this.isLaying = false;
     this.grabControl = null;
@@ -81,6 +90,20 @@ export default class ScaleChapterScene extends Phaser.Scene {
     this.lastPendulumAngle = 0;
     this.hideHeldItem();
     store.startScale();
+  }
+
+  private restartChapter() {
+    DieAgainDeathOverlay.hideActive();
+    this.dismissSpeech();
+    gameState.restoreChapterOnFailure('CHAPTER_3');
+    this.selected = null;
+    this.hideHeldItem();
+    this.inventoryBar?.refresh();
+    this.inventoryBar?.clearSelected();
+    try {
+      (audioDirector as any).handleRespawn?.();
+    } catch {}
+    this.scene.restart();
   }
 
   private bind(id: string, action: () => void) {
@@ -150,7 +173,9 @@ export default class ScaleChapterScene extends Phaser.Scene {
     const visualCenterY = visualFeetY - 40;
     const handX = p.centerX + p.facing * 20;
     const handY = visualCenterY - 12;
-    const texKey = `ch3_icon_${this.selected}`;
+    const texKey = this.textures.exists(`ch3_icon_${this.selected}`)
+      ? `ch3_icon_${this.selected}`
+      : ((ITEM_TEXTURE_KEYS as Record<string, string>)[this.selected] || `ch3_icon_${this.selected}`);
 
     if (this.textures.exists(texKey)) {
       this.heldItemSprite = this.add
@@ -215,6 +240,8 @@ export default class ScaleChapterScene extends Phaser.Scene {
 
   create() {
     this.stagedHintManager.reset();
+    gameState.syncFromCampaign?.();
+    gameState.checkpointChapter('CHAPTER_3');
     this.view = new ScaleView(this);
     
     // Set up pan item click handler
@@ -235,8 +262,10 @@ export default class ScaleChapterScene extends Phaser.Scene {
         const a = this.session?.attempt;
         if (!a) return [];
         const items = [];
+        const seen = new Set<string>();
         for (const id of SCALE_IDS) {
           if (a.locations[id] === 'BAG') {
+            seen.add(id);
             const itemDef = SCALE_ITEMS[id];
             items.push({
               key: id,
@@ -244,6 +273,19 @@ export default class ScaleChapterScene extends Phaser.Scene {
               name: itemDef.name,
               selected: this.selected === id,
               texture: `ch3_icon_${id}`
+            });
+          }
+        }
+        const carried = store.campaign?.inventory || gameState.state?.inventory || [];
+        for (const id of carried) {
+          if (!seen.has(id)) {
+            seen.add(id);
+            items.push({
+              key: id,
+              id,
+              name: (ITEM_NAMES_MY as Record<string, string>)[id] || id,
+              selected: this.selected === id,
+              texture: (ITEM_TEXTURE_KEYS as Record<string, string>)[id] || (this.textures?.exists(`ch3_icon_${id}`) ? `ch3_icon_${id}` : 'item-mystery')
             });
           }
         }
@@ -468,6 +510,37 @@ export default class ScaleChapterScene extends Phaser.Scene {
 
     this.input.on('pointerdown', onWorldClick);
 
+    this.touchControls = new VirtualTouchControls(this, {
+      mode: 'CH3',
+      onAction: () => {
+        const a = this.session.attempt;
+        const px = a.player.centerX;
+        const pfeet = a.player.feetY;
+        const visualFeetY = vy(pfeet);
+
+        if (Math.abs(px - S3.latchX) <= 90) {
+          if (this.selected === 'pin') {
+            this.useLatch();
+            return;
+          }
+        }
+        if (Math.abs(px - S3.leftPanX) <= 105) {
+          this.usePan('LEFT');
+          return;
+        }
+        if (Math.abs(px - S3.panX) <= 105) {
+          this.usePan('RIGHT');
+          return;
+        }
+        const grabbed = this.diegeticGrab.handleProximityVerb(px, visualFeetY - 40);
+        if (grabbed) return;
+      },
+      onJump: () => {
+        this.jumpEdge = true;
+        this.dismissSpeech();
+      }
+    });
+
     const onDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
@@ -484,7 +557,7 @@ export default class ScaleChapterScene extends Phaser.Scene {
 
       // Instant quick-reset on death per Norman's Law
       if (key === 'r' && !event.repeat && this.session.attempt.status === 'DEAD') {
-        this.session.restart();
+        this.restartChapter();
         return;
       }
 
@@ -569,6 +642,7 @@ export default class ScaleChapterScene extends Phaser.Scene {
     window.addEventListener('storage', onStorage);
 
     this.events.once('shutdown', () => {
+      DieAgainDeathOverlay.hideActive();
       window.removeEventListener('keydown', onDown);
       window.removeEventListener('keyup', onUp);
       window.removeEventListener('blur', onBlur);
@@ -650,6 +724,7 @@ export default class ScaleChapterScene extends Phaser.Scene {
   private pause(value: boolean, journal = false) {
     if (store.conflict && !value) return;
     this.session.setPause(value);
+    if (value) this.touchControls?.hide(); else this.touchControls?.show();
     this.held.clear();
     this.jumpEdge = false;
 
@@ -753,7 +828,18 @@ export default class ScaleChapterScene extends Phaser.Scene {
         actor.setData('poseOverride', 'ph-flat');
       }
 
-      this.speak('ကြေးစည်ကြီးနဲ့ ခေါင်းကွဲသွားပြီ! ခေါင်းမီးတောက်မနေဘဲ အစကနေ အမြန်ပြန်စမ်း ဖိုးထောင်!', 4.0);
+      this.speak('ကြေးစည်ကြီးနဲ့ ခေါင်းကွဲသွားပြီ! ခေါင်းမီးတောက်မနေဘဲ အစကနေ အမြန်ပြန်စမ်း ဖိုးထောင်!', 3.5);
+
+      DieAgainDeathOverlay.show({
+        scene: this,
+        reason: 'PENDULUM',
+        autoRetrySeconds: 2.2,
+        onRetry: () => this.restartChapter(),
+        onMenu: () => {
+          DieAgainDeathOverlay.hideActive();
+          this.scene.start('MENU');
+        }
+      });
     }
     if (event === 'complete') {
       store.completeScale(this.session.attempt);
@@ -766,33 +852,7 @@ export default class ScaleChapterScene extends Phaser.Scene {
   }
 
   private showResult() {
-    const result = store.campaign.lastChapter3Result;
-    ui().innerHTML = `
-      <section class="result-panel">
-        <span class="eyebrow">အခန်း ၃ ပြီးပါပြီ / PUZZLE → FIGHTING</span>
-        <h1>တံခါးလွန်တော့ အသံလွန်ပြီ။</h1>
-        <p class="result-quip">စက်သံကြောင့် အတွင်းဘက်က လူတွေ သတိထားမိသွားပြီ။</p>
-        <div class="result-stats">
-          <div><span>ရွှေရုပ်</span><b>${result?.treasureRecovered ? 'ပါလာပြီ' : 'ထားခဲ့သည်'}</b></div>
-          <div><span>အောင်မြင်ချိန်</span><b>${result?.activeSeconds.toFixed(2) ?? '—'}<small>s</small></b></div>
-          <div><span>သိမ်းပြီးရွှေ</span><b>${store.campaign.walletCoins}</b></div>
-        </div>
-        <p class="result-note">ရွှေရုပ်ယူထွက်နိုင်မှုကို သီးခြားမှတ်ထားသည်။ ဒီ prototype မှာ ငွေတန်ဖိုး မသတ်မှတ်ရသေးပါ။</p>
-        <p class="warning" id="scale-save-warning" ${store.unsaved ? '' : 'hidden'}>Save မသိမ်းရသေးပါ။ Reload လုပ်ပါက ယာယီရလာဒ် ပျောက်နိုင်သည်။</p>
-        <div class="actions">
-          ${button('scale-next', store.unsaved ? 'ယာယီအတိုင်း ဆက်မယ်' : 'အခန်း ၄ ဆီ ဆက်မယ်', true)}
-          ${store.unsaved ? button('scale-retry-save', 'ထပ်သိမ်းမယ်') : ''}
-          ${button('scale-again', 'အခန်း ၃ ပြန်စမ်း')}
-          ${button('scale-menu', 'ပင်မစာမျက်နှာ')}
-        </div>
-      </section>`;
-
-    this.bind('scale-next', () => this.scene.start('CHAPTER_4_PENDING'));
-    this.bind('scale-again', () => this.scene.restart({ replay: true }));
-    this.bind('scale-menu', () => this.scene.start('MENU'));
-    this.bind('scale-retry-save', () => {
-      if (store.save()) this.showResult();
-    });
+    this.scene.start('CHAPTER_4_PENDING');
   }
 
   private sync() {
@@ -908,22 +968,9 @@ export default class ScaleChapterScene extends Phaser.Scene {
     }
 
     if (previous !== this.session.generation) {
-      this.selected = null;
-      this.hideHeldItem();
-      this.held.clear();
-      this.jumpEdge = false;
-      this.history = [];
-      this.lastLine = '';
-      const actor = this.view?.getActorSprite();
-      if (actor) {
-        actor.setData('squashY', 1.0);
-        actor.setData('poseOverride', undefined);
-      }
-      this.stagedHintManager.reset();
-      this.inventoryBar?.refresh();
-      this.inventoryBar?.clearSelected();
-      this.spawnWorldPickups();
-    } else {
+      this.restartChapter();
+      return;
+    }
       let bagChanged = false;
       for (const id of SCALE_IDS) {
         if (before[id] !== 'BAG' && this.session.attempt.locations[id] === 'BAG') {
@@ -933,17 +980,17 @@ export default class ScaleChapterScene extends Phaser.Scene {
             this.diegeticGrab.executeGrab(id);
           }
           this.selected = id;
+          gameState.addItem(id);
           this.updateHeldItem();
           bagChanged = true;
         } else if (before[id] === 'BAG' && this.session.attempt.locations[id] !== 'BAG') {
           bagChanged = true;
         }
       }
-      if (bagChanged) {
-        this.inventoryBar?.refresh();
-        if (this.selected) this.inventoryBar?.setSelected(this.selected);
-        else this.inventoryBar?.clearSelected();
-      }
+    if (bagChanged) {
+      this.inventoryBar?.refresh();
+      if (this.selected) this.inventoryBar?.setSelected(this.selected);
+      else this.inventoryBar?.clearSelected();
     }
 
     // Footstep foley
@@ -972,6 +1019,18 @@ export default class ScaleChapterScene extends Phaser.Scene {
     this.lastPendulumAngle = curAngle;
 
     for (const event of events) this.event(event);
+    if (this.session.attempt.status === 'DEAD' && !DieAgainDeathOverlay.isActive()) {
+      DieAgainDeathOverlay.show({
+        scene: this,
+        reason: 'PENDULUM',
+        autoRetrySeconds: 2.2,
+        onRetry: () => this.restartChapter(),
+        onMenu: () => {
+          DieAgainDeathOverlay.hideActive();
+          this.scene.start('MENU');
+        }
+      });
+    }
     this.view.render(this.session.attempt, dt, Boolean(this.heldItemSprite), this.grabControl);
     this.sync();
   }

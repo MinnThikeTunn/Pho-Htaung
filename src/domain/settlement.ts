@@ -9,7 +9,7 @@ export function newCampaign(id: string): Campaign {
     bestResultByPresetAndCoinTotal: {}, hintsSeen: [], inventory: [], ownedTools: [],
     resumeAt: 'CHAPTER_1', lastChapter2Result: null, chapter3Completed: false,
     chapter3TreasureRecovered: false, lastChapter3Result: null, chapter4Completed: false, lastChapter4Result: null,
-    chapter5Completed:false,debtRepaidGold:0,lastChapter5Result:null };
+    chapter5Completed:false,debtRepaidGold:0,lastChapter5Result:null,tutorialCompleted:false };
 }
 export function settle(current: Campaign, a: Attempt, mode: Mode, sessionDeaths: number): { campaign: Campaign; result: ChapterResult | null; duplicate: boolean } {
   if (a.status !== 'COMPLETE' || a.player.control !== 'EXITING') throw new Error('Cannot settle an unfinished attempt');
@@ -49,6 +49,7 @@ export function validateCampaign(value: unknown): value is Campaign {
     !strings(c.hintsSeen) || !strings(c.inventory) || !strings(c.ownedTools) ||
     !['CHAPTER_1', 'CHAPTER_2', 'CH2_EXIT_LINK', 'CHAPTER_3_PENDING', 'CHAPTER_3', 'CHAPTER_4_PENDING', 'CHAPTER_4', 'CHAPTER_5_PENDING','CHAPTER_5','CAMPAIGN_COMPLETE'].includes(c.resumeAt ?? '')) return false;
   if(c.chapter5Completed!==undefined&&typeof c.chapter5Completed!=='boolean')return false;
+  if(c.tutorialCompleted!==undefined&&typeof c.tutorialCompleted!=='boolean')return false;
   if(c.chapter5Completed&&!c.chapter4Completed)return false;
   if(['CHAPTER_5','CAMPAIGN_COMPLETE'].includes(c.resumeAt!)&&!c.chapter4Completed)return false;
   if(c.resumeAt==='CAMPAIGN_COMPLETE'&&!c.chapter5Completed)return false;
@@ -76,7 +77,7 @@ export function validateCampaign(value: unknown): value is Campaign {
   if (c.lastChapter3Result != null) {
     const r = c.lastChapter3Result;
     if (!r.attemptId || typeof r.attemptId !== 'string' || !Number.isFinite(r.activeSeconds) || r.activeSeconds < 0 ||
-      typeof r.treasureRecovered !== 'boolean' || !['WEIGHTS', 'BRACE', 'TIMING'].includes(r.method)) return false;
+      typeof r.treasureRecovered !== 'boolean' || !['WEIGHTS', 'BRACE', 'TIMING', 'BAMBOO_WEDGE'].includes(r.method)) return false;
   }
   if (!c.bestResultByPresetAndCoinTotal || typeof c.bestResultByPresetAndCoinTotal !== 'object' || Array.isArray(c.bestResultByPresetAndCoinTotal)) return false;
   if (!Object.entries(c.bestResultByPresetAndCoinTotal).every(([k, v]) => /^[ABC]:(?:[0-9]|1[0-5])$/.test(k) && typeof v === 'number' && Number.isFinite(v) && v >= 0)) return false;

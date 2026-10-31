@@ -175,7 +175,7 @@ export default class DiegeticGrab {
       const actor = this.getActor();
       const distance = Math.abs(actor.x - config.x);
 
-      if (distance <= proximityRadius) {
+      if (distance <= 24) {
         this.executeGrab(activePickup);
       } else {
         // Auto-walk to item target and execute grab upon arrival
@@ -285,16 +285,17 @@ export default class DiegeticGrab {
 
             // Update Game State and persistent Campaign Store
             gameState.addItem(config.id);
-            if (config.campaignKey) {
-              if (!store.campaign.inventory.includes(config.campaignKey)) {
-                store.campaign.inventory.push(config.campaignKey);
-              }
+            const keyToStore = config.campaignKey || config.id;
+            (gameState as any).recordItemAcquired?.(keyToStore);
+            if (keyToStore && !store.campaign.inventory.includes(keyToStore)) {
+              store.campaign.inventory.push(keyToStore);
             }
             if (config.campaignOwnedTool) {
               if (!store.campaign.ownedTools.includes(config.campaignOwnedTool)) {
                 store.campaign.ownedTools.push(config.campaignOwnedTool);
               }
             }
+            store.campaign.revision++;
             store.save();
 
             // Tactile spring-bounce on the permanent bottom-dock Shan bag icon (Lwe-Ait)
@@ -350,6 +351,16 @@ export default class DiegeticGrab {
     }
 
     if (closestPickup) {
+      const dist = Math.abs(actorX - closestPickup.config.x);
+      if (dist > 24) {
+        if (this.options.onAutoWalk) {
+          this.options.onAutoWalk(closestPickup.config.x, () => this.executeGrab(closestPickup!));
+          return true;
+        } else if (typeof (this.scene as any).interactWithProximity === 'function') {
+          (this.scene as any).interactWithProximity(closestPickup.config.x, () => this.executeGrab(closestPickup!));
+          return true;
+        }
+      }
       return this.executeGrab(closestPickup);
     }
     return false;

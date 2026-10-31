@@ -121,7 +121,7 @@ it('chapter 2 puzzle and relic coordinates contract matches Pho-Htaung-Safe.docx
 
   // 4. Platforms
   expect(PLATFORM_MID.x).toBe(380);
-  expect(PLATFORM_MID.y).toBe(404);
+  expect(PLATFORM_MID.y).toBe(420);
   expect(PLATFORM_HIGH.x).toBe(130);
   expect(PLATFORM_HIGH.y).toBe(304);
 

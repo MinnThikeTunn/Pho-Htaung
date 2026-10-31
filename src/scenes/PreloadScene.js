@@ -8,64 +8,12 @@ export default class PreloadScene extends Phaser.Scene {
 
   preload() {
     this.load.setPath('/');
-    const { width, height } = this.cameras.main;
-
-    this.add.rectangle(width / 2, height / 2, width, height, 0x0c0a08);
-
-    const progressBox = this.add.graphics();
-    progressBox.fillStyle(0x1c1815, 1);
-    progressBox.fillRoundedRect(width / 2 - 200, height / 2 - 15, 400, 30, 15);
-    progressBox.lineStyle(2, 0xd97706, 0.5);
-    progressBox.strokeRoundedRect(width / 2 - 200, height / 2 - 15, 400, 30, 15);
-
-    const progressBar = this.add.graphics();
-
-    // Steampunk Rotating Brass Gear
-    const gearContainer = this.add.container(width / 2, height / 2 - 110);
-    const gearG = this.add.graphics();
-    gearG.fillStyle(0xd97706, 1);
-    gearG.fillCircle(0, 0, 22);
-    gearG.fillStyle(0x0c0a08, 1);
-    gearG.fillCircle(0, 0, 9);
-    gearG.lineStyle(4, 0xf59e0b, 1);
-    for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
-      gearG.lineBetween(
-        Math.cos(a) * 18,
-        Math.sin(a) * 18,
-        Math.cos(a) * 30,
-        Math.sin(a) * 30
-      );
-    }
-    gearContainer.add(gearG);
-
-    this.tweens.add({
-      targets: gearContainer,
-      angle: 360,
-      duration: 2500,
-      repeat: -1,
-      ease: 'Linear'
-    });
-
-    this.add.text(width / 2, height / 2 - 55, 'ငကြောင်ဖိုးထောင် ရွှေမြို့တော်ရှာပုံတော် ပြင်ဆင်နေသည်...', {
-      fontFamily: 'Noto Sans Myanmar, Pyidaungsu, Plus Jakarta Sans',
-      fontSize: '17px',
-      fontStyle: '900',
-      color: '#f59e0b',
-      letterSpacing: '1px'
-    }).setOrigin(0.5);
-
-    const percentText = this.add.text(width / 2, height / 2 + 55, '0%', {
-      fontFamily: 'Plus Jakarta Sans',
-      fontSize: '15px',
-      fontWeight: '700',
-      color: '#a8a29e'
-    }).setOrigin(0.5);
-
     this.load.on('progress', (value) => {
-      progressBar.clear();
-      progressBar.fillStyle(0xf59e0b, 1);
-      progressBar.fillRoundedRect(width / 2 - 195, height / 2 - 10, 390 * value, 20, 10);
-      percentText.setText(`${Math.floor(value * 100)}%`);
+      const note = document.querySelector('.boot-splash-note');
+      if (note) {
+        const pct = Math.floor(value * 100);
+        note.textContent = 'ဂိမ်းကို ပြင်ဆင်နေသည်… ' + pct + '% / Loading…';
+      }
     });
 
     this.load.on('loaderror', (file) => {
@@ -153,6 +101,11 @@ export default class PreloadScene extends Phaser.Scene {
   }
 
   create() {
+    const splashEl = document.getElementById('boot-splash');
+    if (splashEl) {
+      splashEl.classList.add('hide');
+      setTimeout(() => splashEl.remove(), 350);
+    }
     try {
       this.createAllGameAssets();
     } catch (err) {

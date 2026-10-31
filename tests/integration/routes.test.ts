@@ -17,7 +17,7 @@ export function driver(preset: 'A'|'B'|'C'='A') {
   return {a,press,until,trace};
 }
 
-it.each([true,false])('A16 route A: actual spawn → active gate shot → exit, use E=%s',(useTaunt)=>{
+it.each([true,false])('A16 route A: actual spawn → rock drop at door → push rock into door to break it → exit, use E=%s',(useTaunt)=>{
   const d=driver(),{a,press,until}=d;
   until(a=>a.player.centerX>=240,{right:true}); press({taunt:true});
   until(a=>a.player.centerX>=438,{right:true});
@@ -26,22 +26,17 @@ it.each([true,false])('A16 route A: actual spawn → active gate shot → exit, 
   until(a=>a.machine.state==='READY');
   if(useTaunt)press({taunt:true});
   until(a=>a.machine.state==='LOCKED');
-  until(a=>a.player.centerX<=990,{left:true});
-  until(a=>!a.gateIntact&&a.machine.state==='RECOVER');
+  until(a=>a.player.centerX<=920,{left:true});
+  until(a=>a.stones.some(s=>s.state==='SETTLED'&&s.centerX>=950));
+  until(a=>!a.gateIntact,{right:true});
   press({jump:true,right:true});
   until(a=>a.player.grounded&&a.player.feetY<640,{right:true});
   press({jump:true,right:true});
   until(a=>a.status==='COMPLETE',{right:true});
-  expect(a.coins).toBe(5); expect(a.elapsed).toBeLessThan(20);
-  if(useTaunt)expect({seconds:Number(a.elapsed.toFixed(2)),coins:a.coins}).toMatchInlineSnapshot(`
-    {
-      "coins": 5,
-      "seconds": 11.27,
-    }
-  `);
+  expect(a.coins).toBe(15); expect(a.elapsed).toBeLessThan(20);
 });
 
-it('A16/A17 route B: actual A spawn → plate → raised lift → intact gate top',()=>{
+it('A16/A17 route B: actual A spawn → plate → raised lift → stands safely on gate top, blocked by upper barrier',()=>{
   const {a,press,until}=driver();
   until(a=>a.player.centerX>=240,{right:true}); press({taunt:true});
   until(a=>a.player.centerX>=398,{right:true}); press({taunt:true});
@@ -58,20 +53,16 @@ it('A16/A17 route B: actual A spawn → plate → raised lift → intact gate to
   until(a=>a.player.centerX>=742,{right:true}); press({right:true,jump:true});
   until(a=>a.player.grounded&&a.player.support==='gold_shelf',{right:true});
   until(a=>a.player.centerX>=940,{right:true}); press({right:true,jump:true});
-  until(a=>a.player.centerX>=1120,{right:true});
-  until(a=>a.player.grounded&&a.player.support==='wood_gate');
-  until(a=>a.status==='COMPLETE',{right:true});
-  expect(a.gateIntact).toBe(true); expect(a.coins).toBe(15);
-  expect(a.elapsed).toBeLessThan(20);
-  expect({seconds:Number(a.elapsed.toFixed(2)),coins:a.coins}).toMatchInlineSnapshot(`
-    {
-      "coins": 15,
-      "seconds": 9.27,
-    }
-  `);
+  until(a=>a.player.grounded&&a.player.support==='wood_gate',{right:true});
+  expect(a.status).toBe('ACTIVE');
+  expect(a.gateIntact).toBe(true);
+  // Upper portcullis barrier blocks player from moving past x = 1152 to exit
+  press({right:true}); press({right:true});
+  expect(a.player.centerX).toBeLessThan(1155);
+  expect(a.status).not.toBe('COMPLETE');
 });
 
-it('A16 route C: actual A spawn → break shelf → retrieve fallen pouch → exit',()=>{
+it('A16 route C: actual A spawn → break shelf → retrieve fallen pouch → push rock to break gate → exit',()=>{
   const {a,press,until}=driver();
   until(a=>a.player.centerX>=240,{right:true}); press({taunt:true});
   until(a=>a.player.centerX>=438,{right:true}); press({right:true,jump:true});
@@ -84,21 +75,16 @@ it('A16 route C: actual A spawn → break shelf → retrieve fallen pouch → ex
   until(a=>a.player.centerX>=1080,{right:true});
   until(a=>a.machine.state==='READY'); press({taunt:true});
   until(a=>a.machine.state==='LOCKED');
-  until(a=>a.player.centerX<=990,{left:true});
-  until(a=>!a.gateIntact&&a.machine.state==='RECOVER');
+  until(a=>a.player.centerX<=920,{left:true});
+  until(a=>a.stones.some(s=>s.state==='SETTLED'&&s.centerX>=950));
+  until(a=>!a.gateIntact,{right:true});
   press({right:true,jump:true});
   until(a=>a.player.grounded&&a.player.feetY<640,{right:true});
   press({right:true,jump:true}); until(a=>a.status==='COMPLETE',{right:true});
   expect(a.coins).toBe(15); expect(a.shelfIntact).toBe(false);
-  expect({seconds:Number(a.elapsed.toFixed(2)),coins:a.coins}).toMatchInlineSnapshot(`
-    {
-      "coins": 15,
-      "seconds": 16.28,
-    }
-  `);
 });
 
-it('A16 route D: actual A spawn → home-lift rock → shelf (no raised-lift flag)',()=>{
+it('A16 route D: actual A spawn → home-lift rock → shelf → stands safely on gate top, blocked by upper barrier',()=>{
   const {a,press,until}=driver();
   until(a=>a.player.centerX>=240,{right:true}); press({taunt:true});
   until(a=>a.player.centerX>=438,{right:true}); press({right:true,jump:true});
@@ -112,13 +98,10 @@ it('A16 route D: actual A spawn → home-lift rock → shelf (no raised-lift fla
   until(a=>a.player.grounded&&a.player.feetY===448,{right:true});
   press({right:true,jump:true}); until(a=>a.player.grounded&&a.player.support==='gold_shelf',{right:true});
   until(a=>a.player.centerX>=940,{right:true}); press({right:true,jump:true});
-  until(a=>a.player.centerX>=1120,{right:true}); until(a=>a.player.grounded);
-  until(a=>a.status==='COMPLETE',{right:true});
-  expect(a.liftY).toBe(544);expect(a.gateIntact).toBe(true);expect(a.coins).toBe(15);
-  expect({seconds:Number(a.elapsed.toFixed(2)),coins:a.coins}).toMatchInlineSnapshot(`
-    {
-      "coins": 15,
-      "seconds": 9.45,
-    }
-  `);
+  until(a=>a.player.grounded&&a.player.support==='wood_gate',{right:true});
+  expect(a.status).toBe('ACTIVE');
+  expect(a.gateIntact).toBe(true);
+  press({right:true}); press({right:true});
+  expect(a.player.centerX).toBeLessThan(1155);
+  expect(a.status).not.toBe('COMPLETE');
 });

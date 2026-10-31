@@ -139,6 +139,32 @@ describe('Chapter 3 lifecycle and durable progress', () => {
     expect(s.generation).toBe(1); expect(s.attempt.locations.treasure).toBe('WORLD'); expect(s.attempt.gateLift).toBe(0); expect(s.attempt.elapsed).toBe(0);
     s.tick(C.dt, idle); for (let i = 0; i < 30; i++) s.tick(C.dt, idle, true); expect(s.generation).toBe(2);
   });
+  it('clean reset after death restores character to spawn and all items to world', () => {
+    let id = 0;
+    const s = new ScaleSession(() => String(++id));
+    pick(s.attempt, 'stone');
+    pick(s.attempt, 'treasure');
+    place(s.attempt, 'stone');
+    expect(s.attempt.locations.stone).toBe('PAN');
+    expect(s.attempt.locations.treasure).toBe('BAG');
+
+    s.attempt.status = 'DEAD';
+    s.attempt.player.control = 'DEAD';
+
+    s.restart();
+    expect(s.generation).toBe(1);
+    expect(s.attempt.status).toBe('WAITING');
+    expect(s.attempt.player.control).toBe('FREE');
+    expect(s.attempt.player.centerX).toBe(S3.spawnX);
+    expect(s.attempt.player.feetY).toBe(S3.floor);
+    expect(s.attempt.locations.stone).toBe('WORLD');
+    expect(s.attempt.locations.treasure).toBe('WORLD');
+    expect(s.attempt.locations.crate).toBe('WORLD');
+    expect(s.attempt.locations.sandbag).toBe('WORLD');
+    expect(s.attempt.locations.pin).toBe('WORLD');
+    expect(s.attempt.locations.reference).toBe('LEFT_PAN');
+    expect(s.attempt.gateLift).toBe(0);
+  });
   it('equivalent input traces agree at 30, 60 and 144 render Hz', () => {
     const results = [30, 60, 144].map(hz => { const s = new ScaleSession(() => 'same'); for (let i = 0; i < hz * 2; i++) s.tick(1 / hz, { ...idle, right: true }); return s.attempt; });
     for (const a of results.slice(1)) expect(a).toEqual(results[0]);
@@ -253,7 +279,8 @@ describe('Chapter 3 Kyee-Zee pendulum mechanics', () => {
     });
 
     it('adding an item to left pan increases left weight and requires matching right weight to open gate', () => {
-      const a = createScaleAttempt('dual-pan-weight');
+      // Slingshot carried in bag from Chapter 2 (not spawned on the floor)
+      const a = createScaleAttempt('dual-pan-weight', ['slingshot']);
       pick(a, 'stone');
       // Place stone on Left Pan
       queueScaleCommand(a, { kind: 'pan', pan: 'LEFT', id: 'stone' });
@@ -269,17 +296,13 @@ describe('Chapter 3 Kyee-Zee pendulum mechanics', () => {
       for (let i = 0; i < 50; i++) frame(a);
       expect(a.gateLift).toBe(0);
 
-      // Adding crate (4) and slingshot/pole (2) brings right pan to 13, opening the gate!
-      // In profile 0: crate = 4, slingshot = 2, betel_cutter = 1, rusty_cog = 4
-      // Let's place crate (4) + slingshot (2): 7 + 4 + 2 = 13
-      // First pick crate (4) from world
+      // Adding crate (4) brings right pan to 7 + 4 = 11
       pick(a, 'crate');
-      place(a, 'crate'); // now 7 + 4 = 11
+      place(a, 'crate');
       expect(rightWeight(a)).toBe(11);
       expect(a.gateLift).toBe(0);
 
-      // Pick slingshot (2) from world and place onto right pan: 11 + 2 = 13!
-      pick(a, 'slingshot');
+      // Place carried slingshot (2) from bag onto right pan: 11 + 2 = 13!
       place(a, 'slingshot');
       expect(rightWeight(a)).toBe(13);
 

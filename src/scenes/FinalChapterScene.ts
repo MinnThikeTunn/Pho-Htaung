@@ -17,6 +17,9 @@ import { audioDirector } from '../audio/AudioDirector.js';
 import { MicroInteractions } from '../utils/MicroInteractions.js';
 import { createPhoe, renderPhoe } from '../view/PhoeHtaungView';
 import { VISUAL_GROUND_Y } from '../view/FinalView';
+import { VirtualTouchControls } from '../ui/VirtualTouchControls';
+import { DieAgainDeathOverlay } from '../ui/DieAgainDeathOverlay';
+import { gameState } from '../utils/AdventureState.js';
 
 const ui = () => document.querySelector<HTMLDivElement>('#interface')!;
 
@@ -48,6 +51,7 @@ export default class FinalChapterScene extends Phaser.Scene {
   private walkTargetX: number | null = null;
   private keysHeld = new Set<string>();
   private clueTimer: Phaser.Time.TimerEvent | null = null;
+  private touchControls: VirtualTouchControls | null = null;
 
   // Actors & Positions
   private playerX = F5.spawnX;
@@ -148,6 +152,7 @@ export default class FinalChapterScene extends Phaser.Scene {
     }
 
     // 1. Lavish Royal Ancient Palace Treasury Background
+    gameState.checkpointChapter('CHAPTER_5');
     const bgKey = this.textures.exists(FINAL_ART.background.key)
       ? FINAL_ART.background.key
       : 'arena_chamber_v1';
@@ -191,7 +196,20 @@ export default class FinalChapterScene extends Phaser.Scene {
     // 6. Input Handling (Movement during Bait walk, keyboard shortcuts)
     this.setupInput();
 
-    // 7. Start Phase Flow
+    // 7. Virtual Touch Controls
+    this.touchControls = new VirtualTouchControls(this, {
+      mode: 'HIDDEN',
+      onAction: () => {
+        if (this.phase === 'BAIT_WALK' && !this.isDead) {
+          this.walkTargetX = F5.triggerAmbushX + 20;
+        }
+      }
+    });
+    if (this.phase === 'OPENING' || this.phase === 'QUIZ') {
+      this.touchControls.setMode('HIDDEN');
+    }
+
+    // 8. Start Phase Flow
     if (this.phase === 'OPENING') {
       this.showOpeningMonologueLine();
     } else {
@@ -782,6 +800,10 @@ export default class FinalChapterScene extends Phaser.Scene {
 
     const onPointerDown = (pointer: Phaser.Input.Pointer) => {
       if (this.phase === 'BAIT_WALK' && !this.isDead) {
+        const hitObjs = this.input.manager.hitTest(pointer, this.children.list, this.cameras.main);
+        if (hitObjs.some((obj: any) => obj.depth >= 200 || obj.parentContainer?.depth >= 200)) {
+          return;
+        }
         this.walkTargetX = pointer.worldX;
         MicroInteractions.spawnClickMarker(this, pointer.worldX, VISUAL_GROUND_Y - 14);
       }
@@ -812,6 +834,8 @@ export default class FinalChapterScene extends Phaser.Scene {
         this.clueTimer.remove();
         this.clueTimer = null;
       }
+      this.touchControls?.destroy();
+      this.touchControls = null;
       audioDirector.stopWalking();
       ui().innerHTML = '';
     });
@@ -860,6 +884,7 @@ export default class FinalChapterScene extends Phaser.Scene {
 
   private startQuizPhase() {
     this.phase = 'QUIZ';
+    this.touchControls?.setMode('HIDDEN');
     const box = ui().querySelector<HTMLElement>('#opening-dialogue-box');
     if (box) box.hidden = true;
 
@@ -882,6 +907,7 @@ export default class FinalChapterScene extends Phaser.Scene {
     }
 
     this.phase = 'QUIZ';
+    this.touchControls?.setMode('HIDDEN');
     const q = this.activeQuestions[this.currentQIndex] || CHAPTER_5_QUIZ[this.currentQIndex]!;
     const quizWrapper = ui().querySelector<HTMLElement>('#quiz-wrapper');
     const card = ui().querySelector<HTMLElement>('#quiz-card');
@@ -1044,10 +1070,12 @@ export default class FinalChapterScene extends Phaser.Scene {
   }
 
   private triggerDefeatSequence() {
+    this.touchControls?.setMode('HIDDEN');
     this.isDead = true;
     this.playerControl = 'DEAD';
     soundEngine.playDeath();
     store.death('ch5');
+    gameState.restoreChapterOnFailure('CHAPTER_5');
 
     const deathsEl = ui().querySelector<HTMLElement>('#final-deaths');
     if (deathsEl) deathsEl.textContent = String(store.campaign.deathCount);
@@ -1059,6 +1087,27 @@ export default class FinalChapterScene extends Phaser.Scene {
 
     const checkpointIdx = getCheckpointQuestionIndex(this.currentQIndex);
     const checkpointQNum = checkpointIdx + 1;
+
+    const doCheckpointRetry = () => {
+      gameState.restoreChapterOnFailure('CHAPTER_5');
+      DieAgainDeathOverlay.hideActive();
+      const modal = ui().querySelector<HTMLElement>('#ch5-modal');
+      if (modal) modal.hidden = true;
+      const checkpointTier = getTierFromIndex(checkpointIdx);
+      const freshQuestions = refreshTierQuestions(checkpointTier, FinalChapterScene.usedQuestionIds);
+      const updatedRun = [...this.activeQuestions];
+      for (let i = 0; i < 5; i++) {
+        if (freshQuestions[i] && updatedRun[checkpointIdx + i]) {
+          updatedRun[checkpointIdx + i] = freshQuestions[i]!;
+        }
+      }
+      this.scene.restart({
+        skipIntro: true,
+        startQuestion: checkpointIdx,
+        preserveRun: true,
+        customQuestions: updatedRun,
+      });
+    };
 
     const modal = ui().querySelector<HTMLElement>('#ch5-modal');
     if (modal) {
@@ -1076,32 +1125,33 @@ export default class FinalChapterScene extends Phaser.Scene {
         </section>
       `;
 
-      modal.querySelector('#btn-checkpoint-retry')?.addEventListener('click', () => {
-        modal.hidden = true;
-        const checkpointTier = getTierFromIndex(checkpointIdx);
-        const freshQuestions = refreshTierQuestions(checkpointTier, FinalChapterScene.usedQuestionIds);
-        const updatedRun = [...this.activeQuestions];
-        for (let i = 0; i < 5; i++) {
-          if (freshQuestions[i] && updatedRun[checkpointIdx + i]) {
-            updatedRun[checkpointIdx + i] = freshQuestions[i]!;
-          }
-        }
-        this.scene.restart({
-          skipIntro: true,
-          startQuestion: checkpointIdx,
-          preserveRun: true,
-          customQuestions: updatedRun,
-        });
-      });
+      modal.querySelector('#btn-checkpoint-retry')?.addEventListener('click', doCheckpointRetry);
       modal.querySelector('#btn-defeat-menu')?.addEventListener('click', () => {
+        DieAgainDeathOverlay.hideActive();
         this.scene.start('MENU');
       });
     }
+
+    DieAgainDeathOverlay.show({
+      scene: this,
+      reason: 'QUIZ',
+      customTitle: '💀 မေ့မျောသွားပါပြီ!',
+      customSubtitle: `DIED AT QUESTION ${this.currentQIndex + 1}`,
+      checkpointNote: `📍 Checkpoint: မေးခွန်း ${checkpointQNum} (Tier ${Math.floor(checkpointIdx / 5) + 1})`,
+      retryLabel: `🔄 မေးခွန်း ${checkpointQNum} မှ ပြန်စမ်းမယ်`,
+      autoRetrySeconds: 2.5,
+      onRetry: doCheckpointRetry,
+      onMenu: () => {
+        DieAgainDeathOverlay.hideActive();
+        this.scene.start('MENU');
+      }
+    });
   }
 
   // ================= ACT IV: QUESTION 20 VICTORY & PRIZE FIRST TWIST =================
   private triggerQuestion20Victory() {
     this.phase = 'VICTORY_KEY';
+    this.touchControls?.setMode('HIDDEN');
     const card = ui().querySelector<HTMLElement>('#quiz-card');
     if (card) card.classList.add('hidden');
 
@@ -1144,6 +1194,7 @@ export default class FinalChapterScene extends Phaser.Scene {
 
   private startBaitWalkPhase() {
     this.phase = 'BAIT_WALK';
+    this.touchControls?.setMode('CH5_WALK');
     this.treasureRevealed = true;
     this.treasureContainer.setVisible(true);
 
@@ -1160,6 +1211,7 @@ export default class FinalChapterScene extends Phaser.Scene {
   // ================= ACT V: THE AMBUSH & INSTANT BLACKOUT =================
   private triggerAmbush() {
     this.phase = 'AMBUSH';
+    this.touchControls?.setMode('HIDDEN');
     this.walkTargetX = null;
     this.playerControl = 'BOW'; // Pho Htung bends forward toward chest
 
@@ -1197,6 +1249,7 @@ export default class FinalChapterScene extends Phaser.Scene {
 
   private triggerBlackoutTwist() {
     this.phase = 'BLACKOUT';
+    this.touchControls?.setMode('HIDDEN');
     soundEngine.stopBGM(); // Cut all sound immediately
 
     const blackoutEl = ui().querySelector<HTMLElement>('#ch5-blackout');
@@ -1305,9 +1358,13 @@ export default class FinalChapterScene extends Phaser.Scene {
     if (!modal.hidden) {
       modal.hidden = true;
       modal.innerHTML = '';
+      if (this.phase === 'BAIT_WALK') {
+        this.touchControls?.show();
+      }
       return;
     }
 
+    this.touchControls?.hide();
     modal.hidden = false;
     modal.innerHTML = `
       <section class="dialog" style="text-align:center;">
@@ -1323,6 +1380,9 @@ export default class FinalChapterScene extends Phaser.Scene {
 
     modal.querySelector('#btn-ch5-resume')?.addEventListener('click', () => {
       modal.hidden = true;
+      if (this.phase === 'BAIT_WALK') {
+        this.touchControls?.show();
+      }
     });
     modal.querySelector('#btn-ch5-menu')?.addEventListener('click', () => {
       this.scene.start('MENU');
@@ -1391,8 +1451,15 @@ export default class FinalChapterScene extends Phaser.Scene {
     // 1. Handle Movement during BAIT WALK
     if (this.phase === 'BAIT_WALK' && !this.isDead) {
       let moveDir = 0;
-      if (this.keysHeld.has('a') || this.keysHeld.has('arrowleft')) moveDir -= 1;
-      if (this.keysHeld.has('d') || this.keysHeld.has('arrowright')) moveDir += 1;
+      const touchLeft = Boolean(this.touchControls?.isLeft());
+      const touchRight = Boolean(this.touchControls?.isRight());
+
+      if (this.keysHeld.has('a') || this.keysHeld.has('arrowleft') || touchLeft) moveDir -= 1;
+      if (this.keysHeld.has('d') || this.keysHeld.has('arrowright') || touchRight) moveDir += 1;
+
+      if (touchLeft || touchRight) {
+        this.walkTargetX = null;
+      }
 
       if (this.walkTargetX !== null) {
         const diff = this.walkTargetX - this.playerX;

@@ -893,7 +893,11 @@ export default class Chapter1Scene extends Phaser.Scene {
     audioDirector.transitionChapter1ToChapter2(4200);
     this.cameras.main.fade(500, 12, 10, 8);
     this.time.delayedCall(500, () => {
-      this.scene.start('Chapter2Scene');
+      if (this.scene.get('BRIDGE_EXIT_LINK')) {
+        this.scene.start('BRIDGE_EXIT_LINK');
+      } else {
+        this.scene.start('CHAPTER_2', { preset: 'A', mode: 'CAMPAIGN' });
+      }
     });
   }
 

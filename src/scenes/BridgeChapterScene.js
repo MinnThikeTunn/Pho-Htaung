@@ -25,6 +25,8 @@ import {
 } from '../view/BridgeView';
 import { DIALOGUE } from '../content/dialogue.my';
 import { StagedHintManager, PROGRESSIVE_HINTS } from '../utils/StagedHintManager';
+import { VirtualTouchControls } from '../ui/VirtualTouchControls';
+import { DieAgainDeathOverlay } from '../ui/DieAgainDeathOverlay';
 
 let retryMustRelease = false;
 
@@ -134,6 +136,12 @@ export default class BridgeChapterScene extends LegacyBridge {
 
 
     // State & physics setup
+    this.touchControls = new VirtualTouchControls(this, {
+      mode: 'CH1',
+      onAction: () => {
+        this.handleMouthVerb?.();
+      }
+    });
     this.sharedPaused = false;
     this.completing = false;
     this.deathClock = 0;
@@ -152,6 +160,8 @@ export default class BridgeChapterScene extends LegacyBridge {
     this.isPrying = false;
     this.bambooItem = null;
     this.cogItem = null;
+    gameState.checkpointChapter('CHAPTER_1');
+    gameState.syncFromCampaign?.();
     if (!gameState.hasItem('betel_cutter')) {
       gameState.addItem('betel_cutter');
     }
@@ -302,6 +312,8 @@ export default class BridgeChapterScene extends LegacyBridge {
     this.input.on('pointerdown', onPointerDown);
 
     this.events.once('shutdown', () => {
+      this.touchControls?.destroy();
+      this.touchControls = null;
       this.beeChaseTimer?.remove();
       this.mudBubbleTimer?.remove();
       this.activeBees = [];
@@ -892,6 +904,10 @@ export default class BridgeChapterScene extends LegacyBridge {
     }
   }
 
+  handleMouthVerb() {
+    this.handleBetelSpit();
+  }
+
   handleBetelSpit() {
     if (this.isDead || this.completing || this.isVaulting) return;
     if (this.lastSpitTime !== undefined && this.activeTime - this.lastSpitTime < 0.25) return;
@@ -1043,6 +1059,29 @@ export default class BridgeChapterScene extends LegacyBridge {
     }
   }
 
+  showDeathOverlay(reason, customRoast) {
+    gameState.restoreChapterOnFailure('CHAPTER_1');
+    this.inventoryBar?.refresh();
+    this.inventoryBar?.clearSelected();
+    this.hideHeldItem();
+    store.death('ch1:' + reason + ':' + (gameState.attemptId || ''));
+    DieAgainDeathOverlay.show({
+      scene: this,
+      reason,
+      customRoast,
+      autoRetrySeconds: 2.5,
+      onRetry: () => {
+        gameState.restoreChapterOnFailure('CHAPTER_1');
+        audioDirector.handleRespawn();
+        this.scene.restart({ replay: this.replay });
+      },
+      onMenu: () => {
+        audioDirector.handleRespawn();
+        this.scene.start('MENU');
+      }
+    });
+  }
+
   triggerWinchCatapult() {
     if (this.isDead || this.completing) return;
     this.isDead = true;
@@ -1069,6 +1108,7 @@ export default class BridgeChapterScene extends LegacyBridge {
 
     gameState.addDeath();
     this.hud?.updateDeathCount();
+    this.showDeathOverlay('WINCH_CATAPULT', DIALOGUE.bridge_winch_catapult);
     this.cameras.main.shake(300, 0.035);
 
     // Knocks Phoe Htaung backward into left wall
@@ -1220,7 +1260,8 @@ export default class BridgeChapterScene extends LegacyBridge {
         fade.style.opacity = String(
           Math.max(0, (this.deathClock - C.deathFreeze) / C.resetFade)
         );
-      if (this.deathClock >= C.deathTotal) {
+      if (this.deathClock >= 2.5) {
+        gameState.restoreChapterOnFailure('CHAPTER_1');
         audioDirector.handleRespawn();
         this.scene.restart({ replay: this.replay });
       }
@@ -1238,6 +1279,7 @@ export default class BridgeChapterScene extends LegacyBridge {
       if (this.restartHeldTime >= C.restartHold) {
         retryMustRelease = true;
         this.input.keyboard.resetKeys();
+        gameState.restoreChapterOnFailure('CHAPTER_1');
         audioDirector.handleRespawn();
         this.scene.restart({ replay: this.replay });
         return;
@@ -1246,13 +1288,13 @@ export default class BridgeChapterScene extends LegacyBridge {
       this.restartHeldTime = 0;
     }
 
-    const left = this.cursors.left.isDown || this.wasd.A.isDown;
-    const right = this.cursors.right.isDown || this.wasd.D.isDown;
+    const left = this.cursors.left.isDown || this.wasd.A.isDown || this.touchControls?.isLeft();
+    const right = this.cursors.right.isDown || this.wasd.D.isDown || this.touchControls?.isRight();
     const jump =
-      this.cursors.up.isDown || this.cursors.space.isDown || this.wasd.W.isDown;
+      this.cursors.up.isDown || this.cursors.space.isDown || this.wasd.W.isDown || this.touchControls?.isJump();
     const grounded =
       this.player.body.blocked.down || this.player.body.touching.down;
-    const down = Boolean(this.cursors.down?.isDown || this.wasd.S?.isDown);
+    const down = Boolean(this.cursors.down?.isDown || this.wasd.S?.isDown || this.touchControls?.isCrawl());
 
     this.coyote = grounded ? C.coyote : Math.max(0, this.coyote - dt);
     this.jumpBuffer = this.jumpPressed
@@ -1504,6 +1546,7 @@ export default class BridgeChapterScene extends LegacyBridge {
 
     gameState.addDeath();
     this.hud?.updateDeathCount();
+    this.showDeathOverlay('SKY_BLOCK');
 
     const stars = this.add
       .text(this.player.x, this.player.y - 20, '💫', { fontSize: '22px' })
@@ -1765,6 +1808,7 @@ export default class BridgeChapterScene extends LegacyBridge {
 
     gameState.addDeath();
     this.hud?.updateDeathCount();
+    this.showDeathOverlay('FALLING_BRICK', DIALOGUE.bridge_falling_brick);
 
     const stars = this.add
       .text(this.player.x, this.player.y - 20, '💫', { fontSize: '22px' })
@@ -2227,6 +2271,7 @@ export default class BridgeChapterScene extends LegacyBridge {
 
     gameState.addDeath();
     this.hud?.updateDeathCount();
+    this.showDeathOverlay('BEE_STUNG', DIALOGUE.bridge_bee_chase);
     this.cameras.main.shake(260, 0.03);
 
     // Launch Phoe Htaung into pit with parabolic knockback
@@ -2562,6 +2607,7 @@ export default class BridgeChapterScene extends LegacyBridge {
     audioDirector.handleTrapInvisibleBlock();
     gameState.addDeath();
     this.hud?.updateDeathCount();
+    this.showDeathOverlay('PIT', customQuote || this.customPitDeathQuote);
     this.subtitle.say(
       customQuote ||
         this.customPitDeathQuote ||
@@ -2602,6 +2648,12 @@ export default class BridgeChapterScene extends LegacyBridge {
     )
       return;
 
+    const currentItems = gameState?.state?.inventory || [];
+    for (const item of currentItems) {
+      if (!store.campaign.inventory.includes(item)) {
+        store.campaign.inventory.push(item);
+      }
+    }
     store.completeBridge(gameState.attemptId, exit);
     this.completing = true;
     this.player.setVelocity(0, 0);

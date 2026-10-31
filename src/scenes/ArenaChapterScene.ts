@@ -14,6 +14,11 @@ import { ensureBridgeTextures } from '../view/BridgeView';
 import { soundEngine } from '../utils/SoundEngine.js';
 import { audioDirector } from '../audio/AudioDirector.js';
 import { MicroInteractions } from '../utils/MicroInteractions.js';
+import { VirtualTouchControls } from '../ui/VirtualTouchControls';
+import { DieAgainDeathOverlay } from '../ui/DieAgainDeathOverlay';
+import { toBurmeseNumeral } from '../utils/toBurmeseNumeral';
+import { ITEM_NAMES_MY, ITEM_TEXTURE_KEYS } from '../utils/GameState.js';
+import { gameState } from '../utils/AdventureState.js';
 
 const ui = () => document.querySelector<HTMLDivElement>('#interface')!;
 const button = (id: string, text: string, primary = false) => `<button type="button" id="${id}" class="${primary ? 'primary' : 'secondary'}">${text}</button>`;
@@ -115,6 +120,7 @@ export default class ArenaChapterScene extends Phaser.Scene {
   public diegeticGrab!: DiegeticGrab;
   private held = new Set<string>(); private edges = { jump: false, punch: false, dodge: false };
   private finished = false; private failureShown = false; private messageUntil = 0;
+  private transitionElapsed = 0; private transitionHandled = false;
   private bagOpen = false;
   private shortcutsModalOpen = false;
   private isInitialShortcutModal = false;
@@ -130,6 +136,10 @@ export default class ArenaChapterScene extends Phaser.Scene {
   private activePickups = new Set<string>();
   private lastClueKey = ''; private lastClueAt = -99; private idleSeconds = 0;
   private prevApeShotCount = 0;
+  private touchControls: VirtualTouchControls | null = null;
+  private prevTouchJump = false;
+  private prevTouchPunch = false;
+  private prevTouchDodge = false;
   constructor() { super('CHAPTER_4'); }
   preload() {
     this.load.image(ARENA_ART.background.key, ARENA_ART.background.path);
@@ -170,6 +180,9 @@ export default class ArenaChapterScene extends Phaser.Scene {
   private clear() {
     this.held.clear();
     this.edges = { jump: false, punch: false, dodge: false };
+    this.prevTouchJump = false;
+    this.prevTouchPunch = false;
+    this.prevTouchDodge = false;
     this.targetX = null;
     this.pendingAction = null;
     this.session.clearInput();
@@ -302,6 +315,7 @@ export default class ArenaChapterScene extends Phaser.Scene {
       }
     } catch {}
     ensureBridgeTextures(this);
+    gameState.checkpointChapter('CHAPTER_4');
     this.view = new ArenaView(this);
 
     // Standardized Bottom-Left Hover Myanmar Traditional Bag (Lwe-Ait)
@@ -326,6 +340,18 @@ export default class ArenaChapterScene extends Phaser.Scene {
             selected: a.weapon === 'SLING',
             texture: this.textures.exists('ch2_vector_slingshot') ? 'ch2_vector_slingshot' : 'ch1_vector_cog'
           });
+        }
+        const carried = store.campaign?.inventory || [];
+        for (const it of carried) {
+          if (it !== 'slingshot') {
+            items.push({
+              key: it,
+              id: it,
+              name: (ITEM_NAMES_MY as Record<string, string>)[it] || it,
+              selected: false,
+              texture: (ITEM_TEXTURE_KEYS as Record<string, string>)[it] || 'ch1_vector_cog'
+            });
+          }
         }
         return items;
       },
@@ -376,8 +402,48 @@ export default class ArenaChapterScene extends Phaser.Scene {
       onAutoWalk: (targetX, onReach) => this.interactWithProximity(targetX, onReach)
     });
 
+    this.touchControls = new VirtualTouchControls(this, {
+      mode: 'CH4',
+      onJump: () => {
+        if (this.finished || this.session.paused || this.failureShown) return;
+        this.edges.jump = true;
+        this.idleSeconds = 0;
+        try { (soundEngine as any).playJump?.(); } catch {}
+      },
+      onPunch: () => {
+        if (this.finished || this.session.paused || this.failureShown) return;
+        if (this.session.attempt.weapon !== 'FISTS' && this.session.attempt.charge === 0) {
+          this.session.equipWeapon('FISTS');
+        }
+        this.edges.punch = true;
+        this.idleSeconds = 0;
+      },
+      onDodge: () => {
+        if (this.finished || this.session.paused || this.failureShown) return;
+        this.edges.dodge = true;
+        this.idleSeconds = 0;
+        try { (soundEngine as any).playWoosh?.(); } catch {}
+      },
+      onSlingDown: () => {
+        if (this.finished || this.session.paused || this.failureShown) return;
+        if (!this.session.hasSling) {
+          this.speak(ARENA_LINES.idleFists);
+          return;
+        }
+        if (this.session.attempt.weapon !== 'SLING') {
+          this.session.equipWeapon('SLING');
+          this.sync();
+        }
+        this.idleSeconds = 0;
+      },
+    });
+
     const onWorldClick = (pointer: Phaser.Input.Pointer) => {
       if (this.finished || this.session.paused || this.failureShown) return;
+      const hitObjs = this.input.manager.hitTest(pointer, this.children.list, this.cameras.main);
+      if (hitObjs.some((obj: any) => (obj.depth >= 200 || obj.parentContainer?.depth >= 200))) {
+        return;
+      }
       if (this.shortcutsModalOpen) {
         if (this.isInitialShortcutModal && !this.rebindingAction) {
           this.closeShortcutModal();
@@ -648,6 +714,8 @@ export default class ArenaChapterScene extends Phaser.Scene {
       document.removeEventListener('visibilitychange', visibility);
       window.removeEventListener('storage', storage);
       this.input.off('pointerdown', onWorldClick);
+      this.touchControls?.destroy();
+      this.touchControls = null;
       this.hideHeldItem();
       this.diegeticGrab?.clear();
       this.activePickups.clear();
@@ -661,6 +729,7 @@ export default class ArenaChapterScene extends Phaser.Scene {
     this.shortcutsModalOpen = true;
     this.isInitialShortcutModal = isInitialStart;
     this.rebindingAction = null;
+    this.touchControls?.hide();
     if (!isInitialStart) {
       this.bagOpen = false;
       this.inventoryBar?.hide();
@@ -731,6 +800,7 @@ export default class ArenaChapterScene extends Phaser.Scene {
     }
     if (unpauseAndFocus) {
       if (this.session.paused) this.session.setPause(false);
+      this.touchControls?.show();
       this.focusGame();
       this.sync();
     }
@@ -738,6 +808,7 @@ export default class ArenaChapterScene extends Phaser.Scene {
   private openBag() {
     if (this.finished || this.failureShown || store.conflict) return;
     if (this.shortcutsModalOpen) this.closeShortcutModal(false);
+    this.touchControls?.hide();
     this.inventoryBar?.reveal();
     try { (soundEngine as any).playBagRustle?.(); } catch {}
     this.pause(true); this.bagOpen = true;
@@ -757,6 +828,7 @@ export default class ArenaChapterScene extends Phaser.Scene {
     if (store.conflict && !value) return;
     if (this.shortcutsModalOpen) this.closeShortcutModal(false);
     if (!value) this.inventoryBar?.hide();
+    if (value) this.touchControls?.hide(); else this.touchControls?.show();
     this.bagOpen = false; this.session.setPause(value); this.clear(); const el = ui().querySelector<HTMLDivElement>('#arena-modal'); if (!el) return;
     el.hidden = !value;
     el.innerHTML = `<section class="dialog"><h2>ခဏနားမယ်</h2><p>အစမှာ လက်ချည်းပဲ။ လောက်လေးခွပါလာလျှင် လွယ်အိတ်ဖွင့်ပြီး ထုတ်သုံးနိုင်သည်။ ဦးကြီး၏ အသံနှင့် အရိပ်အယောင်များကို သတိထားပါ။</p><div class="actions">${button('arena-resume','ဆက်ကစားမယ်',true)}${button('arena-menu','ပင်မစာမျက်နှာ')}</div></section>`;
@@ -766,8 +838,12 @@ export default class ArenaChapterScene extends Phaser.Scene {
   }
   private restart() {
     if (store.conflict) return;
+    gameState.restoreChapterOnFailure('CHAPTER_4');
+    this.inventoryBar?.refresh();
+    this.inventoryBar?.clearSelected();
     this.session.restart(); this.session.setPause(false); this.failureShown = false; this.bagOpen = false;
     if (this.shortcutsModalOpen) this.closeShortcutModal(false);
+    this.touchControls?.show();
     this.grabControl = null; this.grabbedStone = false; this.hideHeldItem(); this.clear();
     this.lastClueKey = ''; this.lastClueAt = -99; this.idleSeconds = 0; this.prevApeShotCount = 0;
     const el = ui().querySelector<HTMLDivElement>('#arena-modal'); if (el) { el.hidden = true; el.innerHTML = ''; }
@@ -869,11 +945,15 @@ export default class ArenaChapterScene extends Phaser.Scene {
     if (kind === 'failed') {
       try { soundEngine.playDeath?.(); } catch {}
       if (this.failureShown) return;
+      gameState.restoreChapterOnFailure('CHAPTER_4');
+      this.inventoryBar?.refresh();
+      this.inventoryBar?.clearSelected();
       if (this.session.attempt.failure === 'HEALTH' || this.session.attempt.failure === 'GREED_TRAP') {
         store.death(`arena:${this.session.attempt.id}`);
       }
-      this.failureShown = true; this.clear(); const el = ui().querySelector<HTMLDivElement>('#arena-modal')!; el.hidden = false;
+      this.failureShown = true; this.touchControls?.hide(); this.clear(); const el = ui().querySelector<HTMLDivElement>('#arena-modal'); if (el) el.hidden = true;
       const isGreed = this.session.attempt.failure === 'GREED_TRAP';
+      const reason = isGreed ? 'GREED_TRAP' : this.session.attempt.failure === 'TIME' ? 'TIME' : 'HEALTH';
       const title = isGreed
         ? '💥 ရွှေထုပ် ပေါက်ကွဲသွားပြီ!'
         : this.session.attempt.failure === 'TIME'
@@ -888,23 +968,84 @@ export default class ArenaChapterScene extends Phaser.Scene {
         : this.session.attempt.failure === 'TIME'
         ? ARENA_LINES.timeout
         : ARENA_LINES.health;
-      el.innerHTML = `<section class="dialog"><h2>${title}</h2><p>${advice}</p><div class="actions">${button('arena-retry','ပြန်စမ်းမယ်',true)}${button('arena-menu','ပင်မစာမျက်နှာ')}</div></section>`;
-      this.bind('arena-retry',()=>this.restart()); this.bind('arena-menu',()=>this.scene.start('MENU'));
+      DieAgainDeathOverlay.show({
+        scene: this,
+        reason,
+        customTitle: title,
+        customRoast: advice,
+        retryLabel: '🔄 ပြန်စမ်းမယ် / RETRY',
+        autoRetrySeconds: 2.5,
+        onRetry: () => this.restart(),
+        onMenu: () => this.scene.start('MENU')
+      });
     }
     if (kind === 'complete') { store.completeArena(this.session.attempt); this.finished = true; this.hideHeldItem(); this.clear(); this.result(); }
   }
   private result() {
+    this.touchControls?.hide();
+    this.transitionElapsed = 0;
+    this.transitionHandled = false;
     const r = store.campaign.lastChapter4Result;
     const route = this.session?.attempt?.winRoute ?? r?.winRoute ?? 'CANONICAL';
     const routeLabel =
       route === 'SPEEDRUN_BYPASS'
         ? 'အပြေးလမ်း (Speedrun Bypass)'
         : 'တိုက်ခိုက်ရေးလမ်း (လောက်လေးခွ)';
-    ui().innerHTML = `<section class="result-panel"><span class="eyebrow">အခန်း ၄ ပြီးပါပြီ</span><h1>လူဝံနှစ်ကောင်ကို ကျော်လာပြီ။</h1><p class="intro">ရှေးဟောင်းမြို့တော်ရဲ့ အတွင်းတံခါးဘက် ဆက်သွားနိုင်ပြီ။</p><div class="result-stats"><div><span>ကျန်သွေး</span><b>${r?.remainingHealth ?? 0}<small>/3</small></b></div><div><span>တိုက်ပွဲချိန်</span><b>${r?.activeSeconds.toFixed(2) ?? '—'}<small>s</small></b></div><div><span>အောင်မြင်သည့်လမ်း</span><b>${routeLabel}</b></div><div><span>သိမ်းပြီးရွှေ</span><b>${store.campaign.walletCoins}</b></div></div><p class="result-note">အခန်း ၅ ကို မတည်ဆောက်ရသေးပါ။ ဂိမ်းတစ်ခုလုံး၏ ဇာတ်သိမ်းမဟုတ်ပါ။</p>${store.unsaved ? '<p class="warning">Save မသိမ်းရသေးပါ။ Reload လုပ်ပါက ယာယီ progress ပျောက်နိုင်သည်။</p>' : ''}<div class="actions">${button('arena-again','အခန်း ၄ ပြန်စမ်း',true)}${store.unsaved ? button('arena-save','ထပ်သိမ်းမယ်') : ''}${button('arena-menu','ပင်မစာမျက်နှာ')}</div></section>`;
-    ui().querySelector('.result-note')!.textContent='အတွင်းမြို့တော်မှာ ဦးကြီး စောင့်နေတယ်။ အခန်း ၅ မှာ ဆက်ရင်ဆိုင်နိုင်ပြီ။';
-    ui().querySelector('.actions')!.insertAdjacentHTML('afterbegin',button('arena-next','အခန်း ၅ ဆက်မယ်',true));
-    this.bind('arena-next',()=>this.scene.start('CHAPTER_5',{equipment:{slingshot:this.session.hasSling}}));
-    this.bind('arena-again',()=>this.scene.restart({equipment:{slingshot:this.session.hasSling}})); this.bind('arena-menu',()=>this.scene.start('MENU')); this.bind('arena-save',()=>{ if(store.save())this.result(); });
+    const deathBurmese = toBurmeseNumeral(store.campaign.deathCount);
+    ui().innerHTML = `
+      <section class="result-panel">
+        <span class="eyebrow">အခန်း ၄ ပြီးပါပြီ → အခန်း ၅ ဆီသို့ / CHAPTER 4 CLEARED</span>
+        <h1>ရာဇပလ္လင် ဉာဏ်စမ်းခန်းဆီသို့</h1>
+        <p class="intro">ရှေးဟောင်းမြို့တော်ရဲ့ အတွင်းတံခါးဘက် ဆက်သွားနိုင်ပြီ။</p>
+        <div class="result-stats">
+          <div><span>ယခုအခန်း</span><b>အခန်း ၄</b></div>
+          <div><span>နောက်အခန်း</span><b>အခန်း ၅</b></div>
+          <div><span>စုစုပေါင်း သေဆုံးမှု</span><b>${deathBurmese} ကြိမ်</b></div>
+          <div><span>ကျန်သွေး</span><b>${r?.remainingHealth ?? 0}<small>/3</small></b></div>
+          <div><span>တိုက်ပွဲချိန်</span><b>${r?.activeSeconds.toFixed(2) ?? '—'}<small>s</small></b></div>
+          <div><span>သိမ်းပြီးရွှေ</span><b>${store.campaign.walletCoins}</b></div>
+          <div><span>အောင်မြင်သည့်လမ်း</span><b>${routeLabel}</b></div>
+        </div>
+        <p class="result-note">လူဝံကြီးများကို အောင်နိုင်ပြီးနောက် နန်းတော်၏ အလယ်ဗဟို ရာဇပလ္လင်ခန်းမကြီးဆီသို့ ရောက်ရှိလာခဲ့သည်။ ဦးကြီးက စောင့်နေသည်။</p>
+        ${store.unsaved ? '<p class="warning">Save မသိမ်းရသေးပါ။ Reload လုပ်ပါက ယာယီ progress ပျောက်နိုင်သည်။</p>' : ''}
+
+        <div class="transition-countdown-container" id="arena-countdown">
+          <div class="transition-countdown-bar">
+            <div class="transition-countdown-fill" id="arena-countdown-fill"></div>
+          </div>
+          <span class="transition-countdown-label" id="arena-countdown-label">⏱️ အခန်း ၅ သို့ ဆက်လက်ထွက်ခွာနေသည်… (Space / Click ဖြင့် ကျော်နိုင်သည်)</span>
+        </div>
+
+        <div class="transition-actions">
+          <button type="button" id="btn-next-ch5" class="fm-btn fm-primary transition-advance-btn">
+            <span class="fm-btn-label">အခန်း ၅ စတင်မည်</span>
+            <small>PROCEED TO CHAPTER 5 →</small>
+          </button>
+        </div>
+
+        <!-- Clean surface trigger for instant advance & test compatibility -->
+        <button type="button" id="arena-next" class="transition-click-surface" aria-label="Next Chapter"></button>
+      </section>`;
+
+    const goNext = () => {
+      if (this.transitionHandled) return;
+      this.transitionHandled = true;
+      this.scene.start('CHAPTER_5', { equipment: { slingshot: this.session.hasSling } });
+    };
+
+    this.bind('arena-next', goNext);
+    this.bind('btn-next-ch5', goNext);
+
+    const onKeydown = (e: KeyboardEvent) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        goNext();
+      }
+    };
+    window.addEventListener('keydown', onKeydown);
+    this.events.once('shutdown', () => {
+      window.removeEventListener('keydown', onKeydown);
+    });
   }
   private updateContextClues(dt: number) {
     const a = this.session.attempt;
@@ -972,7 +1113,22 @@ export default class ArenaChapterScene extends Phaser.Scene {
     this.inventoryBar?.refresh();
   }
   update(_time: number, ms: number) {
-    if (this.finished) return;
+    if (this.finished) {
+      if (!this.transitionHandled) {
+        this.transitionElapsed += ms / 1000;
+        const fill = document.getElementById('arena-countdown-fill');
+        const label = document.getElementById('arena-countdown-label');
+        if (fill) fill.style.width = `${Math.min(100, (this.transitionElapsed / 3.0) * 100)}%`;
+        if (label) {
+          label.textContent = `⏱️ အခန်း ၅ သို့ ဆက်လက်ထွက်ခွာနေသည်… ${Math.max(0, 3.0 - this.transitionElapsed).toFixed(1)}s (Space / Click ဖြင့် ကျော်နိုင်သည်)`;
+        }
+        if (this.transitionElapsed >= 3.0) {
+          this.transitionHandled = true;
+          this.scene.start('CHAPTER_5', { equipment: { slingshot: this.session.hasSling } });
+        }
+      }
+      return;
+    }
     const dt = ms / 1000;
 
     // Handle click-to-grab auto-walk per character.md
@@ -994,15 +1150,61 @@ export default class ArenaChapterScene extends Phaser.Scene {
       }
     }
 
+    const touchLeft = Boolean(this.touchControls?.isLeft());
+    const touchRight = Boolean(this.touchControls?.isRight());
+    const touchCrawl = Boolean(this.touchControls?.isCrawl());
+    const touchSling = Boolean(this.touchControls?.isSling());
+
+    // Norman's Law: instant action canceling on touch locomotion
+    if (touchLeft || touchRight || touchCrawl || this.touchControls?.isJump()) {
+      this.targetX = null;
+      this.pendingAction = null;
+      if (this.inventoryBar?.isRevealed) {
+        this.inventoryBar.hide();
+      }
+    }
+
+    // Slingshot auto-equip on hold
+    if (touchSling && this.session.attempt.weapon !== 'SLING' && this.session.attempt.hasSling) {
+      this.session.equipWeapon('SLING');
+      this.sync();
+    }
+
+    // Edge triggers for touch buttons
+    if (this.touchControls?.isJump() && !this.prevTouchJump) {
+      this.edges.jump = true;
+      try { (soundEngine as any).playJump?.(); } catch {}
+    }
+    this.prevTouchJump = Boolean(this.touchControls?.isJump());
+
+    if (this.touchControls?.isPunch() && !this.prevTouchPunch) {
+      if (this.session.attempt.weapon !== 'FISTS' && this.session.attempt.charge === 0) {
+        this.session.equipWeapon('FISTS');
+      }
+      this.edges.punch = true;
+    }
+    this.prevTouchPunch = Boolean(this.touchControls?.isPunch());
+
+    if (this.touchControls?.isDodge() && !this.prevTouchDodge) {
+      this.edges.dodge = true;
+      try { (soundEngine as any).playWoosh?.(); } catch {}
+    }
+    this.prevTouchDodge = Boolean(this.touchControls?.isDodge());
+
     const generation = this.session.generation, stepped = this.session.accumulator + dt >= C.dt;
     const s = this.shortcuts;
+    const isLeft = this.held.has(s.moveLeft) || this.held.has('arrowleft') || autoLeft || touchLeft;
+    const isRight = this.held.has(s.moveRight) || this.held.has('arrowright') || autoRight || touchRight;
+    const isSling = this.held.has(s.sling) || this.held.has('k') || touchSling;
+    const isCrawl = this.held.has(s.crawl) || this.held.has('arrowdown') || touchCrawl;
+
     const events = this.session.tick(
       dt,
       {
-        left: this.held.has(s.moveLeft) || this.held.has('arrowleft') || autoLeft,
-        right: this.held.has(s.moveRight) || this.held.has('arrowright') || autoRight,
-        sling: this.held.has(s.sling) || this.held.has('k'),
-        crawl: this.held.has(s.crawl) || this.held.has('arrowdown'),
+        left: isLeft,
+        right: isRight,
+        sling: isSling,
+        crawl: isCrawl,
         ...this.edges,
       },
       this.held.has('r')

@@ -1,4 +1,4 @@
-import { C, GATE, GROUND, PLATE, SHELF, STEP, liftRect, CH2_POLE_SPAWN, CH2_COG_SPAWN, PLATFORM_MID, PLATFORM_HIGH, CH2_SLINGSHOT_SPAWN, CH2_TRAP_RANGE, CH2_STEAM_NOZZLE_POS, CH2_CRUSHER_START_POS, CH2_ANCIENT_BRICK_SPAWN, CH2_GEAR_HOUSING_POS } from '../content/chapter1';
+import { C, GATE, GATE_UPPER, GROUND, PLATE, SHELF, STEP, liftRect, CH2_POLE_SPAWN, CH2_COG_SPAWN, PLATFORM_MID, PLATFORM_HIGH, CH2_SLINGSHOT_SPAWN, CH2_DOOR_TOP_TRAP, CH2_TRAP_RANGE, CH2_STEAM_NOZZLE_POS, CH2_CRUSHER_START_POS, CH2_ANCIENT_BRICK_SPAWN, CH2_GEAR_HOUSING_POS } from '../content/chapter1';
 import { overlaps, overlapX, overlapY, sweep } from './collision';
 import type { Body, Hit } from './collision';
 import type { Attempt, Input, Player, Rect, Stone } from './types';
@@ -13,7 +13,7 @@ export const playerRect = (p: Player): Rect => {
 };
 export const stoneRect = (s: Stone): Rect => ({ id: s.id, x: s.centerX - C.rock / 2, y: s.bottomY - C.rock, w: C.rock, h: C.rock });
 export function solids(a: Attempt): Rect[] {
-  return [GROUND, STEP, liftRect(a.liftY), ...(a.gateIntact ? [GATE] : []), ...(a.shelfIntact ? [SHELF] : []), ...(a.platformsRevealed ? [PLATFORM_MID, PLATFORM_HIGH] : [])];
+  return [GROUND, STEP, liftRect(a.liftY), ...(a.gateIntact ? [GATE, GATE_UPPER] : []), ...(a.shelfIntact ? [SHELF] : []), ...(a.platformsRevealed ? [PLATFORM_MID, PLATFORM_HIGH] : [])];
 }
 export function weighted(a: Attempt): boolean {
   return a.stones.some(s => s.state !== 'FALLING' && s.support === 'ground' && Math.abs(s.bottomY - C.floor) <= C.plateTolerance && overlapX(stoneRect(s), PLATE) >= C.plateOverlap - C.epsilon);
@@ -80,18 +80,28 @@ function push(a: Attempt, direction: number, dt: number): void {
     }
   }
   let distance = C.push * dt;
+  let hitGate = false;
   for (const s of chain) {
     const r = stoneRect(s);
     distance = Math.min(distance, direction > 0 ? C.width - (r.x + r.w) : r.x);
     for (const b of [...solids(a), ...rocks.filter(v => !chain.includes(v)).map(stoneRect)]) {
       if (overlapY(r, b) <= C.epsilon) continue;
       const gap = direction > 0 ? b.x - (r.x + r.w) : r.x - (b.x + b.w);
-      if (gap >= -C.epsilon) distance = Math.min(distance, Math.max(0, gap));
+      if (gap >= -C.epsilon) {
+        if (a.gateIntact && direction > 0 && b.id === GATE.id && gap <= distance + C.epsilon) {
+          hitGate = true;
+        }
+        distance = Math.min(distance, Math.max(0, gap));
+      }
     }
   }
   for (const s of chain) s.centerX += direction * Math.max(0, distance);
   p.vx = direction * (distance / dt);
   p.pushing = distance > C.epsilon;
+  if (hitGate) {
+    a.gateIntact = false;
+    a.events.push({ kind: 'gate', x: GATE.x, y: GATE.y });
+  }
 }
 
 function moveLift(a: Attempt, dt: number): void {
@@ -123,7 +133,7 @@ function simulate(a: Attempt, dt: number): void {
     { ...playerRect(p), vx: p.vx, vy: p.vy + (p.grounded ? 0 : C.gravity * dt / 2), kind: 'player', support: p.support },
     ...a.stones.map(s => ({ ...stoneRect(s), vx: 0, vy: s.state === 'FALLING' ? s.vy + C.gravity * dt / 2 : 0,
       kind: 'rock' as const, falling: s.state === 'FALLING', support: s.support })),
-    ...solids(a).map(r => ({ ...r, vx: 0, vy: 0, kind: r.id === GATE.id || r.id === SHELF.id ? 'wood' as const : 'solid' as const })),
+    ...solids(a).map(r => ({ ...r, vx: 0, vy: 0, kind: r.id === SHELF.id ? 'wood' as const : 'solid' as const })),
     { id: 'left', x: -100, y: -2000, w: 100, h: 4000, vx: 0, vy: 0, kind: 'solid' },
     { id: 'right', x: C.width, y: -2000, w: 100, h: 4000, vx: 0, vy: 0, kind: 'solid' },
   ];
@@ -163,9 +173,8 @@ function simulate(a: Attempt, dt: number): void {
     }
     if (moving.kind === 'rock' && target.kind === 'wood') {
       removed.add(target.id);
-      if (target.id === GATE.id) a.gateIntact = false;
-      else a.shelfIntact = false;
-      a.events.push({ kind: target.id === GATE.id ? 'gate' : 'shelf', x: target.x, y: target.y });
+      a.shelfIntact = false;
+      a.events.push({ kind: 'shelf', x: target.x, y: target.y });
       continue;
     }
     if (moving.kind === 'rock' && target.kind === 'rock') {
@@ -290,7 +299,7 @@ export function step(a: Attempt, input: Input, dt = C.dt): void {
       a.events.push({ kind: 'puzzle_item', x: CH2_COG_SPAWN.x, y: CH2_COG_SPAWN.y });
     }
     if (Math.abs(p.centerX - 1104) <= 85) {
-      if (p.feetY > 400) {
+      if (p.feetY > 550) {
         a.events.push({ kind: 'gear_too_high', x: 1104, y: 360 });
       } else {
         const rockAbove = a.stones.some(
@@ -347,6 +356,14 @@ export function step(a: Attempt, input: Input, dt = C.dt): void {
     a.status = 'DEAD';
     p.control = 'DEAD';
     a.events.push({ kind: 'trap', x: p.centerX, y: p.feetY });
+    a.events.push({ kind: 'death', x: p.centerX, y: p.feetY });
+  }
+
+  if (a.gateIntact && p.centerX >= CH2_DOOR_TOP_TRAP.minX && p.centerX <= CH2_DOOR_TOP_TRAP.maxX && p.feetY <= CH2_DOOR_TOP_TRAP.maxY) {
+    a.doorTopTrapTriggered = true;
+    a.status = 'DEAD';
+    p.control = 'DEAD';
+    a.events.push({ kind: 'door_top_trap', x: p.centerX, y: p.feetY });
     a.events.push({ kind: 'death', x: p.centerX, y: p.feetY });
   }
 
@@ -423,7 +440,7 @@ export function step(a: Attempt, input: Input, dt = C.dt): void {
   }
 
   // Completion check - includes WC5 and WC8
-  if (p.grounded && Math.abs(p.feetY - C.floor) <= C.epsilon && p.centerX >= 1234) {
+  if ((!a.gateIntact || p.centerX <= 1235) && p.grounded && Math.abs(p.feetY - C.floor) <= C.epsilon && p.centerX >= 1234) {
     a.status = 'COMPLETE'; p.control = 'EXITING'; a.events.push({ kind: 'complete' });
   }
 }
@@ -432,8 +449,8 @@ export function preview(a: Attempt): { x: number; surfaces: { y: number; breakab
   const x = a.machine.state === 'READY' ? Math.min(C.aimMax, Math.max(C.aimMin, a.player.centerX)) : a.machine.targetX;
   const footprint: Rect = { id: 'preview', x: x - C.rock / 2, y: 0, w: C.rock, h: C.height };
   const surfaces = [...solids(a), ...a.stones.filter(s => s.state !== 'FALLING').map(stoneRect)]
-    .filter(r => overlapX(footprint, r) >= (r.id === GATE.id || r.id === SHELF.id ? C.woodOverlap : C.epsilon))
-    .map(r => ({ y: r.y, breakable: r.id === GATE.id || r.id === SHELF.id, shatter: a.stones.some(s => s.id === r.id) }))
+    .filter(r => overlapX(footprint, r) >= (r.id === SHELF.id ? C.woodOverlap : C.epsilon))
+    .map(r => ({ y: r.y, breakable: r.id === SHELF.id, shatter: a.stones.some(s => s.id === r.id) }))
     .sort((u, v) => u.y - v.y);
   const stop = surfaces.findIndex(s => !s.breakable);
   return { x, surfaces: stop < 0 ? surfaces : surfaces.slice(0, stop + 1) };

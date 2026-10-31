@@ -6,7 +6,7 @@ import type { Body } from './collision';
 import type { Campaign, Player, Rect } from './types';
 
 export type PanSide = 'LEFT' | 'RIGHT';
-export type ScaleItemLocation = 'WORLD' | 'BAG' | 'PAN' | 'LEFT_PAN' | 'RIGHT_PAN' | 'LATCH';
+export type ScaleItemLocation = 'WORLD' | 'BAG' | 'PAN' | 'LEFT_PAN' | 'RIGHT_PAN' | 'LATCH' | 'NONE';
 
 export type ScaleCommand = 
   | { kind: 'item'; id: ScaleItemId } 
@@ -42,22 +42,23 @@ function hashSeed(str: string): number {
   return h >>> 0;
 }
 
-export function createScaleAttempt(id: string): ScaleAttempt {
+export function createScaleAttempt(id: string, initialInventory?: string[]): ScaleAttempt {
   const arm = (S3.pendulum.bottomY - S3.pendulum.halfHeight) - S3.pendulum.pivotY;
   const profileIdx = Math.abs(hashSeed(id)) % WEIGHT_PROFILES.length;
   const weights = { ...(WEIGHT_PROFILES[profileIdx] ?? WEIGHT_PROFILES[0]) } as Record<ScaleItemId, number>;
+  const owned = new Set(initialInventory ?? []);
   return { id, status: 'WAITING', elapsed: 0,
     locations: {
-      stone: 'WORLD',
-      treasure: 'WORLD',
-      crate: 'WORLD',
-      sandbag: 'WORLD',
-      pin: 'WORLD',
+      stone: owned.has('stone') ? 'BAG' : 'WORLD',
+      treasure: owned.has('treasure') ? 'BAG' : 'WORLD',
+      crate: owned.has('crate') ? 'BAG' : 'WORLD',
+      sandbag: owned.has('sandbag') ? 'BAG' : 'WORLD',
+      pin: owned.has('pin') ? 'BAG' : 'WORLD',
       reference: 'LEFT_PAN',
-      betel_cutter: 'WORLD',
-      bamboo_pole: 'WORLD',
-      rusty_cog: 'WORLD',
-      slingshot: 'WORLD',
+      betel_cutter: owned.has('betel_cutter') ? 'BAG' : 'WORLD',
+      bamboo_pole: owned.has('bamboo_pole') ? 'BAG' : 'NONE',
+      rusty_cog: owned.has('rusty_cog') ? 'BAG' : 'NONE',
+      slingshot: owned.has('slingshot') ? 'BAG' : 'NONE',
     },
     weights,
     player: { centerX: S3.spawnX, feetY: S3.floor, vx: 0, vy: 0, grounded: true, support: 'scale_floor', coyote: C.coyote,
@@ -282,6 +283,7 @@ export function settleScale(current: Campaign, a: ScaleAttempt): Campaign {
   next.chapter3TreasureRecovered = Boolean(current.chapter3TreasureRecovered) || a.locations.treasure === 'BAG';
   next.lastChapter3Result = { attemptId: a.id, activeSeconds: a.elapsed, treasureRecovered: a.locations.treasure === 'BAG',
     method: a.braced ? 'BRACE' : panWeight(a) === S3.targetWeight ? 'WEIGHTS' : 'TIMING' };
+  if (a.locations.treasure === 'BAG' && !next.inventory.includes('treasure')) { next.inventory.push('treasure'); }
   if (!current.chapter4Completed) next.resumeAt = 'CHAPTER_4_PENDING'; next.revision++;
   // Reward amount is not owner-defined. Record the relic, never silently mint wallet coins.
   return next;

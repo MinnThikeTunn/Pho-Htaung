@@ -22,7 +22,22 @@ export default class InventoryBar {
     this.isPinned = false;
     this.hideTimer = null;
     this.activeSlotCount = 0;
+    this.isMobile = this.detectMobile();
     this.create();
+  }
+
+  detectMobile() {
+    if (typeof window === 'undefined') return false;
+    const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    );
+    const isTouchOnly = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+    const forceTouch =
+      typeof window.location !== 'undefined' &&
+      window.location.search &&
+      window.location.search.includes('touch=1');
+
+    return isMobileUA || isTouchOnly || forceTouch;
   }
 
   create() {
@@ -31,16 +46,13 @@ export default class InventoryBar {
     this.slotSpacing = slotSpacing;
     this.maxSlots = maxSlots;
 
-    // =========================================================================
-    // 1. Permanent Bottom-Left Dock: Myanmar Traditional Bag (Lwe-Ait - လွယ်အိတ်)
-    // Anchored at bottom left (x = 52, y = 668, Depth: 320)
-    // Borderless, textless, pure Shan woven bag icon!
-    // =========================================================================
-    const bagX = 52;
+    // Desktop: bottom-left dock (x: 52, y: 668)
+    // Mobile: bottom-center dock (x: 640, y: 668)
+    const bagX = this.isMobile ? 640 : 52;
     const bagY = 668;
     this.bagContainer = this.scene.add.container(bagX, bagY).setDepth(320).setScrollFactor(0);
 
-    // Procedural / Hand-Inked Myanmar Traditional Bag Icon (Faithful to reference/images.jpg)
+    // Procedural / Hand-Inked Myanmar Traditional Bag Icon
     if (this.scene.textures && this.scene.textures.exists('traditional_bag_icon')) {
       this.bagIcon = this.scene.add
         .image(0, 0, 'traditional_bag_icon')
@@ -59,8 +71,10 @@ export default class InventoryBar {
       this.bagContainer.add(bagG);
     }
 
-    // Make the bottom-left bag icon interactive with hover & micro-interactions
-    this.bagContainer.setSize(52, 64);
+    // Interactive bag icon
+    const hitW = this.isMobile ? 64 : 52;
+    const hitH = this.isMobile ? 76 : 64;
+    this.bagContainer.setSize(hitW, hitH);
     this.bagContainer.setInteractive({ useHandCursor: true });
 
     this.bagContainer.on('pointerover', () => {
@@ -90,6 +104,10 @@ export default class InventoryBar {
 
     this.bagContainer.on('pointerdown', (pointer, lx, ly, event) => {
       if (event && event.stopPropagation) event.stopPropagation();
+      if (this.selectedItem) {
+        this.clearSelected();
+        try { soundEngine.playBagRustle?.(); } catch {}
+      }
       this.isPinned = !this.isPinned;
       if (this.isPinned) {
         this.cancelHideTimer();
@@ -100,19 +118,22 @@ export default class InventoryBar {
     });
 
     // =========================================================================
-    // 2. Expandable Side-Flyout Item Tray
-    // Positioned immediately to the right of the bag (x = 88, y = 668, Depth: 315)
+    // 2. Expandable Item Tray
+    // Desktop: flies out horizontally to the right (x = 64/88, y = 668)
+    // Mobile: centered together with the bag (x = 640), expands upward to y = 596
     // =========================================================================
-    this.trayContainer = this.scene.add.container(64, bagY).setDepth(315).setScrollFactor(0);
+    const initialTrayX = this.isMobile ? 640 : 64;
+    const initialTrayY = bagY;
+    this.trayContainer = this.scene.add.container(initialTrayX, initialTrayY).setDepth(315).setScrollFactor(0);
     this.trayContainer.setAlpha(0);
     this.trayContainer.setVisible(false);
 
-    // Rounded Floating Tray Backdrop (Minimalist Dark Slate & Gold Bevel)
+    // Rounded Floating Tray Backdrop
     this.trayBg = this.scene.add.graphics();
     this.trayContainer.add(this.trayBg);
 
-    // Hit zone over the entire tray to detect hover smoothly
-    this.trayHitZone = this.scene.add.zone(0, 0, 100, 56).setOrigin(0, 0.5).setInteractive();
+    // Hit zone over the tray
+    this.trayHitZone = this.scene.add.zone(0, 0, 100, 56).setOrigin(this.isMobile ? 0.5 : 0, 0.5).setInteractive();
     this.trayContainer.add(this.trayHitZone);
 
     this.trayHitZone.on('pointerover', () => {
@@ -143,7 +164,7 @@ export default class InventoryBar {
     this.slotXCoords = [];
 
     for (let i = 0; i < maxSlots; i++) {
-      const sx = 26 + i * slotSpacing;
+      const sx = this.isMobile ? 0 : (26 + i * slotSpacing);
       this.slotXCoords.push(sx);
 
       const slotBox = this.scene.add.graphics();
@@ -164,7 +185,8 @@ export default class InventoryBar {
         const info = this.getItemAt(itemImg.slotIndex);
         if (info) {
           const myName = info.name || ITEM_NAMES_MY[info.key] || info.key;
-          this.tooltipText.setText(myName).setPosition(sx, -36).setVisible(true);
+          const posX = this.slotXCoords[itemImg.slotIndex] || 0;
+          this.tooltipText.setText(myName).setPosition(posX, -36).setVisible(true);
         }
       });
 
@@ -184,9 +206,7 @@ export default class InventoryBar {
       this.slotImages.push(itemImg);
     }
 
-    // =========================================================================
-    // 3. Global Shortcut Key & Click Listeners (B / Tab / I / Escape / Locomotion)
-    // =========================================================================
+    // Global Shortcut Key & Click Listeners
     this.keyHandler = (e) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       const key = e.key.toLowerCase();
@@ -212,7 +232,7 @@ export default class InventoryBar {
         return;
       }
 
-      // Norman's Law (Action Canceling): Locomotion or jump immediately dismisses open inventory
+      // Locomotion or jump immediately dismisses open inventory
       if (
         this.isRevealed &&
         ['a', 'd', 'w', 's', ' ', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)
@@ -221,7 +241,7 @@ export default class InventoryBar {
         this.hide();
       }
 
-      // Number keys 1-9 to select slots if tray is open
+      // Number keys 1-9
       if (this.isRevealed && ['1', '2', '3', '4', '5', '6', '7', '8', '9'].includes(key)) {
         const idx = parseInt(key, 10) - 1;
         if (idx >= 0 && idx < this.slotImages.length) {
@@ -233,41 +253,113 @@ export default class InventoryBar {
     // Ambient Click-Outside-to-Close Dismissal
     this.scenePointerDown = (pointer) => {
       if (!this.isRevealed) return;
-      const bagBounds = { left: 24, right: 80, top: 636, bottom: 700 };
-      const trayWidth = Math.max(80, this.activeSlotCount * slotSpacing + 16);
-      const trayBounds = {
-        left: 80,
-        right: 88 + trayWidth,
-        top: 636,
-        bottom: 700
-      };
-      const inBag =
-        pointer.x >= bagBounds.left &&
-        pointer.x <= bagBounds.right &&
-        pointer.y >= bagBounds.top &&
-        pointer.y <= bagBounds.bottom;
-      const inTray =
-        pointer.x >= trayBounds.left &&
-        pointer.x <= trayBounds.right &&
-        pointer.y >= trayBounds.top &&
-        pointer.y <= trayBounds.bottom;
 
-      if (!inBag && !inTray) {
-        this.isPinned = false;
-        this.hide();
+      if (!this.isMobile) {
+        // Desktop dismissal bounds
+        const bagBounds = { left: 24, right: 80, top: 636, bottom: 700 };
+        const trayWidth = Math.max(80, this.activeSlotCount * slotSpacing + 16);
+        const trayBounds = {
+          left: 80,
+          right: 88 + trayWidth,
+          top: 636,
+          bottom: 700
+        };
+        const inBag =
+          pointer.x >= bagBounds.left &&
+          pointer.x <= bagBounds.right &&
+          pointer.y >= bagBounds.top &&
+          pointer.y <= bagBounds.bottom;
+        const inTray =
+          pointer.x >= trayBounds.left &&
+          pointer.x <= trayBounds.right &&
+          pointer.y >= trayBounds.top &&
+          pointer.y <= trayBounds.bottom;
+
+        if (!inBag && !inTray) {
+          this.isPinned = false;
+          this.hide();
+        }
+      } else {
+        // Mobile centered dismissal bounds
+        const bagBounds = { left: 595, right: 685, top: 628, bottom: 708 };
+        const trayWidth = Math.max(80, this.activeSlotCount * slotSpacing + 28);
+        const trayBounds = {
+          left: 640 - trayWidth / 2 - 14,
+          right: 640 + trayWidth / 2 + 14,
+          top: 566,
+          bottom: 626
+        };
+        const inBag =
+          pointer.x >= bagBounds.left &&
+          pointer.x <= bagBounds.right &&
+          pointer.y >= bagBounds.top &&
+          pointer.y <= bagBounds.bottom;
+        const inTray =
+          pointer.x >= trayBounds.left &&
+          pointer.x <= trayBounds.right &&
+          pointer.y >= trayBounds.top &&
+          pointer.y <= trayBounds.bottom;
+
+        if (!inBag && !inTray) {
+          this.isPinned = false;
+          this.hide();
+        }
       }
     };
-    this.scene.input.on('pointerdown', this.scenePointerDown);
+    if (this.scene && this.scene.input && this.scene.input.on) {
+      this.scene.input.on('pointerdown', this.scenePointerDown);
+    }
 
-    window.addEventListener('keydown', this.keyHandler);
-    this.scene.events.once('shutdown', () => {
-      this.cancelHideTimer();
-      window.removeEventListener('keydown', this.keyHandler);
-      if (this.scene && this.scene.input) {
-        this.scene.input.off('pointerdown', this.scenePointerDown);
-      }
-    });
+    if (typeof window !== 'undefined') {
+      window.addEventListener('keydown', this.keyHandler);
 
+      // Responsive device transition listeners
+      this.onTouchStart = () => {
+        if (!this.isMobile) {
+          this.isMobile = true;
+          this.updateDockLayout();
+        }
+      };
+      window.addEventListener('touchstart', this.onTouchStart, { passive: true });
+
+      this.onMouseMove = () => {
+        if (this.isMobile && !this.detectMobile()) {
+          this.isMobile = false;
+          this.updateDockLayout();
+        }
+      };
+      window.addEventListener('mousemove', this.onMouseMove, { passive: true });
+    }
+
+    if (this.scene && this.scene.events && this.scene.events.once) {
+      this.scene.events.once('shutdown', () => {
+        this.cancelHideTimer();
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('keydown', this.keyHandler);
+          window.removeEventListener('touchstart', this.onTouchStart);
+          window.removeEventListener('mousemove', this.onMouseMove);
+        }
+        if (this.scene && this.scene.input && this.scene.input.off) {
+          this.scene.input.off('pointerdown', this.scenePointerDown);
+        }
+      });
+    }
+
+    this.refresh();
+  }
+
+  updateDockLayout() {
+    if (!this.bagContainer || !this.trayContainer) return;
+    const bagX = this.isMobile ? 640 : 52;
+    const bagY = 668;
+    this.bagContainer.setPosition(bagX, bagY);
+    this.bagContainer.setSize(this.isMobile ? 64 : 52, this.isMobile ? 76 : 64);
+
+    if (!this.isRevealed) {
+      this.trayContainer.setPosition(this.isMobile ? 640 : 64, bagY);
+    } else {
+      this.trayContainer.setPosition(this.isMobile ? 640 : 88, this.isMobile ? 596 : bagY);
+    }
     this.refresh();
   }
 
@@ -323,7 +415,7 @@ export default class InventoryBar {
       g.lineStyle(1.5, 0xb07c34, 0.9);
       g.strokeRoundedRect(sx - 21, -21, 42, 42, 10);
     } else {
-      // Empty slot - recessed dark wood (no bright placeholder)
+      // Empty slot - recessed dark wood
       g.fillStyle(0x1a1008, 0.75);
       g.fillRoundedRect(sx - 21, -21, 42, 42, 10);
       g.lineStyle(1, 0x7c5320, 0.45);
@@ -339,13 +431,27 @@ export default class InventoryBar {
     this.trayContainer.setVisible(true);
 
     this.scene.tweens.killTweensOf(this.trayContainer);
-    this.scene.tweens.add({
-      targets: this.trayContainer,
-      x: 88,
-      alpha: 1,
-      duration: 220,
-      ease: 'Back.Out'
-    });
+    if (!this.isMobile) {
+      // Desktop: flies out horizontally to x = 88
+      this.scene.tweens.add({
+        targets: this.trayContainer,
+        x: 88,
+        y: 668,
+        alpha: 1,
+        duration: 220,
+        ease: 'Back.Out'
+      });
+    } else {
+      // Mobile: centered at x = 640, expands upward to y = 596
+      this.scene.tweens.add({
+        targets: this.trayContainer,
+        x: 640,
+        y: 596,
+        alpha: 1,
+        duration: 220,
+        ease: 'Back.Out'
+      });
+    }
   }
 
   hide() {
@@ -356,18 +462,37 @@ export default class InventoryBar {
     soundEngine.playBagRustle();
 
     this.scene.tweens.killTweensOf(this.trayContainer);
-    this.scene.tweens.add({
-      targets: this.trayContainer,
-      x: 64,
-      alpha: 0,
-      duration: 180,
-      ease: 'Power2',
-      onComplete: () => {
-        if (!this.isRevealed) {
-          this.trayContainer.setVisible(false);
+    if (!this.isMobile) {
+      // Desktop: slides back to x = 64
+      this.scene.tweens.add({
+        targets: this.trayContainer,
+        x: 64,
+        y: 668,
+        alpha: 0,
+        duration: 180,
+        ease: 'Power2',
+        onComplete: () => {
+          if (!this.isRevealed) {
+            this.trayContainer.setVisible(false);
+          }
         }
-      }
-    });
+      });
+    } else {
+      // Mobile: slides down into the bag at y = 668
+      this.scene.tweens.add({
+        targets: this.trayContainer,
+        x: 640,
+        y: 668,
+        alpha: 0,
+        duration: 180,
+        ease: 'Power2',
+        onComplete: () => {
+          if (!this.isRevealed) {
+            this.trayContainer.setVisible(false);
+          }
+        }
+      });
+    }
   }
 
   toggleReveal() {
@@ -381,7 +506,13 @@ export default class InventoryBar {
 
   handleClickSlot(index) {
     const item = this.getItemAt(index);
-    if (!item) return;
+    if (!item) {
+      if (this.selectedItem) {
+        this.clearSelected();
+        try { soundEngine.playBagRustle?.(); } catch {}
+      }
+      return;
+    }
 
     if (typeof this.options.onItemClick === 'function') {
       this.options.onItemClick(item, index);
@@ -480,22 +611,41 @@ export default class InventoryBar {
       if (it) activeItems.push(it);
     }
     this.activeSlotCount = Math.max(1, activeItems.length);
-    const trayWidth = this.activeSlotCount * this.slotSpacing + 12;
 
-    // Draw tray rounded backing capsule
-    this.trayBg.clear();
-    this.trayBg.fillStyle(0x241608, 0.95);
-    this.trayBg.fillRoundedRect(0, -25, trayWidth, 50, 25);
-    this.trayBg.fillStyle(0xf6d68a, 0.06);
-    this.trayBg.fillRoundedRect(0, -25, trayWidth, 18, { tl: 25, tr: 25, bl: 0, br: 0 });
-    this.trayBg.lineStyle(1.5, 0xb07c34, 0.85);
-    this.trayBg.strokeRoundedRect(0, -25, trayWidth, 50, 25);
+    if (!this.isMobile) {
+      // Desktop: Side flyout graphics
+      const trayWidth = this.activeSlotCount * this.slotSpacing + 12;
+      this.trayBg.clear();
+      this.trayBg.fillStyle(0x241608, 0.95);
+      this.trayBg.fillRoundedRect(0, -25, trayWidth, 50, 25);
+      this.trayBg.fillStyle(0xf6d68a, 0.06);
+      this.trayBg.fillRoundedRect(0, -25, trayWidth, 18, { tl: 25, tr: 25, bl: 0, br: 0 });
+      this.trayBg.lineStyle(1.5, 0xb07c34, 0.85);
+      this.trayBg.strokeRoundedRect(0, -25, trayWidth, 50, 25);
+      this.trayHitZone.setOrigin(0, 0.5).setPosition(0, 0).setSize(trayWidth, 56);
+    } else {
+      // Mobile: Centered capsule graphics
+      const trayWidth = this.activeSlotCount * this.slotSpacing + 28;
+      this.trayBg.clear();
+      this.trayBg.fillStyle(0x241608, 0.95);
+      this.trayBg.fillRoundedRect(-trayWidth / 2, -25, trayWidth, 50, 25);
+      this.trayBg.fillStyle(0xf6d68a, 0.06);
+      this.trayBg.fillRoundedRect(-trayWidth / 2, -25, trayWidth, 18, { tl: 25, tr: 25, bl: 0, br: 0 });
+      this.trayBg.lineStyle(1.5, 0xb07c34, 0.85);
+      this.trayBg.strokeRoundedRect(-trayWidth / 2, -25, trayWidth, 50, 25);
+      this.trayHitZone.setOrigin(0.5, 0.5).setPosition(0, 0).setSize(trayWidth, 56);
+    }
 
-    // Update hit zone width
-    this.trayHitZone.setSize(trayWidth, 56);
+    const startXMobile = -((this.activeSlotCount - 1) * this.slotSpacing) / 2;
 
     for (let i = 0; i < this.slotImages.length; i++) {
-      const sx = this.slotXCoords[i];
+      const sx = !this.isMobile
+        ? (26 + i * this.slotSpacing)
+        : (startXMobile + i * this.slotSpacing);
+
+      this.slotXCoords[i] = sx;
+      this.slotImages[i].setPosition(sx, 0);
+
       const rawItem = itemsList[i];
       const isVisibleSlot = i < this.activeSlotCount;
 
@@ -536,32 +686,57 @@ export default class InventoryBar {
             .setAngle(0)
             .setVisible(true);
         } else if (itemKey === 'bamboo_pole') {
+          const tex = (this.scene.textures && this.scene.textures.exists('ch1_vector_bamboo_icon'))
+            ? 'ch1_vector_bamboo_icon'
+            : (this.scene.textures && this.scene.textures.exists('item-bamboo-pole'))
+            ? 'item-bamboo-pole'
+            : 'ch1_vector_bamboo';
           this.slotImages[i]
-            .setTexture('ch1_vector_bamboo_icon')
-            .setScale(0.85)
+            .setTexture(tex)
+            .setDisplaySize(32, 32)
+            .setAngle(0)
+            .setVisible(true);
+        } else if (itemKey === 'ancient_brick') {
+          this.slotImages[i]
+            .setTexture('ch1_vector_brick')
+            .setScale(0.75)
+            .setAngle(0)
+            .setVisible(true);
+        } else if (itemKey === 'betel_cutter') {
+          this.slotImages[i]
+            .setTexture('item-betel-cutter')
+            .setScale(0.72)
+            .setAngle(0)
+            .setVisible(true);
+        } else if (itemKey === 'half_bottle') {
+          this.slotImages[i]
+            .setTexture('item-bottle-cut')
+            .setScale(0.72)
+            .setAngle(0)
+            .setVisible(true);
+        } else if (itemKey === 'torn_bottle') {
+          this.slotImages[i]
+            .setTexture('item-bottle-raw')
+            .setScale(0.72)
+            .setAngle(0)
+            .setVisible(true);
+        } else if (itemKey === 'engineer_note') {
+          this.slotImages[i]
+            .setTexture('item-schematic')
+            .setScale(0.72)
             .setAngle(0)
             .setVisible(true);
         } else {
-          const tex = ITEM_TEXTURE_KEYS[itemKey] || (this.scene.textures.exists(itemKey) ? itemKey : 'item-betel-cutter');
-          this.slotImages[i]
-            .setTexture(tex)
-            .setScale(scale)
-            .setAngle(0)
-            .setVisible(true);
+          const mappedKey = ITEM_TEXTURE_KEYS[itemKey];
+          if (mappedKey && this.scene.textures && this.scene.textures.exists(mappedKey)) {
+            this.slotImages[i].setTexture(mappedKey).setScale(0.72).setAngle(0).setVisible(true);
+          } else {
+            this.slotImages[i].setTexture('item-betel-cutter').setScale(0.72).setAngle(0).setVisible(true);
+          }
         }
       } else {
         this.slotImages[i].setVisible(false);
       }
-    }
-  }
-
-  resize(width, height) {
-    if (this.bagContainer) {
-      this.bagContainer.setPosition(52, 668);
-    }
-    if (this.trayContainer) {
-      const targetX = this.isRevealed ? 88 : 64;
-      this.trayContainer.setPosition(targetX, 668);
     }
   }
 }

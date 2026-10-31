@@ -16,7 +16,7 @@ export interface Machine {
   state: 'READY' | 'TRACK' | 'LOCKED' | 'DROP' | 'RECOVER';
   elapsed: number; readyDuration: number; targetX: number; shotId: string | null;
 }
-export type EventKind = 'start' | 'lock' | 'drop' | 'land' | 'shatter' | 'gate' | 'shelf' | 'plate' | 'coin' | 'death' | 'complete' | 'taunt' | 'puzzle_item' | 'gear_box' | 'platforms' | 'beehive' | 'trap' | 'slingshot' | 'bomb' | 'bomb_disarm' | 'gear_slapstick' | 'gear_lube' | 'gear_lever' | 'gear_crank' | 'gear_too_high' | 'steam_nozzle_attach' | 'brick_collect' | 'gear_jam';
+export type EventKind = 'start' | 'lock' | 'drop' | 'land' | 'shatter' | 'gate' | 'shelf' | 'plate' | 'coin' | 'death' | 'complete' | 'taunt' | 'puzzle_item' | 'gear_box' | 'platforms' | 'beehive' | 'trap' | 'door_top_trap' | 'slingshot' | 'bomb' | 'bomb_disarm' | 'gear_slapstick' | 'gear_lube' | 'gear_lever' | 'gear_crank' | 'gear_too_high' | 'steam_nozzle_attach' | 'brick_collect' | 'gear_jam';
 export type GearboxState = 'EMPTY' | 'COG_MOUNTED' | 'LUBRICATED' | 'ARMED' | 'ACTIVE';
 export interface GameEvent { kind: EventKind; x?: number; y?: number; value?: number }
 export interface Attempt {
@@ -50,6 +50,7 @@ export interface Attempt {
   ancientBrickDropping: boolean;
   crusherGearJammed: boolean;
   gearJammedPermanently: boolean;
+  doorTopTrapTriggered?: boolean;
 }
 export interface Input { left: boolean; right: boolean; jump: boolean; taunt: boolean; down?: boolean }
 export const NO_INPUT: Readonly<Input> = { left: false, right: false, jump: false, taunt: false, down: false };
@@ -65,12 +66,13 @@ export interface Campaign {
   resumeAt: 'CHAPTER_1' | 'CHAPTER_2' | 'CH2_EXIT_LINK' | 'CHAPTER_3_PENDING' | 'CHAPTER_3' | 'CHAPTER_4_PENDING' | 'CHAPTER_4' | 'CHAPTER_5_PENDING' | 'CHAPTER_5' | 'CAMPAIGN_COMPLETE';
   lastChapter2Result: ChapterResult | null;
   // Optional additive fields let existing schema-2 adventures load losslessly.
+  tutorialCompleted?: boolean;
   chapter3Completed?: boolean;
   chapter3TreasureRecovered?: boolean;
   lastChapter3Result?: import('./scale').ScaleResult | null;
   chapter4Completed?: boolean;
   lastChapter4Result?: import('./arena').ArenaResult | null;
-  chapter5Completed?:boolean;
-  debtRepaidGold?:number;
-  lastChapter5Result?:import('./finalBoss').FinalResult|null;
+  chapter5Completed?: boolean;
+  debtRepaidGold?: number;
+  lastChapter5Result?: import('./finalBoss').FinalResult | null;
 }

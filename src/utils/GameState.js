@@ -1,5 +1,6 @@
 // Global Game State Manager for Phoe Htaung: Die Again in the Golden City
 // Conforms to Section 3.1 & 5.3 of the Technical Specification.
+import { store } from '../services/adventure';
 
 export const BURMESE_DIGITS = ['၀', '၁', '၂', '၃', '၄', '၅', '၆', '၇', '၈', '၉'];
 
@@ -16,6 +17,7 @@ export function toBurmeseNumeral(num) {
 }
 
 export const ITEM_NAMES_MY = {
+  betel_nut: 'ကွမ်းသီးခြမ်း',
   betel_cutter: 'ကွမ်းသီးညှပ်',
   torn_bottle: 'ရေဗူးစုတ်',
   half_bottle: 'ထက်ခြမ်းခွဲထားသော ရေဗူးစုတ်',
@@ -31,12 +33,13 @@ export const ITEM_NAMES_MY = {
   slingshot: 'လေးခွနှင့် လောက်စာလုံး',
   beeswax: 'တောပျားဖယောင်း',
   ancient_brick: 'ရှေးဟောင်း အုတ်ခဲ',
-  steam_nozzle_redirector: 'ရေနွေးငွေ့ ပ کیفတွန်းစက်',
+  steam_nozzle_redirector: 'ရေနွေးငွေ့ ပိုဒ်တွန်းစက်',
   chalk: 'ကျောက်ဖြူတုံး',
   engineer_note: 'လျှို့ဝှက်ပုံကြမ်း စာရွက်'
 };
 
 export const ITEM_TEXTURE_KEYS = {
+  betel_nut: 'ch1_vector_betel_nut',
   betel_cutter: 'item-betel-cutter',
   torn_bottle: 'item-torn-bottle',
   half_bottle: 'item-half-bottle',
@@ -77,10 +80,71 @@ export const ALL_STARTING_ITEMS = [
   'engineer_note'
 ];
 
+export const CHAPTER_ITEMS = {
+  TUTORIAL: ['betel_nut'],
+  CHAPTER_1: ['rusty_cog', 'bamboo_pole', 'ancient_brick', 'beeswax'],
+  CHAPTER_2: ['bamboo_pole', 'rusty_cog', 'cog', 'slingshot', 'ancient_brick', 'steam_nozzle_redirector', 'half_bottle'],
+  CHAPTER_3: ['stone', 'sandbag', 'crate', 'treasure', 'chalk', 'stone_3', 'gold_7', 'red_gem', 'pin'],
+  CHAPTER_4: ['ammo', 'engineer_note', 'dried_chili', 'gold_pouch', 'arena_gold'],
+  CHAPTER_5: ['ch5_relic']
+};
+
 class GameStateManager {
   constructor() {
+    this.chapterSnapshots = {};
+    this.itemsAcquiredInAttempt = new Set();
+    this.currentChapter = null;
     this.resetState();
     this.loadFromStorage();
+  }
+
+  checkpointChapter(chapterKey) {
+    if (!chapterKey) return;
+    this.currentChapter = chapterKey;
+    const current = Array.isArray(store?.campaign?.inventory) && store.campaign.inventory.length > 0
+      ? [...store.campaign.inventory]
+      : (Array.isArray(this.state?.inventory) ? [...this.state.inventory] : []);
+    this.chapterSnapshots[chapterKey] = [...current];
+    this.itemsAcquiredInAttempt.clear();
+  }
+
+  recordItemAcquired(id) {
+    if (id) {
+      this.itemsAcquiredInAttempt.add(id);
+    }
+  }
+
+  restoreChapterOnFailure(chapterKey) {
+    const ch = chapterKey || this.currentChapter;
+    if (!ch) return;
+
+    const snapshot = this.chapterSnapshots[ch];
+    const nativeItems = CHAPTER_ITEMS[ch] || [];
+
+    if (Array.isArray(snapshot)) {
+      this.state.inventory = [...snapshot];
+      if (store?.campaign) {
+        store.campaign.inventory = [...snapshot];
+        if (!snapshot.includes('slingshot') && store.campaign.ownedTools.includes('slingshot') && (ch === 'CHAPTER_2' || ch === 'CHAPTER_1' || ch === 'TUTORIAL')) {
+          store.campaign.ownedTools = store.campaign.ownedTools.filter(t => t !== 'slingshot');
+        }
+        store.campaign.revision++;
+        store.save();
+      }
+    } else {
+      const toRemove = new Set([...nativeItems, ...this.itemsAcquiredInAttempt]);
+      this.state.inventory = this.state.inventory.filter(item => !toRemove.has(item));
+      if (store?.campaign) {
+        store.campaign.inventory = store.campaign.inventory.filter(item => !toRemove.has(item));
+        if (toRemove.has('slingshot') && (ch === 'CHAPTER_2' || ch === 'CHAPTER_1' || ch === 'TUTORIAL')) {
+          store.campaign.ownedTools = store.campaign.ownedTools.filter(t => t !== 'slingshot');
+        }
+        store.campaign.revision++;
+        store.save();
+      }
+    }
+
+    this.itemsAcquiredInAttempt.clear();
   }
 
   saveToStorage() {
@@ -105,14 +169,7 @@ class GameStateManager {
               ...parsed,
               flags: { ...this.state.flags, ...(parsed.flags || {}) }
             };
-            // Guarantee all items are available to start
-            if (Array.isArray(this.state.inventory)) {
-              ALL_STARTING_ITEMS.forEach((item) => {
-                if (!this.state.inventory.includes(item)) {
-                  this.state.inventory.push(item);
-                }
-              });
-            }
+
             return true;
           }
         }
@@ -130,7 +187,9 @@ class GameStateManager {
   clearStorage() {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem(this.storageKey);
         window.localStorage.removeItem('phoe_htaung_save');
+        window.localStorage.removeItem('phoe-htaung-game-state');
       }
     } catch (e) {}
   }
@@ -144,7 +203,7 @@ class GameStateManager {
     this.state = {
       currentScene: 'INTRO',
       deathCount: 0,
-      inventory: [...ALL_STARTING_ITEMS],
+      inventory: [],
       flags: {
         ch1_tunnel_open: false,
         ch2_bottle_cut: false,
@@ -164,6 +223,13 @@ class GameStateManager {
   reset() {
     this.resetState();
     this.clearStorage();
+    try {
+      if (store?.campaign) {
+        store.campaign.inventory = [];
+        store.campaign.ownedTools = [];
+        store.save();
+      }
+    } catch (e) {}
   }
 
   addDeath() {
@@ -181,22 +247,57 @@ class GameStateManager {
   }
 
   hasItem(itemKey) {
-    return this.state.inventory.includes(itemKey);
+    return this.state.inventory.includes(itemKey) || Boolean(store?.campaign?.inventory?.includes(itemKey));
   }
 
   addItem(itemKey) {
-    if (!this.state.inventory.includes(itemKey)) {
-      this.state.inventory.push(itemKey);
+    if (!itemKey) return;
+    const key = itemKey === 'cog' ? 'rusty_cog' : itemKey;
+    this.recordItemAcquired(key);
+    if (key === 'rusty_cog') {
+      this.state.inventory = this.state.inventory.filter(i => i !== 'cog');
+    }
+    if (!this.state.inventory.includes(key)) {
+      this.state.inventory.push(key);
       this.saveToStorage();
     }
+    try {
+      if (store?.campaign) {
+        let changed = false;
+        if (key === 'rusty_cog' && store.campaign.inventory.includes('cog')) {
+          store.campaign.inventory = store.campaign.inventory.filter(i => i !== 'cog');
+          changed = true;
+        }
+        if (!store.campaign.inventory.includes(key)) {
+          store.campaign.inventory.push(key);
+          changed = true;
+        }
+        if (key === 'slingshot' && !store.campaign.ownedTools.includes('slingshot')) {
+          store.campaign.ownedTools.push('slingshot');
+          changed = true;
+        }
+        if (changed) {
+          store.campaign.revision++;
+          store.save();
+        }
+      }
+    } catch {}
   }
 
   removeItem(itemKey) {
+    if (!itemKey) return;
     const idx = this.state.inventory.indexOf(itemKey);
     if (idx !== -1) {
       this.state.inventory.splice(idx, 1);
       this.saveToStorage();
     }
+    try {
+      if (store?.campaign && store.campaign.inventory.includes(itemKey)) {
+        store.campaign.inventory = store.campaign.inventory.filter((i) => i !== itemKey);
+        store.campaign.revision++;
+        store.save();
+      }
+    } catch {}
   }
 
   setFlag(flagName, value = true) {

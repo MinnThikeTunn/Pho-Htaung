@@ -78,7 +78,7 @@ export class WorldView {
     const g = this.g; g.clear();
     const p = a.player, aim = preview(a), m = a.machine;
 
-    const trolleyX = m.state === 'READY' ? Math.max(64, Math.min(1168, p.centerX)) : m.targetX;
+    const trolleyX = m.state === 'READY' ? Math.max(C.aimMin, Math.min(C.aimMax, p.centerX)) : m.targetX;
     this.block(vr({ id: 'trolley', x: trolleyX - 42, y: 72, w: 84, h: 38 }), 0x596e60);
     g.fillStyle(GOLD).fillCircle(trolleyX - 24, vy(91), 7).fillCircle(trolleyX + 24, vy(91), 7);
     g.lineStyle(3, GOLD, .7).lineBetween(trolleyX, vy(111), trolleyX, vy(128));
@@ -91,7 +91,31 @@ export class WorldView {
     g.fillStyle(a.plateWeighted ? GOLD : 0x556d58).fillRoundedRect(PLATE.x, vy(PLATE.y), PLATE.w, PLATE.h, 3);
     g.lineStyle(2, GOLD, .7).strokeRect(PLATE.x, vy(PLATE.y), PLATE.w, PLATE.h);
     if (a.shelfIntact) this.block(vr(SHELF), WOOD, true);
-    if (a.gateIntact) this.block(vr(GATE), WOOD, true);
+    if (a.gateIntact) {
+      this.block(vr(GATE), WOOD, true);
+      // Upper ceiling barrier / portcullis above gate preventing vaulting into exit corridor
+      const vy0 = vy(0);
+      const vyTop = vy(GATE.y);
+      g.fillStyle(0x38473e, 1).fillRect(1152, vy0, 16, vyTop - vy0);
+      g.lineStyle(1.5, INK, 0.9).strokeRect(1152, vy0, 16, vyTop - vy0);
+      for (let barY = vy0 + 16; barY < vyTop; barY += 28) {
+        g.fillStyle(0x596e60, 1).fillRect(1150, barY, 20, 4);
+      }
+      // Overhead anti-vault trap across the exit corridor (1170 - 1240)
+      const trapBaseY = vy(GATE.y);
+      const isTriggered = Boolean(a.doorTopTrapTriggered);
+      const spikeDrop = isTriggered ? 28 : 0;
+      g.fillStyle(INK, 1).fillRoundedRect(1168, trapBaseY - 24, 72, 8, 2);
+      g.fillStyle(0x38473e, 1).fillRect(1170, trapBaseY - 22, 68, 4);
+      for (let sx = 1176; sx <= 1234; sx += 12) {
+        const tipY = trapBaseY - 12 + spikeDrop;
+        g.fillStyle(0x182720, 1).fillTriangle(sx - 4, trapBaseY - 18 + (isTriggered ? spikeDrop : 0), sx + 4, trapBaseY - 18 + (isTriggered ? spikeDrop : 0), sx, tipY);
+        g.fillStyle(0x758579, 1).fillTriangle(sx - 2.5, trapBaseY - 18 + (isTriggered ? spikeDrop : 0), sx + 2.5, trapBaseY - 18 + (isTriggered ? spikeDrop : 0), sx, tipY - 1);
+      }
+      if (isTriggered) {
+        g.lineStyle(2, GOLD, 0.9).lineBetween(1166, trapBaseY + 6, 1242, trapBaseY + 6);
+      }
+    }
     if (a.platformsRevealed) {
       this.block(vr(PLATFORM_MID), WOOD, true);
       this.block(vr(PLATFORM_HIGH), WOOD, true);

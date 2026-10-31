@@ -51,12 +51,20 @@ describe('Dialogue Quality & Regression Suite', () => {
       }
     });
 
-    it('DIALOGUE contains zero raw keyboard shortcut letters (Q,W,E,R,A,S,D,C,J,K,L) or <kbd> tags', () => {
-      const entries = Object.entries(DIALOGUE);
+    it('DIALOGUE story lines contain zero raw keyboard shortcut letters (Q,W,E,R,A,S,D,C,J,K,L) or <kbd> tags', () => {
+      const entries = Object.entries(DIALOGUE).filter(([key]) => !key.startsWith('tutorial_'));
       expect(entries.length).toBeGreaterThan(0);
       for (const [key, line] of entries) {
         assertNoRawKeyboardShortcuts(line, `DIALOGUE.${key}`);
       }
+    });
+
+    it('DIALOGUE tutorial lines provide clear control instructions for new players', () => {
+      expect(DIALOGUE.tutorial_entry).toContain('A / D');
+      expect(DIALOGUE.tutorial_crouch).toContain('S');
+      expect(DIALOGUE.tutorial_item_prompt).toContain('E');
+      expect(DIALOGUE.tutorial_betel_prompt).toContain('E');
+      expect(DIALOGUE.tutorial_jump_prompt).toContain('Space');
     });
 
     it('UGYI_OPENING_MONOLOGUE contains zero raw keyboard shortcut letters or <kbd> tags', () => {
@@ -70,7 +78,7 @@ describe('Dialogue Quality & Regression Suite', () => {
       const allLines = [
         ...Object.values(ARENA_LINES),
         ...Object.values(SCALE_LINES),
-        ...Object.values(DIALOGUE),
+        ...Object.entries(DIALOGUE).filter(([k]) => !k.startsWith('tutorial_')).map(([, v]) => v),
         ...UGYI_OPENING_MONOLOGUE,
       ];
 
@@ -208,7 +216,7 @@ describe('Dialogue Quality & Regression Suite', () => {
       const dialogueSets = [
         ...Object.values(ARENA_LINES),
         ...Object.values(SCALE_LINES),
-        ...Object.values(DIALOGUE),
+        ...Object.entries(DIALOGUE).filter(([k]) => !k.startsWith('tutorial_')).map(([, v]) => v),
         ...UGYI_OPENING_MONOLOGUE,
       ];
 

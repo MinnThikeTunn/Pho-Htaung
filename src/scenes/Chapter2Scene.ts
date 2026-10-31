@@ -9,6 +9,7 @@ import { Session } from '../services/Session';
 import { WorldView } from '../view/WorldView';
 import { store } from '../services/adventure';
 import InventoryBar from '../ui/InventoryBar.js';
+import { VirtualTouchControls } from '../ui/VirtualTouchControls';
 import DiegeticGrab from '../ui/DiegeticGrab';
 import { ensureBridgeTextures } from '../view/BridgeView';
 import { soundEngine } from '../utils/SoundEngine.js';
@@ -32,6 +33,8 @@ export default class Chapter2Scene extends Phaser.Scene {
   private audio!: AudioController;
   public inventoryBar!: InventoryBar;
   public diegeticGrab!: DiegeticGrab;
+  private touchControls: VirtualTouchControls | null = null;
+  private prevTouchJump = false;
   private held = new Set<string>();
   private jumpEdge = false;
   private tauntEdge = false;
@@ -94,9 +97,21 @@ export default class Chapter2Scene extends Phaser.Scene {
     this.isCollectingBamboo = false;
     this.isCollectingCog = false;
     this.isCollectingSlingshot = false;
+    if (this.session?.attempt) {
+      const a = this.session.attempt;
+      const snap = (gameState as any).getChapterSnapshot?.('CHAPTER_2') || [];
+      a.hasPole = snap.includes('bamboo_pole') || gameState.hasItem('bamboo_pole');
+      a.hasCog = snap.includes('rusty_cog') || snap.includes('cog') || gameState.hasItem('rusty_cog');
+      a.hasSlingshot = snap.includes('slingshot') || gameState.hasItem('slingshot');
+      a.ancientBrickCollected = false;
+      a.ancientBrickDropping = false;
+      a.hasSteamNozzleRedirector = false;
+    }
     this.isLaying = false;
     this.crawlDustTimer = 0;
-    this.clearKeys();
+    this.touchControls?.destroy();
+      this.touchControls = null;
+      this.clearKeys();
   }
 
   private clearKeys() {
@@ -135,6 +150,7 @@ export default class Chapter2Scene extends Phaser.Scene {
 
   private setPause(value: boolean) {
     this.session.setPause(value);
+    if (value) this.touchControls?.hide(); else this.touchControls?.show();
     this.clearKeys();
     const panel = ui().querySelector<HTMLElement>('#pause-panel')!;
     if (value) {
@@ -194,11 +210,20 @@ export default class Chapter2Scene extends Phaser.Scene {
     ensureBridgeTextures(this);
 
     // Synchronize campaign inventory into gameState so items carry over cleanly into the bag
+    gameState.checkpointChapter('CHAPTER_2');
+    store.campaign.inventory = Array.from(new Set(store.campaign.inventory.map((id: string) => id === 'cog' ? 'rusty_cog' : id)));
+    gameState.state.inventory = Array.from(new Set(gameState.state.inventory.map((id: string) => id === 'cog' ? 'rusty_cog' : id)));
     for (const item of store.campaign.inventory) {
       gameState.addItem(item);
     }
     if (!gameState.hasItem('betel_cutter')) {
       gameState.addItem('betel_cutter');
+    }
+    if (this.session?.attempt) {
+      const a = this.session.attempt;
+      if (gameState.hasItem('bamboo_pole')) a.hasPole = true;
+      if (gameState.hasItem('rusty_cog') || gameState.hasItem('cog')) a.hasCog = true;
+      if (gameState.hasItem('slingshot')) a.hasSlingshot = true;
     }
 
     // Permanent Bottom-Docked Myanmar Traditional Bag (Lwe-Ait)
@@ -273,12 +298,24 @@ export default class Chapter2Scene extends Phaser.Scene {
       });
     }
 
-    this.createInteractivePickups();
+        this.touchControls = new VirtualTouchControls(this, {
+      mode: 'CH2',
+      onAction: () => {
+        const px = this.session?.attempt?.player?.centerX ?? 0;
+        const py = (this.session?.attempt?.player?.feetY ?? 576) - 40;
+        const grabbed = this.diegeticGrab.handleProximityVerb(px, py);
+        if (!grabbed && Math.abs(px - 1108) <= 85) {
+          this.interactWithGearBox();
+        } else {
+          this.tauntEdge = true;
+        }
+      },
+      onJump: () => {
+        this.jumpEdge = true;
+      }
+    });
 
-    // WC5: Steam Nozzle Sprite
-    this.steamNozzleSprite = this.add.sprite(CH2_STEAM_NOZZLE_POS.x, CH2_STEAM_NOZZLE_POS.y, 'ch2_steam_nozzle')
-      .setScale(0.8)
-      .setDepth(100);
+    this.createInteractivePickups();
 
     const onDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
@@ -394,15 +431,19 @@ export default class Chapter2Scene extends Phaser.Scene {
     const a = this.session.attempt;
 
     // 1. Bamboo Pole on STEP (536, 470)
-    if (!a.hasPole && !this.bambooItem) {
+    const ownsPole = a.hasPole || gameState.hasItem('bamboo_pole') || store.campaign.inventory.includes('bamboo_pole');
+    if (ownsPole) {
+      a.hasPole = true;
+    }
+    if (!ownsPole && !this.bambooItem) {
       this.bambooItem = this.diegeticGrab.createPickup({
         id: 'bamboo_pole',
         x: 536,
         y: 470,
-        textureKey: 'item-bamboo-pole',
-        scale: 0.72,
-        hoverScale: 0.82,
-        bobRange: 4,
+        textureKey: 'ch1_vector_bamboo_icon',
+        scale: 0.75,
+        hoverScale: 0.85,
+        bobRange: 3,
         bobDuration: 1200,
         voiceoverText: 'ခိုင်မာတဲ့ ဝါးလုံးတုတ်တစ်ချောင်း ရပြီ! လွယ်အိတ်ထဲ ထည့်ထားလိုက်တယ်။',
         voiceoverDuration: 2.0,
@@ -417,7 +458,11 @@ export default class Chapter2Scene extends Phaser.Scene {
     }
 
     // 2. Rusty Cog on SHELF (860, 250)
-    if (!a.hasCog && !this.cogItem) {
+    const ownsCog = a.hasCog || gameState.hasItem('rusty_cog') || gameState.hasItem('cog') || store.campaign.inventory.includes('rusty_cog') || store.campaign.inventory.includes('cog');
+    if (ownsCog) {
+      a.hasCog = true;
+    }
+    if (!ownsCog && !this.cogItem) {
       this.cogItem = this.diegeticGrab.createPickup({
         id: 'rusty_cog',
         x: 860,
@@ -429,12 +474,11 @@ export default class Chapter2Scene extends Phaser.Scene {
         bobDuration: 1100,
         voiceoverText: 'သံချေးတက် ဂီယာခွေ ကောက်ရလိုက်ပြီ! စက်ယန္တရားတစ်ခုခုမှာ တပ်ဆင်ရမလား?',
         voiceoverDuration: 2.2,
-        campaignKey: 'cog',
+        campaignKey: 'rusty_cog',
         onBagged: () => {
           if (this.session?.attempt) {
             this.session.attempt.hasCog = true;
           }
-          gameState.addItem('cog');
           this.cogItem = null;
         }
       });
@@ -449,23 +493,14 @@ export default class Chapter2Scene extends Phaser.Scene {
         this.interactWithProximity(1060, () => this.interactWithGearBox());
       });
       this.gearBoxItem = zone;
-
-    // Visual brass gear box to replace green X zone
-    if (!this.gearBoxVisual) {
-      const g = this.make.graphics({ x: 0, y: 0 });
-      const w = 64, h = 64;
-      g.fillStyle(0xd97706, 1).fillRoundedRect(0, 0, w, h, 6);
-      g.fillStyle(0xb45309, 1).fillRoundedRect(4, 4, w - 8, h - 8, 4);
-      g.fillStyle(0xf59e0b, 1).fillRoundedRect(6, 6, w - 12, 12, 3);
-      g.generateTexture('ch2_gear_box_visual', w, h);
-      const visual = this.add.image(1140, 356, 'ch2_gear_box_visual');
-      visual.setDepth(100);
-      this.gearBoxVisual = visual;
-    }
     }
 
     // 4. Slingshot on high platform if platforms revealed
-    if (a.platformsRevealed && !a.hasSlingshot && !this.slingshotItem) {
+    const ownsSlingshot = a.hasSlingshot || gameState.hasItem('slingshot') || store.campaign.inventory.includes('slingshot');
+    if (ownsSlingshot) {
+      a.hasSlingshot = true;
+    }
+    if (a.platformsRevealed && !ownsSlingshot && !this.slingshotItem) {
       this.spawnSlingshotPickup();
     }
 
@@ -514,6 +549,16 @@ export default class Chapter2Scene extends Phaser.Scene {
     this.isCollectingBamboo = false;
     this.isCollectingCog = false;
     this.isCollectingSlingshot = false;
+    if (this.session?.attempt) {
+      const a = this.session.attempt;
+      const snap = (gameState as any).getChapterSnapshot?.('CHAPTER_2') || [];
+      a.hasPole = snap.includes('bamboo_pole') || gameState.hasItem('bamboo_pole');
+      a.hasCog = snap.includes('rusty_cog') || snap.includes('cog') || gameState.hasItem('rusty_cog');
+      a.hasSlingshot = snap.includes('slingshot') || gameState.hasItem('slingshot');
+      a.ancientBrickCollected = false;
+      a.ancientBrickDropping = false;
+      a.hasSteamNozzleRedirector = false;
+    }
     this.isLaying = false;
     this.createInteractivePickups();
   }
@@ -538,7 +583,12 @@ export default class Chapter2Scene extends Phaser.Scene {
   }
 
   private spawnSlingshotPickup() {
-    if (this.slingshotItem || this.session?.attempt?.hasSlingshot) return;
+    const ownsSlingshot = this.session?.attempt?.hasSlingshot || gameState.hasItem('slingshot') || store.campaign.inventory.includes('slingshot');
+    if (ownsSlingshot) {
+      if (this.session?.attempt) this.session.attempt.hasSlingshot = true;
+      return;
+    }
+    if (this.slingshotItem) return;
     this.slingshotItem = this.diegeticGrab.createPickup({
       id: 'slingshot',
       x: 205,
@@ -649,7 +699,7 @@ export default class Chapter2Scene extends Phaser.Scene {
     this.hideHeldItem();
     const key =
       id === 'bamboo_pole'
-        ? 'ch1_vector_bamboo'
+        ? (this.textures.exists('ch1_vector_bamboo') ? 'ch1_vector_bamboo' : 'ch1_vector_bamboo_icon')
         : id === 'rusty_cog' || id === 'cog'
         ? 'ch1_vector_cog'
         : id === 'slingshot'
@@ -665,6 +715,9 @@ export default class Chapter2Scene extends Phaser.Scene {
         .image(handX, handY, key)
         .setScale(p.facing * 0.38, 0.38)
         .setDepth(200);
+      if (id === 'bamboo_pole') {
+        this.heldItemSprite.setOrigin(0.5, 0.7).setAngle(p.facing * 25);
+      }
     }
   }
 
@@ -756,7 +809,11 @@ export default class Chapter2Scene extends Phaser.Scene {
         this.tauntEdge = false;
       }
       if (s.generation !== before) {
+        gameState.restoreChapterOnFailure('CHAPTER_2');
+        this.inventoryBar?.refresh();
+        this.inventoryBar?.clearSelected();
         this.clearKeys();
+
         ui().querySelector('#death-vignette')?.classList.remove('visible');
         this.resetInteractivePickups();
         this.stagedHintManager.reset();
@@ -850,6 +907,7 @@ export default class Chapter2Scene extends Phaser.Scene {
         if (event.kind === 'complete') {
           this.result = store.complete(s.attempt, this.mode, s.sessionDeaths);
           this.clearKeys();
+
           if (store.unsaved) this.savePanel();
         }
       }
@@ -897,6 +955,9 @@ export default class Chapter2Scene extends Phaser.Scene {
       const handY = visualCenterY - 12;
       this.heldItemSprite.setPosition(handX, handY);
       this.heldItemSprite.setScale(p.facing * 0.38, 0.38);
+      if (this.inventoryBar?.getSelected() === 'bamboo_pole') {
+        this.heldItemSprite.setOrigin(0.5, 0.7).setAngle(p.facing * 25);
+      }
     }
 
     this.world.render(s.attempt, s.paused ? 0 : dt, this.debug, this.shade);
