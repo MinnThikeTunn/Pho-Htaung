@@ -38,7 +38,9 @@ export default class FinalChapterScene extends Phaser.Scene {
   private activeQuestions: ActiveQuizQuestion[] = [];
 
   // Game State
+  private static readonly UGYI_MAX_HP = 200;
   private health = F5.maxHealth;
+  private ugyiHp = FinalChapterScene.UGYI_MAX_HP;
   private currentQIndex = 0;
   private phase: 'OPENING' | 'QUIZ' | 'STRIKE' | 'VICTORY_KEY' | 'BAIT_WALK' | 'AMBUSH' | 'BLACKOUT' = 'OPENING';
   private monologueIndex = 0;
@@ -53,14 +55,18 @@ export default class FinalChapterScene extends Phaser.Scene {
   private playerX = F5.spawnX;
   private playerFacing: -1 | 1 = 1;
   private playerControl = 'IDLE';
+  private heroLean = 0;
+  private isAttacking = false;
   private ugyiX: number = F5.bossSpawnX;
   private ugyiPose: keyof typeof UGYI_FRAMES = 'guard';
+  private ugyiHurtTimer = 0;
   private hasGoldenKey = false;
   private treasureRevealed = false;
 
   // Visuals
   private hero!: ReturnType<typeof createPhoe>;
   private ugyiSprite!: Phaser.GameObjects.Image;
+  private ugyiHpLabel!: Phaser.GameObjects.Text;
   private treasureContainer!: Phaser.GameObjects.Container;
   private goldenKeySprite!: Phaser.GameObjects.Graphics;
   private fxG!: Phaser.GameObjects.Graphics;
@@ -111,6 +117,7 @@ export default class FinalChapterScene extends Phaser.Scene {
     try { store.save(); } catch {}
 
     this.health = F5.maxHealth;
+    this.ugyiHp = Math.max(0, FinalChapterScene.UGYI_MAX_HP - (data.startQuestion ?? 0) * 10);
     this.currentQIndex = data.startQuestion ?? 0;
     this.phase = data.skipIntro ? 'QUIZ' : 'OPENING';
     this.monologueIndex = 0;
@@ -124,8 +131,11 @@ export default class FinalChapterScene extends Phaser.Scene {
     this.playerX = F5.spawnX;
     this.playerFacing = 1;
     this.playerControl = 'IDLE';
+    this.heroLean = 0;
+    this.isAttacking = false;
     this.ugyiX = F5.bossSpawnX;
     this.ugyiPose = 'guard';
+    this.ugyiHurtTimer = 0;
     this.particles = [];
     this.confetti = [];
     this.elapsed = 0;
@@ -178,6 +188,16 @@ export default class FinalChapterScene extends Phaser.Scene {
         .setScale(UGYI_SOURCE_SCALE)
         .setDepth(20);
     }
+
+    // Boss health readout floating above U Gyi
+    this.ugyiHpLabel = this.add.text(this.ugyiX, VISUAL_GROUND_Y - 121, this.ugyiHpText(), {
+      fontFamily: '"Noto Sans Myanmar", "Padauk", system-ui, sans-serif',
+      fontSize: '13px',
+      color: '#f6d68a',
+      stroke: '#1d1208',
+      strokeThickness: 3,
+      align: 'center',
+    }).setOrigin(0.5, 1).setDepth(36);
 
     // 3. Treasure Mountain Container (Appears on Q20 Victory)
     this.createTreasurePile();
@@ -657,7 +677,8 @@ export default class FinalChapterScene extends Phaser.Scene {
         <div class="ledger">
           <div><span>သိမ်းပြီးရွှေ</span><b id="final-wallet">${store.campaign.walletCoins}</b></div>
           <div><span>သေဆုံး</span><b id="final-deaths">${store.campaign.deathCount}</b></div>
-          <div><span>လက်ကျန်သွေး</span><b id="final-hp-text">${this.health} / 3</b></div>
+          <div><span>ဖိုးထောင် သွေး</span><b id="final-hp-text">${this.health} / 3</b></div>
+          <div><span>ဦးကြီး သွေး</span><b id="final-boss-hp">${this.ugyiHp} / ${FinalChapterScene.UGYI_MAX_HP}</b></div>
         </div>
         <button id="final-pause" class="icon-button" aria-label="Pause">Ⅱ</button>
       </div>
@@ -668,27 +689,31 @@ export default class FinalChapterScene extends Phaser.Scene {
         <p class="speaker-body" id="ugyi-speech-text">${q0Clue}</p>
       </div>
 
-      <!-- Quest to a Million Myanmar 4-Choice Question Panel -->
+      <!-- Turn-Based Battle Command Bar: never covers the fighters above the floor line -->
       <div class="quiz-panel-wrapper" id="quiz-wrapper" ${this.phase === 'QUIZ' ? '' : 'hidden'}>
         <div class="quiz-card" id="quiz-card">
-          <div class="quiz-header">
+          <div class="quiz-turnbar">
+            <span class="quiz-turn-badge">အလှည့် <b id="quiz-turn-num">1</b> / ${totalCount}</span>
             <span class="quiz-tier-badge" id="quiz-tier-label">${q0.tierName} · ${q0.category}</span>
-            <span class="quiz-progress-text" id="quiz-progress-label">မေးခွန်း ၁ / ${totalCount}</span>
+            <span class="quiz-turn-matchup"><b>ဖိုးထောင်</b><i>⚔</i><b>ဦးကြီး</b></span>
+            <span class="quiz-turn-state" id="quiz-turn-state">မင်းအလှည့် · အဖြေရွေးပါ</span>
           </div>
-          <p class="quiz-question-text" id="quiz-question-text">${q0.question}</p>
-          <div class="quiz-options-grid" id="quiz-options-grid">
-            <button type="button" class="quiz-opt-btn" data-opt="0">
-              <span class="opt-badge">က</span><span class="opt-label" id="opt-0-text">${q0.options[0]!.text}</span>
-            </button>
-            <button type="button" class="quiz-opt-btn" data-opt="1">
-              <span class="opt-badge">ခ</span><span class="opt-label" id="opt-1-text">${q0.options[1]!.text}</span>
-            </button>
-            <button type="button" class="quiz-opt-btn" data-opt="2">
-              <span class="opt-badge">ဂ</span><span class="opt-label" id="opt-2-text">${q0.options[2]!.text}</span>
-            </button>
-            <button type="button" class="quiz-opt-btn" data-opt="3">
-              <span class="opt-badge">ဃ</span><span class="opt-label" id="opt-3-text">${q0.options[3]!.text}</span>
-            </button>
+          <div class="quiz-body">
+            <p class="quiz-question-text" id="quiz-question-text">${q0.question}</p>
+            <div class="quiz-options-grid" id="quiz-options-grid">
+              <button type="button" class="quiz-opt-btn" data-opt="0">
+                <span class="opt-badge">က</span><span class="opt-label" id="opt-0-text">${q0.options[0]!.text}</span>
+              </button>
+              <button type="button" class="quiz-opt-btn" data-opt="1">
+                <span class="opt-badge">ခ</span><span class="opt-label" id="opt-1-text">${q0.options[1]!.text}</span>
+              </button>
+              <button type="button" class="quiz-opt-btn" data-opt="2">
+                <span class="opt-badge">ဂ</span><span class="opt-label" id="opt-2-text">${q0.options[2]!.text}</span>
+              </button>
+              <button type="button" class="quiz-opt-btn" data-opt="3">
+                <span class="opt-badge">ဃ</span><span class="opt-label" id="opt-3-text">${q0.options[3]!.text}</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -886,15 +911,16 @@ export default class FinalChapterScene extends Phaser.Scene {
     const quizWrapper = ui().querySelector<HTMLElement>('#quiz-wrapper');
     const card = ui().querySelector<HTMLElement>('#quiz-card');
     const tierLabel = ui().querySelector<HTMLElement>('#quiz-tier-label');
-    const progressLabel = ui().querySelector<HTMLElement>('#quiz-progress-label');
+    const turnNum = ui().querySelector<HTMLElement>('#quiz-turn-num');
     const questionText = ui().querySelector<HTMLElement>('#quiz-question-text');
     const speechText = ui().querySelector<HTMLElement>('#ugyi-speech-text');
 
     if (quizWrapper) quizWrapper.hidden = false;
     if (card) card.classList.remove('hidden');
     if (tierLabel) tierLabel.textContent = `${q.tierName} · ${q.category}`;
-    if (progressLabel) progressLabel.textContent = `မေးခွန်း ${this.currentQIndex + 1} / ${totalCount}`;
+    if (turnNum) turnNum.textContent = String(this.currentQIndex + 1);
     if (questionText) questionText.textContent = q.question;
+    this.setTurnState('မင်းအလှည့် · အဖြေရွေးပါ');
 
     // Reset button states
     for (let i = 0; i < 4; i++) {
@@ -946,31 +972,181 @@ export default class FinalChapterScene extends Phaser.Scene {
     ui().querySelectorAll<HTMLButtonElement>('.quiz-opt-btn').forEach(b => (b.disabled = true));
 
     if (isCorrect) {
-      // Correct!
+      // Correct! Pho Htaung takes his turn and strikes U Gyi.
       buttonEl.classList.add('correct');
       soundEngine.playQuizCorrect();
       this.spawnSmallSparkles(this.playerX, VISUAL_GROUND_Y - 50, 0x22c55e);
+      this.setTurnState('ဖိုးထောင် တိုက်ခိုက်နေသည်!');
 
       const speechText = ui().querySelector<HTMLElement>('#ugyi-speech-text');
       if (speechText) {
-        speechText.textContent = `ဟေ့… မင်း အဖြေမှန်သွားပြန်ပြီလား! (မေးခွန်း ${this.currentQIndex + 1} အောင်မြင်သည်)`;
+        speechText.textContent = `အဖြေမှန်တယ်လို့ ဆိုပေမယ့်… ငါ့ကို လာရိုက်မယ်ပေါ့! (မေးခွန်း ${this.currentQIndex + 1} အောင်မြင်သည်)`;
       }
 
-      this.time.delayedCall(750, () => {
-        this.currentQIndex++;
-        this.renderCurrentQuestion();
-      });
+      this.time.delayedCall(140, () => this.performHeroAttack());
     } else {
       // Wrong! Turn-based stick punishment!
       buttonEl.classList.add('wrong');
       const correctBtn = ui().querySelector<HTMLButtonElement>(`[data-opt="${q.correctIndex}"]`);
       if (correctBtn) correctBtn.classList.add('correct');
+      this.setTurnState('ဦးကြီး တိုက်ခိုက်နေသည်!');
 
       soundEngine.playQuizWrong();
       this.time.delayedCall(450, () => {
         this.triggerPunishmentHit(q);
       });
     }
+  }
+
+  // ================= HERO ATTACK TURN =================
+  private performHeroAttack() {
+    if (this.isAttacking) return;
+    if (!this.ugyiSprite || !this.ugyiSprite.active) {
+      this.time.delayedCall(500, () => {
+        this.currentQIndex++;
+        this.renderCurrentQuestion();
+      });
+      return;
+    }
+
+    this.isAttacking = true;
+    this.setTurnState('ဖိုးထောင် တိုက်ခိုက်နေသည်!');
+
+    const dir: -1 | 1 = this.ugyiX >= this.playerX ? 1 : -1;
+    this.playerFacing = dir;
+    this.playerControl = 'IDLE';
+
+    const startX = this.playerX;
+    const strikeX = this.ugyiX - dir * 96;
+
+    // Anticipation: lean back before the dash
+    this.heroLean = -11 * dir;
+    soundEngine.playWhoosh();
+
+    this.tweens.add({
+      targets: this,
+      playerX: strikeX,
+      delay: 140,
+      duration: 170,
+      ease: 'Quad.In',
+      onComplete: () => {
+        // Contact!
+        this.heroLean = 16 * dir;
+        soundEngine.playHit();
+        this.cameras.main.shake(170, 0.011);
+
+        const hitX = this.ugyiX - dir * 34;
+        const hitY = VISUAL_GROUND_Y - 58;
+        this.spawnImpactBurst(hitX, hitY);
+        this.spawnSlashArc(hitX, hitY, dir);
+
+        // U Gyi gets hurt: pose, flash, knockback, damage number
+        this.setUgyiPose('hit');
+        this.ugyiHurtTimer = 0.32;
+        this.applyDamageToUgyi(10);
+
+        const knockX = this.ugyiX + dir * 16;
+        this.tweens.add({
+          targets: this,
+          ugyiX: knockX,
+          duration: 110,
+          ease: 'Quad.Out',
+          yoyo: true,
+          hold: 60,
+        });
+
+        // Recover and hand the turn back
+        this.time.delayedCall(280, () => {
+          this.heroLean = 0;
+          this.setUgyiPose('recover');
+          this.tweens.add({
+            targets: this,
+            playerX: startX,
+            duration: 300,
+            ease: 'Quad.Out',
+          });
+
+          this.time.delayedCall(300, () => {
+            this.ugyiHurtTimer = 0;
+            this.isAttacking = false;
+            if (this.currentQIndex + 1 >= (this.activeQuestions.length || CHAPTER_5_QUIZ.length)) {
+              // Final blow: hand off to the victory sequence
+              this.currentQIndex++;
+              this.renderCurrentQuestion();
+              return;
+            }
+            if (!this.isDead) {
+              this.setUgyiPose('guard');
+              this.currentQIndex++;
+              this.renderCurrentQuestion();
+            }
+          });
+        });
+      },
+    });
+  }
+
+  private applyDamageToUgyi(amount: number) {
+    this.ugyiHp = Math.max(0, this.ugyiHp - amount);
+    if (this.ugyiHpLabel && this.ugyiHpLabel.active) {
+      this.ugyiHpLabel.setText(this.ugyiHpText());
+    }
+    const bossHp = ui().querySelector<HTMLElement>('#final-boss-hp');
+    if (bossHp) bossHp.textContent = `${this.ugyiHp} / ${FinalChapterScene.UGYI_MAX_HP}`;
+
+    const popup = this.add.text(this.ugyiX + 48, VISUAL_GROUND_Y - 136, `-${amount}`, {
+      fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
+      fontSize: '22px',
+      fontStyle: 'bold',
+      color: '#ffd166',
+      stroke: '#3b1607',
+      strokeThickness: 4,
+    }).setOrigin(0.5, 1).setDepth(40);
+
+    this.tweens.add({
+      targets: popup,
+      y: popup.y - 40,
+      x: popup.x + 12,
+      alpha: 0,
+      duration: 720,
+      ease: 'Cubic.Out',
+      onComplete: () => popup.destroy(),
+    });
+
+    if (this.ugyiHp <= 0) {
+      this.setUgyiPose('defeated');
+    }
+  }
+
+  private spawnSlashArc(x: number, y: number, dir: -1 | 1) {
+    const slash = this.add.graphics({ x, y }).setDepth(38);
+    slash.lineStyle(7, 0xfff3c4, 0.95);
+    slash.beginPath();
+    slash.arc(0, 0, 48, Phaser.Math.DegToRad(dir > 0 ? -75 : 75), Phaser.Math.DegToRad(dir > 0 ? 55 : 105), dir < 0);
+    slash.strokePath();
+    slash.lineStyle(3, 0xffb347, 0.8);
+    slash.beginPath();
+    slash.arc(0, 0, 58, Phaser.Math.DegToRad(dir > 0 ? -65 : 65), Phaser.Math.DegToRad(dir > 0 ? 45 : 115), dir < 0);
+    slash.strokePath();
+
+    this.tweens.add({
+      targets: slash,
+      alpha: 0,
+      scaleX: 1.35,
+      scaleY: 1.35,
+      duration: 260,
+      ease: 'Quad.Out',
+      onComplete: () => slash.destroy(),
+    });
+  }
+
+  private ugyiHpText() {
+    return `ဦးကြီး ${this.ugyiHp} / ${FinalChapterScene.UGYI_MAX_HP}`;
+  }
+
+  private setTurnState(text: string) {
+    const el = ui().querySelector<HTMLElement>('#quiz-turn-state');
+    if (el) el.textContent = text;
   }
 
   // ================= ACT III: TURN-BASED STICK HIT =================
@@ -1110,7 +1286,7 @@ export default class FinalChapterScene extends Phaser.Scene {
     soundEngine.playVictoryFanfare();
 
     // U Gyi drops strict host persona, laughs, and presents Golden Key
-    this.setUgyiPose('recover');
+    this.setUgyiPose(this.ugyiHp <= 0 ? 'defeated' : 'recover');
     this.hasGoldenKey = true;
 
     const speechText = ui().querySelector<HTMLElement>('#ugyi-speech-text');
@@ -1289,6 +1465,54 @@ export default class FinalChapterScene extends Phaser.Scene {
     }
   }
 
+  // ================= BOSS HEALTH BAR (200 HP) =================
+  private drawUgyiHealthBar(x: number, y: number) {
+    const fx = this.fxG;
+    const width = 116;
+    const height = 11;
+    const ratio = Phaser.Math.Clamp(this.ugyiHp / FinalChapterScene.UGYI_MAX_HP, 0, 1);
+    const left = Math.round(x - width / 2);
+    const top = Math.round(y);
+    const flashing = this.ugyiHurtTimer > 0;
+
+    // Deep drop shadow so the bar reads over the bright hall art
+    fx.fillStyle(0x000000, 0.45);
+    fx.fillRoundedRect(left - 5, top - 5, width + 10, height + 10, 5);
+
+    // Carved wood backing + brass rim
+    fx.fillStyle(0x2a1a0c, 0.96);
+    fx.fillRoundedRect(left - 3, top - 3, width + 6, height + 6, 4);
+    fx.lineStyle(1.5, flashing ? 0xffe4a3 : 0xb07c34, 0.95);
+    fx.strokeRoundedRect(left - 3, top - 3, width + 6, height + 6, 4);
+
+    // Recessed track
+    fx.fillStyle(0x140b04, 0.95);
+    fx.fillRect(left, top, width, height);
+
+    // Ember fill that darkens as U Gyi weakens
+    const fillW = Math.max(0, Math.round(width * ratio));
+    if (fillW > 0) {
+      const fillColor = flashing
+        ? 0xfff0c0
+        : ratio > 0.5
+          ? 0xc8412c
+          : ratio > 0.2
+            ? 0xa8551f
+            : 0x7c1f12;
+      fx.fillStyle(fillColor, 0.98);
+      fx.fillRect(left, top, fillW, height);
+      fx.fillStyle(0xffd9a0, 0.34);
+      fx.fillRect(left, top, fillW, Math.max(1, Math.floor(height * 0.32)));
+    }
+
+    // Ten notch marks (one per 20 HP)
+    fx.lineStyle(1, 0x1a0e04, 0.7);
+    for (let i = 1; i < 10; i++) {
+      const sx = Math.round(left + (width * i) / 10);
+      fx.lineBetween(sx, top, sx, top + height);
+    }
+  }
+
   // ================= UTILITIES & EFFECTS =================
   private setUgyiPose(pose: keyof typeof UGYI_FRAMES) {
     this.ugyiPose = pose;
@@ -1428,6 +1652,22 @@ export default class FinalChapterScene extends Phaser.Scene {
       this.ugyiSprite.setPosition(this.ugyiX, VISUAL_GROUND_Y);
       // U Gyi faces player
       this.ugyiSprite.setFlipX(this.playerX > this.ugyiX);
+
+      // Hurt reaction flash
+      if (this.ugyiHurtTimer > 0) {
+        this.ugyiHurtTimer = Math.max(0, this.ugyiHurtTimer - dt);
+        if (this.ugyiHurtTimer > 0.2) {
+          this.ugyiSprite.setTintFill(0xffffff);
+        } else {
+          this.ugyiSprite.setTint(0xff8a6a);
+        }
+      } else {
+        this.ugyiSprite.clearTint();
+      }
+    }
+
+    if (this.ugyiHpLabel && this.ugyiHpLabel.active) {
+      this.ugyiHpLabel.setPosition(this.ugyiX, VISUAL_GROUND_Y - 121);
     }
 
     // Render Phoe Htung
@@ -1451,6 +1691,11 @@ export default class FinalChapterScene extends Phaser.Scene {
         this.hero.setTintFill(0xff8888);
       } else {
         this.hero.clearTint();
+      }
+
+      // Attack lean is applied after the shared renderer so it is not overwritten
+      if (this.heroLean !== 0) {
+        this.hero.setAngle(this.heroLean);
       }
     }
 
@@ -1479,6 +1724,11 @@ export default class FinalChapterScene extends Phaser.Scene {
     // 4. Draw Overhead Palace Health Bar (3 Segments)
     if (!this.isDead && this.phase !== 'OPENING') {
       this.drawOverheadHealthBar(this.playerX, VISUAL_GROUND_Y - 98);
+    }
+
+    // 4b. U Gyi's 200 HP boss bar, anchored above the sprite
+    if (this.ugyiSprite && this.ugyiSprite.active && this.phase !== 'OPENING') {
+      this.drawUgyiHealthBar(this.ugyiX, VISUAL_GROUND_Y - 111);
     }
 
     // 5. Update & Draw Particles (Impact Sparks)
