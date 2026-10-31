@@ -681,18 +681,16 @@
 
 /* --------------------------------------------------- chapter 5 end card */
 .ch5-end-card{
-  width:min(92%,780px);
-  max-height:86vh;
-  overflow:auto;
-  gap:clamp(18px,2.4cqw,28px);
-  padding:4px;
+  width:min(92%,820px);
+  gap:clamp(14px,1.8cqw,22px);
+  padding:0;
 }
 .ch5-end-panel{
   display:flex;
   align-items:center;
-  gap:clamp(20px,3cqw,38px);
+  gap:clamp(18px,2.6cqw,34px);
   width:100%;
-  padding:clamp(20px,2.8cqw,36px) clamp(22px,3.4cqw,46px);
+  padding:clamp(18px,2.2cqw,30px) clamp(20px,3cqw,40px);
   border:1.5px solid rgba(246,214,138,.42);
   border-radius:18px;
   background:linear-gradient(180deg,rgba(26,19,12,.94),rgba(10,8,6,.97));
@@ -703,8 +701,8 @@
   flex:0 0 auto;
   display:grid;
   place-items:center;
-  width:clamp(112px,14cqw,168px);
-  height:clamp(112px,14cqw,168px);
+  width:clamp(104px,12cqw,148px);
+  height:clamp(104px,12cqw,148px);
   overflow:hidden;
   border-radius:50%;
   background:radial-gradient(circle at 42% 32%,#fdf6e3,#efdfba 58%,#d4bd8d 100%);
@@ -727,8 +725,8 @@
 .ch5-end-card .ch5-end-title{
   margin:0;
   font-family:'Cormorant Upright',Georgia,serif;
-  font-size:clamp(26px,4cqw,50px);
-  line-height:1.12;
+  font-size:clamp(24px,3.6cqw,44px);
+  line-height:1.1;
   letter-spacing:.04em;
   color:#fbbf24;
   text-shadow:0 2px 18px rgba(251,191,36,.35);
@@ -736,15 +734,15 @@
 .ch5-end-card .ch5-end-sub{
   margin:0;
   color:#fde68a;
-  font-size:clamp(14px,1.6cqw,21px);
+  font-size:clamp(13px,1.45cqw,19px);
   font-weight:800;
   letter-spacing:.04em;
 }
 .ch5-end-note{
   margin:2px 0 0;
   color:var(--fui-parchment-dim);
-  font-size:clamp(11px,1.15cqw,15px);
-  line-height:1.85;
+  font-size:clamp(10px,1.05cqw,14px);
+  line-height:1.7;
 }
 .ch5-end-actions{justify-content:center;gap:14px}
 

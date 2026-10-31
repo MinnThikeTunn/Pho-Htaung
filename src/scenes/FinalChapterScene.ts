@@ -20,6 +20,14 @@ import { VISUAL_GROUND_Y } from '../view/FinalView';
 
 const ui = () => document.querySelector<HTMLDivElement>('#interface')!;
 
+const CHEST_SHEET = {
+  key: 'ch5-chest-open',
+  path: '/assets/chapter5/chest_open_sheet_v2.png',
+  frameWidth: 160,
+  frameHeight: 128,
+  frames: 10,
+} as const;
+
 interface Particle {
   x: number;
   y: number;
@@ -77,10 +85,9 @@ export default class FinalChapterScene extends Phaser.Scene {
   private ugyiHpLabel!: Phaser.GameObjects.Text;
   private treasureContainer!: Phaser.GameObjects.Container;
   private treasureChestGroup!: Phaser.GameObjects.Container;
-  private treasureLid!: Phaser.GameObjects.Container;
-  private treasureLidOpen!: Phaser.GameObjects.Image;
-  private treasureInterior!: Phaser.GameObjects.Container;
-  private treasureGlow!: Phaser.GameObjects.Graphics;
+  private treasureChest!: Phaser.GameObjects.Sprite;
+  private treasureChestOutline!: Phaser.GameObjects.Sprite;
+  private treasureGlow?: Phaser.GameObjects.Graphics;
   private goldenKeySprite!: Phaser.GameObjects.Graphics;
   private fxG!: Phaser.GameObjects.Graphics;
   private bgDecorG!: Phaser.GameObjects.Graphics;
@@ -112,6 +119,12 @@ export default class FinalChapterScene extends Phaser.Scene {
       if (!this.textures.exists(item.key)) {
         this.load.image(item.key, item.path);
       }
+    }
+    if (!this.textures.exists(CHEST_SHEET.key)) {
+      this.load.spritesheet(CHEST_SHEET.key, CHEST_SHEET.path, {
+        frameWidth: CHEST_SHEET.frameWidth,
+        frameHeight: CHEST_SHEET.frameHeight,
+      });
     }
   }
 
@@ -255,325 +268,22 @@ export default class FinalChapterScene extends Phaser.Scene {
     }
   }
 
-  private paintChestTexture(
-    key: string,
-    width: number,
-    height: number,
-    paint: (ctx: CanvasRenderingContext2D) => void
-  ) {
-    if (this.textures.exists(key)) return;
-    const texture = this.textures.createCanvas(key, width, height);
-    if (!texture) return;
-    const ctx = texture.getContext();
-    ctx.clearRect(0, 0, width, height);
-    paint(ctx);
-    texture.refresh();
-  }
-
-  private paintChestBodyTexture() {
-    this.paintChestTexture('ch5-chest-body', 88, 52, (ctx) => {
-      const W = 88;
-      const H = 52;
-
-      // Painted teak base, lit from the upper right
-      const base = ctx.createLinearGradient(0, 0, 0, H);
-      base.addColorStop(0, '#5b3a21');
-      base.addColorStop(.45, '#452a16');
-      base.addColorStop(1, '#2a170b');
-      ctx.fillStyle = base;
-      ctx.fillRect(0, 0, W, H);
-
-      // Loose painterly brushwork (the low resolution softens it when scaled)
-      const palette = ['#6b4728', '#3a2312', '#7c512c', '#2c190c', '#8a5c33'];
-      for (let i = 0; i < 240; i++) {
-        ctx.globalAlpha = 0.05 + Math.random() * 0.13;
-        ctx.fillStyle = palette[Math.floor(Math.random() * palette.length)]!;
-        ctx.fillRect(
-          Math.random() * W,
-          Math.random() * H,
-          2 + Math.random() * 11,
-          1 + Math.random() * 3
-        );
-      }
-      ctx.globalAlpha = 1;
-
-      // Horizontal plank seams
-      ctx.strokeStyle = 'rgba(20, 10, 4, .55)';
-      ctx.lineWidth = 1;
-      for (const y of [15, 28, 41]) {
-        ctx.beginPath();
-        ctx.moveTo(1, y + .5);
-        ctx.lineTo(W - 1, y + .5);
-        ctx.stroke();
-      }
-
-      // Top rim catching the light
-      const rim = ctx.createLinearGradient(0, 0, 0, 7);
-      rim.addColorStop(0, '#a97843');
-      rim.addColorStop(1, '#5c3a20');
-      ctx.fillStyle = rim;
-      ctx.fillRect(1, 0, W - 2, 7);
-      ctx.fillStyle = 'rgba(255, 226, 168, .5)';
-      ctx.fillRect(2, 1, W - 4, 1.5);
-
-      // Side shading for a rounded, three-dimensional body
-      const side = ctx.createLinearGradient(0, 0, W, 0);
-      side.addColorStop(0, 'rgba(8, 4, 2, .58)');
-      side.addColorStop(.16, 'rgba(8, 4, 2, .08)');
-      side.addColorStop(.72, 'rgba(255, 220, 160, .05)');
-      side.addColorStop(1, 'rgba(255, 220, 160, .24)');
-      ctx.fillStyle = side;
-      ctx.fillRect(0, 0, W, H);
-
-      // Soft bottom occlusion
-      const foot = ctx.createLinearGradient(0, H - 10, 0, H);
-      foot.addColorStop(0, 'rgba(0, 0, 0, 0)');
-      foot.addColorStop(1, 'rgba(0, 0, 0, .45)');
-      ctx.fillStyle = foot;
-      ctx.fillRect(0, H - 10, W, 10);
-
-      const strap = (x: number) => {
-        const brass = ctx.createLinearGradient(x, 0, x + 8, 0);
-        brass.addColorStop(0, '#7c4a12');
-        brass.addColorStop(.38, '#e3a63a');
-        brass.addColorStop(.62, '#f7d47a');
-        brass.addColorStop(1, '#8a5418');
-        ctx.fillStyle = brass;
-        ctx.fillRect(x, 3, 8, H - 7);
-        ctx.strokeStyle = 'rgba(32, 17, 5, .85)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(x + .5, 3.5, 7, H - 8);
-        for (let y = 11; y < H - 5; y += 11) {
-          ctx.fillStyle = '#2a1608';
-          ctx.beginPath();
-          ctx.arc(x + 4, y, 1.6, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = 'rgba(255, 245, 200, .9)';
-          ctx.beginPath();
-          ctx.arc(x + 3.5, y - .5, .7, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      };
-      strap(12);
-      strap(68);
-
-      // Corner brass brackets
-      ctx.fillStyle = '#b9781f';
-      ctx.beginPath();
-      ctx.moveTo(1, H - 1);
-      ctx.lineTo(15, H - 1);
-      ctx.lineTo(1, H - 13);
-      ctx.closePath();
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(W - 1, H - 1);
-      ctx.lineTo(W - 15, H - 1);
-      ctx.lineTo(W - 1, H - 13);
-      ctx.closePath();
-      ctx.fill();
-
-      // Ornate lock plate
-      const lockX = 32;
-      const lockY = 25;
-      const lock = ctx.createLinearGradient(lockX, lockY, lockX, lockY + 22);
-      lock.addColorStop(0, '#f6cf72');
-      lock.addColorStop(.5, '#d99a2e');
-      lock.addColorStop(1, '#8c5616');
-      ctx.fillStyle = '#3a2009';
-      ctx.fillRect(lockX - 2, lockY - 2, 28, 25);
-      ctx.fillStyle = lock;
-      ctx.fillRect(lockX, lockY, 24, 21);
-      ctx.strokeStyle = 'rgba(38, 20, 6, .9)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(lockX + .5, lockY + .5, 23, 20);
-      ctx.fillStyle = 'rgba(255, 244, 200, .75)';
-      ctx.fillRect(lockX + 3, lockY + 2, 18, 2);
-      ctx.fillStyle = '#1b0d04';
-      ctx.beginPath();
-      ctx.arc(lockX + 12, lockY + 8, 2.8, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(lockX + 10, lockY + 9);
-      ctx.lineTo(lockX + 14, lockY + 9);
-      ctx.lineTo(lockX + 12.5, lockY + 16);
-      ctx.lineTo(lockX + 11.5, lockY + 16);
-      ctx.closePath();
-      ctx.fill();
-    });
-  }
-
-  private paintChestLidTexture() {
-    this.paintChestTexture('ch5-chest-lid', 104, 38, (ctx) => {
-      const W = 104;
-      const H = 38;
-      const dome = () => {
-        ctx.beginPath();
-        ctx.moveTo(1, H);
-        ctx.lineTo(1, 19);
-        ctx.quadraticCurveTo(1, 1, 22, 1);
-        ctx.lineTo(W - 22, 1);
-        ctx.quadraticCurveTo(W - 1, 1, W - 1, 19);
-        ctx.lineTo(W - 1, H);
-        ctx.closePath();
-      };
-
-      dome();
-      const base = ctx.createLinearGradient(0, 0, 0, H);
-      base.addColorStop(0, '#77502c');
-      base.addColorStop(.55, '#4c2e18');
-      base.addColorStop(1, '#2b170a');
-      ctx.fillStyle = base;
-      ctx.fill();
-
-      ctx.save();
-      dome();
-      ctx.clip();
-      const palette = ['#8a5c33', '#3c2412', '#6c4725', '#28150a'];
-      for (let i = 0; i < 170; i++) {
-        ctx.globalAlpha = 0.05 + Math.random() * 0.12;
-        ctx.fillStyle = palette[Math.floor(Math.random() * palette.length)]!;
-        ctx.fillRect(
-          Math.random() * W,
-          Math.random() * H,
-          2 + Math.random() * 12,
-          1 + Math.random() * 3
-        );
-      }
-      ctx.globalAlpha = 1;
-
-      // Domed top light
-      const sheen = ctx.createLinearGradient(0, 1, 0, 17);
-      sheen.addColorStop(0, 'rgba(255, 220, 160, .3)');
-      sheen.addColorStop(1, 'rgba(255, 220, 160, 0)');
-      ctx.fillStyle = sheen;
-      ctx.fillRect(0, 1, W, 16);
-
-      // Side shading
-      const side = ctx.createLinearGradient(0, 0, W, 0);
-      side.addColorStop(0, 'rgba(0, 0, 0, .5)');
-      side.addColorStop(.18, 'rgba(0, 0, 0, .05)');
-      side.addColorStop(.8, 'rgba(255, 220, 160, .06)');
-      side.addColorStop(1, 'rgba(255, 220, 160, .22)');
-      ctx.fillStyle = side;
-      ctx.fillRect(0, 0, W, H);
-
-      const strap = (x: number) => {
-        const brass = ctx.createLinearGradient(x, 0, x + 8, 0);
-        brass.addColorStop(0, '#7c4a12');
-        brass.addColorStop(.4, '#e3a63a');
-        brass.addColorStop(.62, '#f7d47a');
-        brass.addColorStop(1, '#8a5418');
-        ctx.fillStyle = brass;
-        ctx.fillRect(x, 3, 8, H - 3);
-        ctx.strokeStyle = 'rgba(32, 17, 5, .8)';
-        ctx.strokeRect(x + .5, 3.5, 7, H - 4);
-        for (let y = 11; y < H - 3; y += 10) {
-          ctx.fillStyle = '#2a1608';
-          ctx.beginPath();
-          ctx.arc(x + 4, y, 1.5, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      };
-      strap(25);
-      strap(71);
-      ctx.restore();
-
-      // Bright front lip that meets the body
-      const lip = ctx.createLinearGradient(0, H - 8, 0, H);
-      lip.addColorStop(0, '#f4cf76');
-      lip.addColorStop(.45, '#c78a2b');
-      lip.addColorStop(1, '#6f430f');
-      ctx.fillStyle = lip;
-      ctx.fillRect(1, H - 8, W - 2, 7);
-      ctx.fillStyle = 'rgba(255, 246, 205, .8)';
-      ctx.fillRect(2, H - 8, W - 4, 1.5);
-
-      // Small centre boss
-      ctx.fillStyle = '#8a5418';
-      ctx.beginPath();
-      ctx.arc(W / 2, 17, 6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#f3c964';
-      ctx.beginPath();
-      ctx.arc(W / 2, 17, 4.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#a56a19';
-      ctx.beginPath();
-      ctx.arc(W / 2, 17, 2, 0, Math.PI * 2);
-      ctx.fill();
-    });
-  }
-
-  private paintChestLidOpenTexture() {
-    this.paintChestTexture('ch5-chest-lid-open', 100, 44, (ctx) => {
-      const W = 100;
-      const H = 44;
-      const dome = () => {
-        ctx.beginPath();
-        ctx.moveTo(1, H);
-        ctx.lineTo(1, 22);
-        ctx.quadraticCurveTo(1, 1, 22, 1);
-        ctx.lineTo(W - 22, 1);
-        ctx.quadraticCurveTo(W - 1, 1, W - 1, 22);
-        ctx.lineTo(W - 1, H);
-        ctx.closePath();
-      };
-
-      dome();
-      const inner = ctx.createLinearGradient(0, 0, 0, H);
-      inner.addColorStop(0, '#3b2412');
-      inner.addColorStop(.5, '#27150a');
-      inner.addColorStop(1, '#150b04');
-      ctx.fillStyle = inner;
-      ctx.fill();
-
-      ctx.save();
-      dome();
-      ctx.clip();
-      // Inner planks and brushed shadow
-      ctx.strokeStyle = 'rgba(120, 82, 46, .32)';
-      ctx.lineWidth = 1;
-      for (let x = 12; x < W; x += 13) {
-        ctx.beginPath();
-        ctx.moveTo(x + .5, 4);
-        ctx.lineTo(x + .5, H);
-        ctx.stroke();
-      }
-      const shade = ctx.createLinearGradient(0, 0, W, 0);
-      shade.addColorStop(0, 'rgba(0, 0, 0, .45)');
-      shade.addColorStop(.5, 'rgba(0, 0, 0, .05)');
-      shade.addColorStop(1, 'rgba(0, 0, 0, .4)');
-      ctx.fillStyle = shade;
-      ctx.fillRect(0, 0, W, H);
-
-      const strap = (x: number) => {
-        const brass = ctx.createLinearGradient(x, 0, x + 7, 0);
-        brass.addColorStop(0, '#6d400f');
-        brass.addColorStop(.5, '#b67a22');
-        brass.addColorStop(1, '#6a3d0e');
-        ctx.fillStyle = brass;
-        ctx.fillRect(x, 4, 7, H - 4);
-      };
-      strap(20);
-      strap(73);
-      ctx.restore();
-
-      // Highlighted inner lip
-      ctx.fillStyle = '#d9a13c';
-      ctx.fillRect(1, H - 5, W - 2, 4);
-      ctx.fillStyle = 'rgba(255, 232, 166, .85)';
-      ctx.fillRect(2, H - 5, W - 4, 1.2);
-    });
-  }
-
   private createTreasureChest() {
-    this.paintChestBodyTexture();
-    this.paintChestLidTexture();
-    this.paintChestLidOpenTexture();
+    const CHEST_SCALE = 1.25;
+    const CHEST_FLOAT_Y = -18;
+    const CHEST_ORIGIN_Y = 0.8125;
 
-    const CHEST_SCALE = 1.2;
-    const BODY_H = 52 * CHEST_SCALE;
-    const CHEST_FLOAT_Y = -16;
+    if (!this.anims.exists('ch5-chest-lid-open')) {
+      this.anims.create({
+        key: 'ch5-chest-lid-open',
+        frames: this.anims.generateFrameNumbers(CHEST_SHEET.key, {
+          start: 0,
+          end: CHEST_SHEET.frames - 1,
+        }),
+        frameRate: 13,
+        repeat: 0,
+      });
+    }
 
     // Ground anchor at VISUAL_GROUND_Y (576px)
     this.treasureContainer = this.add.container(F5.treasureX, VISUAL_GROUND_Y).setDepth(16);
@@ -582,11 +292,11 @@ export default class FinalChapterScene extends Phaser.Scene {
     // 1. Warm floor aura that breathes under the floating chest
     const auraG = this.add.graphics();
     auraG.fillStyle(0xf59e0b, 0.2);
-    auraG.fillEllipse(0, 0, 152, 20);
+    auraG.fillEllipse(0, 0, 142, 18);
     auraG.fillStyle(0xfef08a, 0.14);
-    auraG.fillEllipse(0, -1, 88, 12);
+    auraG.fillEllipse(0, -1, 82, 11);
     auraG.fillGradientStyle(0xfde047, 0xfacc15, 0xca8a04, 0x854d0e, 0.08, 0.05, 0, 0);
-    auraG.fillTriangle(-46, -190, 52, -190, 0, 0);
+    auraG.fillTriangle(-42, -170, 48, -170, 0, 0);
 
     this.tweens.add({
       targets: auraG,
@@ -601,94 +311,26 @@ export default class FinalChapterScene extends Phaser.Scene {
     // 2. Separate ground shadow so the chest can bob above it
     const shadowG = this.add.graphics();
     shadowG.fillStyle(0x120a04, 0.5);
-    shadowG.fillEllipse(0, 2, 96, 13);
+    shadowG.fillEllipse(0, 2, 126, 14);
     shadowG.fillStyle(0x120a04, 0.25);
-    shadowG.fillEllipse(0, 4, 122, 9);
+    shadowG.fillEllipse(0, 4, 154, 10);
 
-    // 3. The chest itself lives in a bobbing group
+    // 3. The chest lives in a bobbing group; the baked FBX sheet supplies the 3D look
     this.treasureChestGroup = this.add.container(0, CHEST_FLOAT_Y);
 
-    // Lid interior standing open behind the body
-    this.treasureLidOpen = this.add.image(0, -BODY_H, 'ch5-chest-lid-open')
-      .setOrigin(0.5, 1)
+    // 4. Closed chest from the supplied 3D model, baked to a low-res painted sheet
+    this.treasureChestOutline = this.add.sprite(0, 1, CHEST_SHEET.key, 0)
+      .setOrigin(0.5, CHEST_ORIGIN_Y)
+      .setScale(CHEST_SCALE * 1.025)
+      .setTint(0x1b0d06)
+      .setAlpha(0.55);
+
+    this.treasureChest = this.add.sprite(0, 0, CHEST_SHEET.key, 0)
+      .setOrigin(0.5, CHEST_ORIGIN_Y)
       .setScale(CHEST_SCALE)
-      .setAlpha(0)
-      .setScale(CHEST_SCALE, 0);
+      .setTint(0xe8ccae);
 
-    // Painted low-res body, upscaled with smooth filtering
-    const body = this.add.image(0, 0, 'ch5-chest-body')
-      .setOrigin(0.5, 1)
-      .setScale(CHEST_SCALE);
-
-    // 4. Dark interior with a modest hoard and faint golden light
-    this.treasureInterior = this.add.container(0, -BODY_H + 2);
-    const interiorG = this.add.graphics();
-    interiorG.fillStyle(0x100803, 0.98);
-    interiorG.fillEllipse(0, -1, 76, 16);
-    interiorG.fillGradientStyle(0x2a1709, 0x2a1709, 0x0c0602, 0x0c0602, 0.95, 0.95, 0.98, 0.98);
-    interiorG.fillRoundedRect(-38, -10, 76, 13, 5);
-    interiorG.fillStyle(0x3a2412, 0.8);
-    interiorG.fillEllipse(0, -9, 58, 6);
-
-    const coinAt = (cx: number, cy: number, r: number, bright = false) => {
-      interiorG.fillStyle(0xb9781f, 1);
-      interiorG.fillEllipse(cx, cy + 1, r * 2, r * 1.25);
-      interiorG.fillStyle(bright ? 0xfff3ad : 0xf2c14e, 1);
-      interiorG.fillEllipse(cx, cy, r * 1.85, r * 1.05);
-      interiorG.fillStyle(0xfffbdc, 0.85);
-      interiorG.fillEllipse(cx - r * 0.3, cy - r * 0.25, r * 0.7, r * 0.35);
-    };
-    coinAt(-20, -4, 3.2);
-    coinAt(-12, -7, 2.7, true);
-    coinAt(-5, -3, 3.4);
-    coinAt(3, -8, 2.9);
-    coinAt(11, -4, 3.1, true);
-    coinAt(19, -6, 2.6);
-    coinAt(-27, -7, 2.3);
-
-    // A couple of small painted gems
-    const gem = (gx: number, gy: number, color: number) => {
-      interiorG.fillStyle(color, 1);
-      interiorG.fillTriangle(gx - 3, gy + 1, gx + 3, gy + 1, gx, gy - 4);
-      interiorG.fillStyle(0xffffff, 0.45);
-      interiorG.fillTriangle(gx - 1.5, gy, gx + .5, gy, gx - .4, gy - 2.4);
-    };
-    gem(-9, -11, 0xef4444);
-    gem(8, -12, 0x38bdf8);
-    gem(16, -10, 0x22c55e);
-
-    interiorG.fillStyle(0xffe9a8, 0.18);
-    interiorG.fillEllipse(0, -8, 56, 10);
-
-    this.treasureInterior.add(interiorG);
-    this.treasureInterior.setAlpha(0);
-    this.treasureInterior.setScale(1, 0.45);
-
-    // 5. Closed lid on a hinge at the back lip of the body
-    this.treasureLid = this.add.container(0, -BODY_H);
-    const lid = this.add.image(0, 0, 'ch5-chest-lid')
-      .setOrigin(0.5, 1)
-      .setScale(CHEST_SCALE);
-    this.treasureLid.add(lid);
-
-    // 6. Faint golden light that rises out once the lid is opened
-    const innerGlowG = this.add.graphics();
-    this.treasureGlow = innerGlowG;
-    innerGlowG.setAlpha(0);
-    innerGlowG.fillGradientStyle(0xfff9c4, 0xfde047, 0xf59e0b, 0xca8a04, 0.02, 0.02, 0.32, 0.12);
-    innerGlowG.fillTriangle(-34, -BODY_H - 1, 34, -BODY_H - 1, 0, -BODY_H - 96);
-    innerGlowG.fillStyle(0xfff4c2, 0.2);
-    innerGlowG.fillEllipse(0, -BODY_H - 2, 70, 10);
-    innerGlowG.fillStyle(0xfffbeb, 0.28);
-    innerGlowG.fillEllipse(0, -BODY_H - 5, 34, 6);
-
-    this.treasureChestGroup.add([
-      this.treasureLidOpen,
-      body,
-      this.treasureInterior,
-      this.treasureLid,
-      innerGlowG,
-    ]);
+    this.treasureChestGroup.add([this.treasureChestOutline, this.treasureChest]);
 
     // Gentle float so the chest hovers above the floor
     this.tweens.add({
@@ -1400,8 +1042,8 @@ export default class FinalChapterScene extends Phaser.Scene {
       duration: 720,
       ease: 'Back.easeOut',
     });
-    this.spawnSmallSparkles(F5.treasureX, VISUAL_GROUND_Y - 96, 0xfff2a8);
-    this.spawnSmallSparkles(F5.treasureX, VISUAL_GROUND_Y - 40, 0xfde047);
+    this.spawnSmallSparkles(F5.treasureX, VISUAL_GROUND_Y - 78, 0xfff2a8);
+    this.spawnSmallSparkles(F5.treasureX, VISUAL_GROUND_Y - 46, 0xfde047);
 
     // U Gyi is unarmed, relaxed, and smiling - he strolls to the escort mark
     this.setUgyiPose('defeated');
@@ -1467,7 +1109,7 @@ export default class FinalChapterScene extends Phaser.Scene {
         ease: 'Sine.easeInOut',
         onComplete: () => {
           if (this.phase !== 'CHEST_OPEN') return;
-          this.spawnSmallSparkles(F5.treasureX, VISUAL_GROUND_Y - 48, 0xfff2a8);
+          this.spawnSmallSparkles(F5.treasureX - 2, VISUAL_GROUND_Y - 50, 0xfff2a8);
         },
       });
     });
@@ -1483,53 +1125,27 @@ export default class FinalChapterScene extends Phaser.Scene {
         ease: 'Back.easeInOut',
       });
       this.tweens.add({
-        targets: this.treasureLid,
-        x: 1.5,
+        targets: this.treasureChest,
+        x: 2,
         duration: 45,
         yoyo: true,
         repeat: 5,
         ease: 'Sine.easeInOut',
         onComplete: () => {
-          this.treasureLid.x = 0;
+          this.treasureChest.x = 0;
         },
       });
     });
 
-    // 3. The lid lifts from the lip and tips back into the open position
+    // 3. The lid lifts from the lip and tips back on its hinge
     this.time.delayedCall(1320, () => {
       if (this.phase !== 'CHEST_OPEN') return;
       soundEngine.playPing();
 
-      this.tweens.add({
-        targets: this.treasureLid,
-        scaleY: 0.12,
-        y: 2,
-        alpha: 0.35,
-        duration: 380,
-        ease: 'Sine.easeIn',
-      });
-      this.tweens.add({
-        targets: this.treasureLidOpen,
-        scaleY: 1,
-        alpha: 1,
-        duration: 540,
-        ease: 'Back.easeOut',
-      });
-      this.tweens.add({
-        targets: this.treasureInterior,
-        alpha: 1,
-        scaleY: 1,
-        duration: 520,
-        ease: 'Back.easeOut',
-      });
-      this.tweens.add({
-        targets: this.treasureGlow,
-        alpha: 0.78,
-        duration: 900,
-        ease: 'Sine.easeOut',
-      });
-      this.spawnSmallSparkles(F5.treasureX, VISUAL_GROUND_Y - 118, 0xfff9c4);
-      this.spawnSmallSparkles(F5.treasureX, VISUAL_GROUND_Y - 82, 0xfde047);
+      this.treasureChest.play('ch5-chest-lid-open');
+      this.treasureChestOutline.play('ch5-chest-lid-open');
+      this.spawnSmallSparkles(F5.treasureX, VISUAL_GROUND_Y - 106, 0xfff9c4);
+      this.spawnSmallSparkles(F5.treasureX, VISUAL_GROUND_Y - 74, 0xfde047);
 
       // The moment Pho Htaung leans in, U Gyi reaches for his back
       this.time.delayedCall(900, () => {
@@ -1654,6 +1270,7 @@ export default class FinalChapterScene extends Phaser.Scene {
               // Fade in Chapter 5 title end card
               this.time.delayedCall(1200, () => {
                 if (endCardEl) endCardEl.classList.add('visible');
+                if (blackoutEl) blackoutEl.classList.add('show-end-card');
                 store.campaign.chapter5Completed = true;
                 store.save();
               });
@@ -2051,8 +1668,8 @@ export default class FinalChapterScene extends Phaser.Scene {
     if (this.hasGoldenKey && !this.isDead) {
       const handX = this.playerX + this.playerFacing * 22;
       const handY = VISUAL_GROUND_Y - 48;
-      const lockX = F5.treasureX - 20;
-      const lockY = VISUAL_GROUND_Y - 48;
+      const lockX = F5.treasureX - 2;
+      const lockY = VISUAL_GROUND_Y - 54;
       const t = Phaser.Math.Easing.Sine.InOut(Phaser.Math.Clamp(this.keyLerp, 0, 1));
       const keyX = Phaser.Math.Linear(handX, lockX, t);
       const keyY = Phaser.Math.Linear(handY, lockY, t);
