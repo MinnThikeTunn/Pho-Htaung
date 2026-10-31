@@ -10,6 +10,7 @@ import {
   getCheckpointQuestionIndex,
   getTierFromIndex,
   assignActiveClue,
+  randomizeQuestionPlacement,
 } from '../../src/content/chapter5Quiz';
 
 describe('Chapter 5 80-Question Pool & Dynamic Randomization', () => {
@@ -124,5 +125,45 @@ describe('Chapter 5 80-Question Pool & Dynamic Randomization', () => {
     expect(getTierFromIndex(5)).toBe(2);
     expect(getTierFromIndex(10)).toBe(3);
     expect(getTierFromIndex(15)).toBe(4);
+  });
+
+  it('randomizeQuestionPlacement uniformly distributes correct answers across all slots (က, ခ, ဂ, ဃ)', () => {
+    const counts = [0, 0, 0, 0];
+    const testQ = QUIZ_POOL_TIER_1[0]!;
+    const trials = 400;
+
+    for (let i = 0; i < trials; i++) {
+      const randomized = randomizeQuestionPlacement(testQ);
+      counts[randomized.correctIndex] = (counts[randomized.correctIndex] ?? 0) + 1;
+      expect(randomized.options[randomized.correctIndex]!.text).toBe('ထီး');
+      expect(randomized.honestClue).toContain(`(${randomized.options[randomized.correctIndex]!.label})`);
+      expect(randomized.correctIndex).toBeGreaterThanOrEqual(0);
+      expect(randomized.correctIndex).toBeLessThanOrEqual(3);
+    }
+
+    // Each slot should receive roughly 25% of occurrences (between 15% and 35%)
+    for (let slot = 0; slot < 4; slot++) {
+      const ratio = (counts[slot] ?? 0) / trials;
+      expect(ratio).toBeGreaterThan(0.15);
+      expect(ratio).toBeLessThan(0.35);
+    }
+  });
+
+  it('generateQuizRun distributes answers across all 4 option slots across a run', () => {
+    const slotCounts = [0, 0, 0, 0];
+    // Sample multiple runs and verify answer slot distribution
+    for (let r = 0; r < 20; r++) {
+      const run = generateQuizRun(new Set());
+      for (const q of run) {
+        slotCounts[q.correctIndex] = (slotCounts[q.correctIndex] ?? 0) + 1;
+        expect(q.honestClue).toContain(`(${q.options[q.correctIndex]!.label})`);
+      }
+    }
+
+    // Over 400 questions, each slot should be well represented (no slot dominating)
+    for (let slot = 0; slot < 4; slot++) {
+      expect(slotCounts[slot] ?? 0).toBeGreaterThan(60);
+      expect(slotCounts[slot] ?? 0).toBeLessThan(140);
+    }
   });
 });

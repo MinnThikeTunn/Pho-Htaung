@@ -1,0 +1,7 @@
+{
+  "name": "ဖိုးထောင် — ပုဂံရွှေမြို့တော် စွန့်စားခန်း (Phoe Htaung Adventure)",
+  "description": "Burmese cartoon puzzle and action adventure game set in ancient Bagan.",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

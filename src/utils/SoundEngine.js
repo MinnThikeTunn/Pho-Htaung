@@ -21,8 +21,32 @@ class SoundEngine {
       }
     }
     if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      try { this.ctx.resume(); } catch {}
     }
+    this.setupGestureUnlock();
+  }
+
+  setupGestureUnlock() {
+    if (this._gestureUnlockAttached) return;
+    this._gestureUnlockAttached = true;
+    const unlock = () => {
+      if (this.ctx && this.ctx.state === 'suspended') {
+        try { this.ctx.resume(); } catch {}
+      }
+      if (!this.muted && this.bgmVolume > 0 && !this.bgmPlaying) {
+        try { this.startBGM(); } catch {}
+      }
+      window.dispatchEvent(new CustomEvent('phoe:audio-unlocked'));
+    };
+    ['click', 'touchstart', 'touchend', 'pointerdown', 'keydown'].forEach(evt => {
+      window.addEventListener(evt, unlock, { once: true, passive: true });
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && this.ctx && this.ctx.state === 'suspended' && !this.muted) {
+        try { this.ctx.resume(); } catch {}
+      }
+    });
   }
 
   toggleMute() {

@@ -726,6 +726,57 @@ export const MASTER_QUIZ_POOL: readonly QuizQuestion[] = [
 // =========================================================================
 
 /**
+ * Randomize option placement for a question (0=က, 1=ခ, 2=ဂ, 3=ဃ).
+ * Permutes options so the correct answer (and distractor) are placed into any slot uniformly,
+ * and dynamically updates U Gyi's honest and deceptive clues to reference the new letter slots.
+ */
+export function randomizeQuestionPlacement(q: QuizQuestion): QuizQuestion {
+  const letters: Array<'က' | 'ခ' | 'ဂ' | 'ဃ'> = ['က', 'ခ', 'ဂ', 'ဃ'];
+  const indices = [0, 1, 2, 3];
+  for (let i = 3; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = indices[i]!;
+    indices[i] = indices[j]!;
+    indices[j] = tmp;
+  }
+
+  const newOptions: QuizOption[] = indices.map((origIdx, newPos) => ({
+    label: letters[newPos]!,
+    text: q.options[origIdx]!.text,
+  }));
+
+  const newCorrectIndex = indices.indexOf(q.correctIndex);
+  const origCorrectLetter = letters[q.correctIndex]!;
+  const newCorrectLetter = letters[newCorrectIndex]!;
+
+  const deceptMatch = q.deceptiveClue.match(/\(([ကခဂဃ])\)/);
+  const origDeceptiveLetter = deceptMatch ? deceptMatch[1] : null;
+  const origDeceptiveIndex = origDeceptiveLetter ? letters.indexOf(origDeceptiveLetter as any) : -1;
+  const newDeceptiveIndex = origDeceptiveIndex >= 0 ? indices.indexOf(origDeceptiveIndex) : -1;
+  const newDeceptiveLetter = newDeceptiveIndex >= 0 ? letters[newDeceptiveIndex] : null;
+
+  const honestClue = q.honestClue.replace(`(${origCorrectLetter})`, `(${newCorrectLetter})`);
+
+  let deceptiveClue = q.deceptiveClue;
+  if (origDeceptiveLetter && newDeceptiveLetter) {
+    deceptiveClue = deceptiveClue.replace(`(${origDeceptiveLetter})`, `(${newDeceptiveLetter})`);
+    deceptiveClue = deceptiveClue.replace(
+      new RegExp(`(?<=[\\s.,!?])${origDeceptiveLetter}(?=[\\s.,!?]|ကို|ပဲ|သာ)`, 'g'),
+      newDeceptiveLetter
+    );
+  }
+
+  return {
+    ...q,
+    options: newOptions,
+    correctIndex: newCorrectIndex,
+    honestClue,
+    deceptiveClue,
+    ugyiTrick: deceptiveClue,
+  };
+}
+
+/**
  * Randomly select between honest clue and deceptive trick clue (50/50 balance)
  */
 export function assignActiveClue(q: QuizQuestion): ActiveQuizQuestion {
@@ -778,8 +829,8 @@ function sampleTierQuestions(
   // Mark selected as used in the set
   selected.forEach(q => usedIds.add(q.id));
 
-  // Assign 50/50 randomized honest vs. deceptive clue
-  return selected.map(q => assignActiveClue(q));
+  // Randomize option placement (ka, kha, ga, gha) and assign 50/50 honest vs. deceptive clue
+  return selected.map(q => assignActiveClue(randomizeQuestionPlacement(q)));
 }
 
 /**
@@ -835,24 +886,24 @@ export function getTierFromIndex(index: number): 1 | 2 | 3 | 4 {
 
 // Backward-compatible default 20-question set for initial load or static tests
 export const CHAPTER_5_QUIZ: readonly QuizQuestion[] = [
-  QUIZ_POOL_TIER_1[0]!,
-  QUIZ_POOL_TIER_1[1]!,
-  QUIZ_POOL_TIER_1[2]!,
-  QUIZ_POOL_TIER_1[3]!,
-  QUIZ_POOL_TIER_1[4]!,
-  QUIZ_POOL_TIER_2[0]!,
-  QUIZ_POOL_TIER_2[1]!,
-  QUIZ_POOL_TIER_2[2]!,
-  QUIZ_POOL_TIER_2[3]!,
-  QUIZ_POOL_TIER_2[4]!,
-  QUIZ_POOL_TIER_3[0]!,
-  QUIZ_POOL_TIER_3[1]!,
-  QUIZ_POOL_TIER_3[2]!,
-  QUIZ_POOL_TIER_3[3]!,
-  QUIZ_POOL_TIER_3[4]!,
-  QUIZ_POOL_TIER_4[0]!,
-  QUIZ_POOL_TIER_4[1]!,
-  QUIZ_POOL_TIER_4[2]!,
-  QUIZ_POOL_TIER_4[3]!,
-  QUIZ_POOL_TIER_4[4]!,
+  randomizeQuestionPlacement(QUIZ_POOL_TIER_1[0]!),
+  randomizeQuestionPlacement(QUIZ_POOL_TIER_1[1]!),
+  randomizeQuestionPlacement(QUIZ_POOL_TIER_1[2]!),
+  randomizeQuestionPlacement(QUIZ_POOL_TIER_1[3]!),
+  randomizeQuestionPlacement(QUIZ_POOL_TIER_1[4]!),
+  randomizeQuestionPlacement(QUIZ_POOL_TIER_2[0]!),
+  randomizeQuestionPlacement(QUIZ_POOL_TIER_2[1]!),
+  randomizeQuestionPlacement(QUIZ_POOL_TIER_2[2]!),
+  randomizeQuestionPlacement(QUIZ_POOL_TIER_2[3]!),
+  randomizeQuestionPlacement(QUIZ_POOL_TIER_2[4]!),
+  randomizeQuestionPlacement(QUIZ_POOL_TIER_3[0]!),
+  randomizeQuestionPlacement(QUIZ_POOL_TIER_3[1]!),
+  randomizeQuestionPlacement(QUIZ_POOL_TIER_3[2]!),
+  randomizeQuestionPlacement(QUIZ_POOL_TIER_3[3]!),
+  randomizeQuestionPlacement(QUIZ_POOL_TIER_3[4]!),
+  randomizeQuestionPlacement(QUIZ_POOL_TIER_4[0]!),
+  randomizeQuestionPlacement(QUIZ_POOL_TIER_4[1]!),
+  randomizeQuestionPlacement(QUIZ_POOL_TIER_4[2]!),
+  randomizeQuestionPlacement(QUIZ_POOL_TIER_4[3]!),
+  randomizeQuestionPlacement(QUIZ_POOL_TIER_4[4]!),
 ];

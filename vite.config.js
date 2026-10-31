@@ -1,17 +1,22 @@
 import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
 export default defineConfig({
+  plugins: [react()],
   server: {
     port: 3000,
     open: false,
-    host: '127.0.0.1'
+    host: '0.0.0.0'
   },
   build: {
     assetsInlineLimit: 0,
     chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
-        manualChunks(id) { if (id.includes('/node_modules/phaser/')) return 'phaser'; }
+        manualChunks(id) {
+          if (id.includes('/node_modules/phaser/')) return 'phaser';
+          if (id.includes('/node_modules/react/') || id.includes('/node_modules/react-dom/')) return 'react';
+        }
       }
     }
   }

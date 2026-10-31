@@ -10,6 +10,10 @@ export class AudioController {
   play(kind: EventKind) {
     if (this.muted || !this.scene || !(this.scene.sound instanceof Phaser.Sound.WebAudioSoundManager)) return;
     const context = this.scene.sound.context;
+    if (!context) return;
+    if (context.state === 'suspended') {
+      try { context.resume(); } catch {}
+    }
     if (context.state !== 'running') return;
     const frequencies: Partial<Record<EventKind, number>> = { lock: 540, coin: 940, death: 85, shatter: 130, land: 105, gate: 160, shelf: 180, complete: 700, taunt: 360, bomb: 70, bomb_disarm: 440 };
     const frequency = frequencies[kind]; if (!frequency) return;

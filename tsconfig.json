@@ -4,6 +4,7 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "strict": true, "noUncheckedIndexedAccess": true, "noEmit": true, "allowJs": true, "checkJs": false,
     "verbatimModuleSyntax": true, "skipLibCheck": false,
+    "jsx": "react-jsx",
     "types": ["vite/client"]
   },
   "include": ["src"]

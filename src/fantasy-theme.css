@@ -26,6 +26,7 @@
 
 /* ---------------------------------------------------------------- HUD bar */
 .hud{
+  right:clamp(54px,5.8cqw,72px)!important;
   background:var(--fui-stud-tl),var(--fui-stud-tr),var(--fui-stud-bl),var(--fui-stud-br),var(--fui-plank)!important;
   border:2px solid var(--fui-brass)!important;
   border-radius:10px!important;
@@ -66,6 +67,7 @@
 }
 .arena-weapon-hud progress::-webkit-progress-bar{background:#120b05!important}
 .arena-weapon-hud progress::-webkit-progress-value{background:linear-gradient(90deg,#a3671f,#f6d68a)!important}
+.arena-weapon-hud progress::-moz-progress-bar{background:linear-gradient(90deg,#a3671f,#f6d68a)!important}
 .ledger span{color:#c9b088!important;letter-spacing:.14em!important}
 .ledger b{color:var(--fui-brass-hi)!important;text-shadow:0 2px 6px rgba(0,0,0,.7)}
 .ledger small{color:#c2a878!important}
@@ -320,8 +322,11 @@
   border-radius:4px!important;
 }
 .arena-enemies progress::-webkit-progress-value,.final-player-health progress::-webkit-progress-value{background:linear-gradient(90deg,#8f2c1d,#d9543a)!important}
+.arena-enemies progress::-moz-progress-bar,.final-player-health progress::-moz-progress-bar{background:linear-gradient(90deg,#8f2c1d,#d9543a)!important}
 .final-enemy progress::-webkit-progress-value{background:linear-gradient(90deg,#7c1f12,#c8412c)!important}
+.final-enemy progress::-moz-progress-bar{background:linear-gradient(90deg,#7c1f12,#c8412c)!important}
 .final-weapon progress::-webkit-progress-value{background:linear-gradient(90deg,#a3671f,#f6d68a)!important}
+.final-weapon progress::-moz-progress-bar{background:linear-gradient(90deg,#a3671f,#f6d68a)!important}
 .hint{
   background:var(--fui-grain),linear-gradient(180deg,#c98f3a,#8a5a1c)!important;
   color:#231303!important;
@@ -375,13 +380,44 @@
 }
 
 /* --------------------------------------------------------- volume control */
-#volume-control button{
-  background:radial-gradient(circle at 34% 28%,#6b4423,#311d0d 70%)!important;
-  border:3px solid var(--fui-brass)!important;
-  box-shadow:0 10px 28px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,225,160,.35),0 0 18px rgba(246,214,138,.2)!important;
+#volume-control{
+  position:absolute;
+  top:3%;
+  right:2.2%;
+  height:10%;
+  display:flex;
+  align-items:center;
+  z-index:950;
+  pointer-events:auto;
 }
-#volume-control button:hover{border-color:var(--fui-brass-hi)!important;box-shadow:0 12px 30px rgba(0,0,0,.75),0 0 22px rgba(246,214,138,.35)!important}
-#volume-icon{filter:sepia(1) saturate(2.6) hue-rotate(-12deg) brightness(1.08)}
+#volume-control button{
+  display:inline-flex!important;
+  align-items:center;
+  justify-content:center;
+  min-width:clamp(36px,4.2cqw,52px);
+  min-height:clamp(36px,4.2cqw,52px);
+  width:clamp(36px,4.2cqw,52px);
+  height:clamp(36px,4.2cqw,52px);
+  padding:0!important;
+  border-radius:8px!important;
+  background:radial-gradient(circle at 34% 28%,#6b4423,#311d0d 70%)!important;
+  border:2px solid var(--fui-brass)!important;
+  box-shadow:0 10px 28px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,225,160,.35),0 0 18px rgba(246,214,138,.2)!important;
+  cursor:pointer;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+  -webkit-user-select:none;
+  transition:transform .12s ease,border-color .12s ease,box-shadow .12s ease;
+}
+#volume-control button:hover,#volume-control button:focus-visible{border-color:var(--fui-brass-hi)!important;box-shadow:0 12px 30px rgba(0,0,0,.75),0 0 22px rgba(246,214,138,.35)!important;transform:translateY(-1px)}
+#volume-control button:active{transform:translateY(0) scale(.97)}
+#volume-icon{
+  font-size:clamp(16px,1.8cqw,24px);
+  line-height:1;
+  display:inline-block;
+  filter:sepia(1) saturate(2.6) hue-rotate(-12deg) brightness(1.08);
+}
 
 /* --------------------------------------------------- main menu + guide tie */
 #fantasy-menu-overlay .fm-btn{background:var(--fui-grain),linear-gradient(180deg,rgba(93,58,30,.97),rgba(43,26,14,.98))!important}
