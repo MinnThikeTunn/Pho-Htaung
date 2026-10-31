@@ -7,6 +7,7 @@ import type { Campaign, Player } from './types';
 export interface ArenaInput { left: boolean; right: boolean; jump: boolean; punch: boolean; sling: boolean; dodge: boolean; crawl?: boolean }
 export const ARENA_IDLE: Readonly<ArenaInput> = { left: false, right: false, jump: false, punch: false, sling: false, dodge: false };
 export type ArenaWeapon = 'FISTS' | 'SLING';
+export type ArenaWinRoute = 'CANONICAL' | 'SPEEDRUN_BYPASS' | 'ENVIRONMENTAL_COLLAPSE';
 export function arenaHasSlingshot(c: Pick<Campaign, 'ownedTools' | 'inventory'>, equipment?: { slingshot: boolean }): boolean {
   return equipment?.slingshot ?? (c.ownedTools.includes(SLING_TOOL_ID) || c.inventory.includes(SLING_TOOL_ID));
 }
@@ -26,6 +27,7 @@ export interface Ape {
   hitLeft: number;
   friendlyHits: number;
   brawlStrikes: number;
+  roarTimeLeft?: number;
 }
 export type ArenaObstacleKind = 'PILLAR' | 'LOG';
 export interface ArenaObstacle {
@@ -50,6 +52,10 @@ export type ArenaEvent =
   | 'brawl'
   | 'obstacle_outplay'
   | 'obstacle_drop'
+  | 'arch_hit'
+  | 'arch_deflect'
+  | 'arch_collapsed'
+  | 'ape_roar'
   | 'gold_trap_exploded'
   | 'won'
   | 'failed'
@@ -62,8 +68,11 @@ export interface ArenaAttempt {
   hurtLeft: number; staggerLeft: number; refill: number; attackGap: number; combatWon: boolean; events: ArenaEvent[];
   obstacles: ArenaObstacle[]; nextObstacleId: number; obstacleTimer: number;
   goldTrapSpawned?: boolean; goldTrapExploded?: boolean;
+  winRoute?: ArenaWinRoute;
+  archDurability: number;
+  archCollapsed: boolean;
 }
-export interface ArenaResult { attemptId: string; activeSeconds: number; remainingHealth: number; shotsFired: number }
+export interface ArenaResult { attemptId: string; activeSeconds: number; remainingHealth: number; shotsFired: number; winRoute?: ArenaWinRoute }
 export function createArena(id: string, hasSling = false): ArenaAttempt {
   return {
     id, status: 'WAITING', failure: null, hp: A4.health, hasSling, weapon: 'FISTS', ammo: hasSling ? A4.ammo : 0, elapsed: 0, combatSeconds: 0,
@@ -79,6 +88,8 @@ export function createArena(id: string, hasSling = false): ArenaAttempt {
     dodgeLeft: 0, dodgeCooldown: 0, dodgeDirection: -1, hurtLeft: 0, staggerLeft: 0, refill: 0, attackGap: A4.firstAttack, combatWon: false, events: [],
     obstacles: [], nextObstacleId: 0, obstacleTimer: A4.obstacleFirstDelay,
     goldTrapSpawned: false, goldTrapExploded: false,
+    archDurability: Infinity,
+    archCollapsed: false,
   };
 }
 export function triggerArenaGoldTrap(a: ArenaAttempt): boolean {
@@ -126,7 +137,7 @@ function startApeBrawl(a: ArenaAttempt) {
   }
   // Remove any in-flight ape rocks so the brawl plays out cleanly
   a.shots = a.shots.filter(s => s.owner !== 'APE');
-  a.events.push('brawl');
+  a.events.push('brawl', 'ape_roar');
 }
 
 export function applyFriendlyFire(a: ArenaAttempt, victim: Ape, amount = A4.friendlyFireHitDamage) {
@@ -148,8 +159,15 @@ export function applyFriendlyFire(a: ArenaAttempt, victim: Ape, amount = A4.frie
   }
 }
 
-function applyObstacleOutplay(a: ArenaAttempt, ape: Ape, pushDir: -1 | 1) {
+export function triggerArchCollapse(_a: ArenaAttempt) {
+  // Deprecated: stone arch is an unbreakable tactical shelter to preserve game length
+}
+
+function applyObstacleOutplay(a: ArenaAttempt, ape: Ape, pushDir: -1 | 1, isArch = false) {
   if (ape.hp <= 0 || ape.phase === 'BRAWL' || a.combatWon) return;
+  if (isArch) {
+    a.events.push('arch_deflect');
+  }
   ape.hp = Math.max(0, ape.hp - A4.obstacleBonkDamage);
   ape.hitLeft = A4.hitFlash;
   a.events.push('hit');
@@ -223,11 +241,21 @@ function fire(a: ArenaAttempt) {
 export function stepArena(a: ArenaAttempt, input: ArenaInput) {
   a.events = [];
   if (a.status === 'COMPLETE' || a.status === 'FAILED') return;
-  if (a.status === 'WAITING' && !(input.left || input.right || input.jump || input.punch || input.dodge || input.crawl || (input.sling && a.hasSling && a.weapon === 'SLING'))) return;
+  const wasWaiting = a.status === 'WAITING';
+  if (wasWaiting && !(input.left || input.right || input.jump || input.punch || input.dodge || input.crawl || (input.sling && a.hasSling && a.weapon === 'SLING'))) return;
   a.status = 'ACTIVE'; a.elapsed += C.dt;
+  if (wasWaiting) {
+    a.events.push('ape_roar');
+    for (const e of a.apes) {
+      e.roarTimeLeft = 0.85;
+    }
+  }
   if (!a.combatWon) a.combatSeconds += C.dt;
   for (const key of ['punchLeft', 'slingLeft', 'dodgeLeft', 'dodgeCooldown', 'hurtLeft', 'staggerLeft', 'attackGap'] as const) a[key] = Math.max(0, a[key] - C.dt);
-  for (const e of a.apes) e.hitLeft = Math.max(0, e.hitLeft - C.dt);
+  for (const e of a.apes) {
+    e.hitLeft = Math.max(0, e.hitLeft - C.dt);
+    if (e.roarTimeLeft) e.roarTimeLeft = Math.max(0, e.roarTimeLeft - C.dt);
+  }
 
   // Step active Brown Ape dropped obstacles and expire old ones
   if (a.obstacles.length > 0) {
@@ -422,6 +450,7 @@ export function stepArena(a: ArenaAttempt, input: ArenaInput) {
           (p.feetY <= pillarTopY + 4 || (p.centerX - A4.pillarX) * (e.x - A4.pillarX) <= 0);
         const hitArchOutplay =
           playerMovedFromSpawn &&
+          !a.archCollapsed &&
           Math.abs(strikeCenterX - A4.archX) <= 64 &&
           (crawling || dodging || (p.centerX - A4.archX) * (e.x - A4.archX) <= 0);
         const hitDroppedIdx = playerMovedFromSpawn
@@ -433,9 +462,13 @@ export function stepArena(a: ArenaAttempt, input: ArenaInput) {
             )
           : -1;
 
-        if (hitPillarOutplay || hitArchOutplay || hitDroppedIdx >= 0) {
+        if (hitArchOutplay) {
+          applyObstacleOutplay(a, e, e.facing > 0 ? -1 : 1, true);
+          continue;
+        }
+        if (hitPillarOutplay || hitDroppedIdx >= 0) {
           if (hitDroppedIdx >= 0) a.obstacles.splice(hitDroppedIdx, 1);
-          applyObstacleOutplay(a, e, e.facing > 0 ? -1 : 1);
+          applyObstacleOutplay(a, e, e.facing > 0 ? -1 : 1, false);
           continue;
         }
 
@@ -456,12 +489,13 @@ export function stepArena(a: ArenaAttempt, input: ArenaInput) {
     if (e.type === 'MELEE') {
       const playerUsingArch =
         playerMovedFromSpawn &&
+        !a.archCollapsed &&
         (((crawling || dodging) && Math.abs(p.centerX - A4.archX) <= 90) ||
           ((p.centerX - A4.archX) * (e.x - A4.archX) <= 0 &&
             Math.abs(p.centerX - A4.archX) <= 190 &&
             (crawling || dodging || p.feetY < C.floor)));
       if (playerUsingArch && Math.abs(e.x - A4.archX) <= 60) {
-        applyObstacleOutplay(a, e, e.facing > 0 ? -1 : 1);
+        applyObstacleOutplay(a, e, e.facing > 0 ? -1 : 1, true);
         continue;
       }
 
@@ -478,7 +512,7 @@ export function stepArena(a: ArenaAttempt, input: ArenaInput) {
         : -1;
       if (bonkLogIdx >= 0) {
         a.obstacles.splice(bonkLogIdx, 1);
-        applyObstacleOutplay(a, e, e.facing > 0 ? -1 : 1);
+        applyObstacleOutplay(a, e, e.facing > 0 ? -1 : 1, false);
         continue;
       }
 
@@ -503,7 +537,9 @@ export function stepArena(a: ArenaAttempt, input: ArenaInput) {
     e.x = Math.max(74, Math.min(1206, e.x));
     if (e.cooldown <= 0 && a.attackGap <= 0 && (e.type === 'THROWER' || distance <= A4.meleeReach) && !a.apes.some(other => other.phase === 'WINDUP' || other.phase === 'STRIKE' || other.phase === 'BRAWL')) {
       e.phase = 'WINDUP'; e.phaseLeft = e.type === 'MELEE' ? A4.meleeWindup : A4.throwWindup;
+      e.roarTimeLeft = e.phaseLeft;
       e.targetX = p.centerX; e.targetY = p.feetY - 25; a.attackGap = A4.attackSpacing;
+      a.events.push('ape_roar');
     }
   }
   const surviving: ArenaShot[] = [];
@@ -517,6 +553,7 @@ export function stepArena(a: ArenaAttempt, input: ArenaInput) {
     } else {
       // Check if Silver Ape's thrown rock hits the stone arch lintel while Phoe Htaung is crouched underneath
       const blockedByArch =
+        !a.archCollapsed &&
         (crawling || dodging) &&
         Math.abs(p.centerX - A4.archX) <= archHalfW + 8 &&
         Math.abs(shot.x - A4.archX) <= archHalfW + 8 &&
@@ -532,6 +569,7 @@ export function stepArena(a: ArenaAttempt, input: ArenaInput) {
         Math.abs(p.centerX - A4.spawnX) > 1;
       if (blockedByArch) {
         consumed = true;
+        a.events.push('arch_deflect');
       } else if (
         brownApe &&
         brownApe.phase !== 'BRAWL' &&
@@ -548,20 +586,73 @@ export function stepArena(a: ArenaAttempt, input: ArenaInput) {
     shot.x += shot.vx * C.dt; shot.y += shot.vy * C.dt; shot.age += C.dt;
     if (!consumed && shot.age < 3 && shot.x > 0 && shot.x < C.width && shot.y > 0 && shot.y < C.floor) surviving.push(shot);
   }
-  a.shots = surviving;
+  a.shots = a.combatWon ? [] : surviving;
   if (a.hp <= 0 || (!a.combatWon && a.combatSeconds + 1e-9 >= A4.timeLimit)) {
     a.status = 'FAILED'; a.failure = a.hp <= 0 ? 'HEALTH' : 'TIME'; a.charge = 0; p.vx = 0; a.events.push('failed'); return;
   }
-  if (!a.combatWon && a.apes.every(e => e.hp <= 0)) { a.combatWon = true; a.goldTrapSpawned = true; a.shots = []; a.obstacles = []; a.charge = 0; a.events.push('won'); }
+  if (!a.combatWon && a.apes.every(e => e.hp <= 0)) {
+    a.combatWon = true;
+    if (!a.winRoute) a.winRoute = 'CANONICAL';
+    a.goldTrapSpawned = true;
+    a.shots = [];
+    a.obstacles = [];
+    a.charge = 0;
+    a.events.push('won');
+  }
+  if (!a.combatWon && p.grounded && p.centerX >= A4.exitX) {
+    const brown = a.apes.find(e => e.id === 'brown');
+    const silver = a.apes.find(e => e.id === 'silver');
+    const allDown = a.apes.every(e => e.hp <= 0 || e.phase === 'DOWN');
+    const apesDistracted =
+      (brown?.phase === 'RECOVER' || brown?.phase === 'STUN' || brown?.phase === 'BRAWL' || brown?.phase === 'DOWN' || brown?.hp === 0) &&
+      (silver?.phase === 'RECOVER' || silver?.phase === 'STUN' || silver?.phase === 'BRAWL' || silver?.phase === 'DOWN' || silver?.hp === 0);
+    if (allDown || apesDistracted) {
+      a.combatWon = true;
+      if (!a.winRoute) a.winRoute = allDown ? 'CANONICAL' : 'SPEEDRUN_BYPASS';
+      if (allDown) a.goldTrapSpawned = true;
+      a.shots = [];
+      a.obstacles = [];
+      a.charge = 0;
+      a.events.push('won');
+    }
+  }
   if (a.combatWon && p.grounded && p.centerX >= A4.exitX) { a.status = 'COMPLETE'; p.control = 'EXITING'; p.vx = 0; a.events.push('complete'); }
 }
 export function settleArena(c: Campaign, a: ArenaAttempt): Campaign {
-  if (!c.chapter3Completed || !a.id || a.status !== 'COMPLETE' || !a.combatWon || !Number.isSafeInteger(a.hp) || a.hp <= 0 || a.hp > A4.health || a.apes.length !== 2 || a.apes.some(e => e.hp !== 0) ||
-    !a.hasSling || !Number.isFinite(a.elapsed) || a.elapsed < 0 || !Number.isFinite(a.combatSeconds) || a.combatSeconds < 0 || a.combatSeconds >= A4.timeLimit ||
-    !Number.isSafeInteger(a.shotsFired) || a.shotsFired < 0 || !Number.isFinite(a.player.centerX) || a.player.centerX < A4.exitX || !a.player.grounded ||
-    !Number.isFinite(a.player.feetY) || Math.abs(a.player.feetY - C.floor) > .01) throw Error('Invalid Chapter 4 completion');
+  const winRoute = a.winRoute ?? 'CANONICAL';
+  const requiresSling = winRoute === 'CANONICAL';
+  const requiresApesDefeated = winRoute !== 'SPEEDRUN_BYPASS';
+
+  if (
+    !c.chapter3Completed ||
+    !a.id ||
+    a.status !== 'COMPLETE' ||
+    !a.combatWon ||
+    (a.winRoute && !['CANONICAL', 'SPEEDRUN_BYPASS', 'ENVIRONMENTAL_COLLAPSE'].includes(a.winRoute)) ||
+    !Number.isSafeInteger(a.hp) ||
+    a.hp <= 0 ||
+    a.hp > A4.health ||
+    a.apes.length !== 2 ||
+    a.apes.some(e => !Number.isSafeInteger(e.hp) || e.hp < 0 || e.hp > A4.apeHealth) ||
+    (requiresApesDefeated && a.apes.some(e => e.hp !== 0)) ||
+    (requiresSling && !a.hasSling) ||
+    !Number.isFinite(a.elapsed) ||
+    a.elapsed < 0 ||
+    !Number.isFinite(a.combatSeconds) ||
+    a.combatSeconds < 0 ||
+    a.combatSeconds >= A4.timeLimit ||
+    !Number.isSafeInteger(a.shotsFired) ||
+    a.shotsFired < 0 ||
+    !Number.isFinite(a.player.centerX) ||
+    a.player.centerX < A4.exitX ||
+    !a.player.grounded ||
+    !Number.isFinite(a.player.feetY) ||
+    Math.abs(a.player.feetY - C.floor) > 0.01
+  ) {
+    throw Error('Invalid Chapter 4 completion');
+  }
   const receipt = `arena:${a.id}`; if (c.completedAttemptIds.includes(receipt)) return c;
   const next = structuredClone(c); next.completedAttemptIds.push(receipt); next.chapter4Completed = true; next.revision++;
-  next.lastChapter4Result = { attemptId: a.id, activeSeconds: a.combatSeconds, remainingHealth: a.hp, shotsFired: a.shotsFired };
+  next.lastChapter4Result = { attemptId: a.id, activeSeconds: a.combatSeconds, remainingHealth: a.hp, shotsFired: a.shotsFired, winRoute: a.winRoute ?? 'CANONICAL' };
   if(!c.chapter5Completed)next.resumeAt = 'CHAPTER_5_PENDING'; return next;
 }

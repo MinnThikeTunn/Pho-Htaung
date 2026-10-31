@@ -117,7 +117,7 @@ export default class Chapter3Scene extends Phaser.Scene {
     cols.fillStyle(0x19130e, 0.95);
     cols.fillRect(0, 0, width, wallGroundY);
 
-    // Weathered Bagan sandstone brick courses
+    // Weathered Ancient Palace sandstone brick courses
     cols.lineStyle(1.5, 0x2e1c12, 0.6);
     for (let by = 30; by < wallGroundY; by += 32) {
       cols.lineBetween(0, by, width, by);

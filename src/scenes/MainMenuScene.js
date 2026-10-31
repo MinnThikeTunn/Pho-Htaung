@@ -96,7 +96,7 @@ export default class MainMenuScene extends Phaser.Scene {
     badgeBg.lineStyle(1.6, 0xfbbf24, 0.55);
     badgeBg.strokeRoundedRect(width / 2 - 190, height / 2 - 236, 380, 38, 19);
 
-    const badgeText = this.add.text(width / 2, height / 2 - 217, '• ပုဂံရွှေမြို့တော် စွန့်စားခန်း •', {
+    const badgeText = this.add.text(width / 2, height / 2 - 217, '• ရှေးဟောင်းနန်းတော် စွန့်စားခန်း •', {
       fontFamily: 'Noto Sans Myanmar, Plus Jakarta Sans, sans-serif',
       fontSize: '12px',
       fontStyle: '900',

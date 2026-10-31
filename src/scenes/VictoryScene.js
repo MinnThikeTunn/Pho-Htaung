@@ -23,7 +23,7 @@ export default class VictoryScene extends Phaser.Scene {
     if (this.mainContainer) this.mainContainer.destroy();
     this.mainContainer = this.add.container(0, 0);
 
-    // 1. Warm Bagan atmospheric background
+    // 1. Warm Ancient Palace atmospheric background
     const bg = this.add.graphics();
     bg.fillGradientStyle(0x271e17, 0x271e17, 0x0c0a08, 0x0c0a08, 1);
     bg.fillRect(0, 0, width, height);
@@ -70,7 +70,7 @@ export default class VictoryScene extends Phaser.Scene {
       letterSpacing: '1px'
     }).setOrigin(0.5);
 
-    const subEng = this.add.text(width / 2, height / 2 - 115, 'BAGAN GOLDEN CITY UNLOCKED', {
+    const subEng = this.add.text(width / 2, height / 2 - 115, 'ANCIENT PALACE UNLOCKED', {
       fontFamily: 'Plus Jakarta Sans, sans-serif',
       fontSize: '12px',
       fontWeight: '800',

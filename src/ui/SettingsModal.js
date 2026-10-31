@@ -1,5 +1,5 @@
 // SettingsModal.js — High-End Perplexity-Aesthetic Settings & Options Dialog
-// Conforms to Bagan Lacquer & Teak visual standard with rounded-[32px] containers and font-black headings.
+// Conforms to Ancient Palace Lacquer & Teak visual standard with rounded-[32px] containers and font-black headings.
 
 import Phaser from 'phaser';
 import { gameState } from '../utils/GameState.js';
@@ -60,7 +60,7 @@ export default class SettingsModal {
       letterSpacing: '1px'
     }).setOrigin(0.5);
 
-    const subtitle = this.scene.add.text(0, -modalH / 2 + 64, 'ဖိုးထောင် - ပုဂံရွှေမြို့တော်ရှာပုံတော်', {
+    const subtitle = this.scene.add.text(0, -modalH / 2 + 64, 'ဖိုးထောင် - ရှေးဟောင်းနန်းတော် စွန့်စားခန်း', {
       fontFamily: 'Noto Sans Myanmar, Plus Jakarta Sans, sans-serif',
       fontSize: '12px',
       fontWeight: '600',

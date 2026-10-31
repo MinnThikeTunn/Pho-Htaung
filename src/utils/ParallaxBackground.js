@@ -1,6 +1,6 @@
 // ParallaxBackground.js
 // 5-Layer Machinarium-Grade Parallax System for Phoe Htaung: Die Again in the Golden City
-// Layers: 0: Sky Gradient, 1: Far Pagodas, 2: Midground Ruins, 3: Walkable Ground, 4: Foreground Vignette
+// Layers: 0: Sky Gradient, 1: Far Palace Towers, 2: Midground Ruins, 3: Walkable Ground, 4: Foreground Vignette
 
 import Phaser from 'phaser';
 
@@ -37,7 +37,7 @@ export class ParallaxBackground {
     // Layer 3 (where the character stands) is 100% anchored (0, 0) to prevent items and character drifting
     this.parallaxFactors = this.options.parallaxFactors || [
       { x: 0.000, y: 0.000 },  // Layer 0: Sky
-      { x: 0.024, y: 0.012 },  // Layer 1: Far Pagodas / Machinery (gentle depth)
+      { x: 0.024, y: 0.012 },  // Layer 1: Far Palace Towers / Machinery (gentle depth)
       { x: 0.048, y: 0.024 },  // Layer 2: Midground Cliffs / Ruins (smooth midground depth)
       { x: 0.000, y: 0.000 },  // Layer 3: Walkable Ground Stone Slab (STATIONARY ANCHOR! ZERO DRIFT)
       { x: 0.035, y: 0.018 }   // Layer 4: Foreground Vignette Frame (subtle, non-dizzy framing)
@@ -60,7 +60,7 @@ export class ParallaxBackground {
 
     const depths = [
       this.options.depthBase + 0,    // Sky (deepest)
-      this.options.depthBase + 5,    // Far Pagodas
+      this.options.depthBase + 5,    // Far Palace Towers
       this.options.depthBase + 10,   // Midground Ruins
       this.options.depthBase + 20,   // Walkable Ground
       this.options.depthBase + 120   // Foreground Silhouette (in front of characters)
@@ -120,10 +120,10 @@ export class ParallaxBackground {
     const brightnessMult = 1.0 - darkness; // e.g., 0.68 for 32% darkness
 
     // Calibrated layer-specific color curves:
-    // Deeper amber & twilight for sky & pagodas, rich terracotta for ruins
+    // Deeper amber & twilight for sky & palace towers, rich terracotta for ruins
     const layerMultipliers = [
       { r: 0.88, g: 0.84, b: 0.82 }, // Layer 0 Sky
-      { r: 0.90, g: 0.86, b: 0.84 }, // Layer 1 Pagodas
+      { r: 0.90, g: 0.86, b: 0.84 }, // Layer 1 Palace Towers
       { r: 0.95, g: 0.92, b: 0.90 }, // Layer 2 Ruins
       { r: 1.00, g: 0.98, b: 0.95 }, // Layer 3 Ground
       { r: 0.75, g: 0.70, b: 0.68 }  // Layer 4 Foreground Silhouette
@@ -183,7 +183,7 @@ export class ParallaxBackground {
         layer.baseY = height / 2;
         layer.image.setPosition(layer.baseX, layer.baseY);
       } else if (layer.index === 1) {
-        // Layer 1: Far Pagodas sit slightly behind and above the midground ruins
+        // Layer 1: Far Palace Towers sit slightly behind and above the midground ruins
         layer.image.setScale(scale);
         layer.baseY = platformBaseY - 20 * scale;
         layer.image.setPosition(layer.baseX, layer.baseY);

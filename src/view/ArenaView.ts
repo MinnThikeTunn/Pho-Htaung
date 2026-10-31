@@ -16,6 +16,7 @@ export const vy = (y: number): number => y + DY;
 export const toDomainY = (visualY: number): number => visualY - DY;
 
 interface BrawlParticle {
+  active: boolean;
   x: number;
   y: number;
   vx: number;
@@ -39,8 +40,11 @@ export class ArenaView {
   private g: Phaser.GameObjects.Graphics;
   private fx: Phaser.GameObjects.Graphics;
   private actor: ReturnType<typeof createPhoe>;
+  private staticG: Phaser.GameObjects.Graphics;
+  private staticFx: Phaser.GameObjects.Graphics;
   private apes = new Map<string, Phaser.GameObjects.Sprite>();
-  private brawlParticles: BrawlParticle[] = [];
+  private readonly maxParticles = 96;
+  private brawlPool: BrawlParticle[] = [];
   private lastBrawlTime = 0;
   private wasClashing = false;
   private lastClashMidX = 640;
@@ -62,9 +66,28 @@ export class ArenaView {
       bg.lineStyle(1, INK, 0.5).lineBetween(x, VISUAL_GROUND_Y + 8, x + 12, 720);
     }
 
+    this.staticG = scene.add.graphics().setDepth(10);
     this.g = scene.add.graphics().setDepth(12);
+    this.staticFx = scene.add.graphics().setDepth(22);
     this.fx = scene.add.graphics().setDepth(30);
     this.actor = createPhoe(scene, 20);
+
+    for (let i = 0; i < this.maxParticles; i++) {
+      this.brawlPool.push({
+        active: false,
+        x: 0,
+        y: 0,
+        vx: 0,
+        vy: 0,
+        r: 0,
+        life: 0,
+        maxLife: 0,
+        color: 0,
+        isDebris: false,
+      });
+    }
+
+    this.drawStaticArena();
 
     // Register frames from the master arena_apes_v1 sheet
     if (scene.textures.exists(ARENA_ART.apes.key)) {
@@ -116,6 +139,130 @@ export class ArenaView {
     }
   }
 
+  private drawStaticArena() {
+    const sg = this.staticG;
+
+    // Ground baseline line stroke
+    sg.lineStyle(2, 0xcfb37b, 0.6).lineBetween(0, VISUAL_GROUND_Y, C.width, VISUAL_GROUND_Y);
+
+    // Stone refill piles at boundaries
+    for (const x of A4.refillX) {
+      sg.fillStyle(0x302b20, 0.5).fillEllipse(x, VISUAL_GROUND_Y + 2, 82, 13);
+      for (let i = 0; i < 5; i++) {
+        const sx = x - 27 + i * 13,
+          y = VISUAL_GROUND_Y - 5 - (i % 2) * 6;
+        sg.fillStyle(0x8d8c76).fillEllipse(sx, y, 19, 13);
+        sg.lineStyle(1, 0xc6c09c, 0.6).strokeEllipse(sx, y, 19, 13);
+      }
+    }
+
+    // 1. Fallen Stone Pillar (Jump Hurdle at A4.pillarX = 380)
+    const px = A4.pillarX - A4.pillarW / 2;
+    const py = VISUAL_GROUND_Y - A4.pillarH;
+    const pw = A4.pillarW;
+    const ph = A4.pillarH;
+
+    // Ground contact shadow
+    sg.fillStyle(0x10190e, 0.52).fillEllipse(A4.pillarX, VISUAL_GROUND_Y + 2, pw + 18, 12);
+    // Outer ink frame & carved sandstone block
+    sg.fillStyle(INK).fillRoundedRect(px - 2, py - 2, pw + 4, ph + 4, 4);
+    sg.fillStyle(0x6e6c56).fillRoundedRect(px, py, pw, ph, 3);
+    // Stepped top landing ledge highlight
+    sg.fillStyle(0x9d987b).fillRect(px - 3, py, pw + 6, 8);
+    sg.fillStyle(LIGHT, 0.35).fillRect(px - 1, py + 1, pw + 2, 2);
+    // Ancient Palace diamond relief band & weathering cracks
+    sg.lineStyle(1.5, 0x3b3d2f, 0.85)
+      .lineBetween(px + 6, py + 18, px + pw - 6, py + 18)
+      .lineBetween(px + 6, py + 28, px + pw - 6, py + 28)
+      .lineBetween(px + 18, py + 8, px + 23, py + ph - 4);
+    sg.fillStyle(0xcfa861, 0.45).fillCircle(A4.pillarX, py + 23, 3.5);
+
+    // 2. Stone Arch (Crawl Tunnel at A4.archX = 580 - Unbreakable Tactical Shelter)
+    const ax = A4.archX - A4.archW / 2;
+    const aw = A4.archW;
+    const archTopY = VISUAL_GROUND_Y - A4.archTopH;
+    const lintelBottomY = VISUAL_GROUND_Y - A4.archClearance;
+    const lintelH = lintelBottomY - archTopY;
+    const colW = 16;
+
+    // Ground shadows under left/right arch columns and dark crawl tunnel recess
+    sg.fillStyle(0x0d1510, 0.55).fillRect(ax + colW - 2, lintelBottomY, aw - colW * 2 + 4, A4.archClearance);
+    sg.fillStyle(0x10190e, 0.55).fillEllipse(A4.archX, VISUAL_GROUND_Y + 2, aw + 20, 14);
+
+    // Left & right sturdy stone columns supporting the low lintel
+    for (const colX of [ax, ax + aw - colW]) {
+      sg.fillStyle(INK).fillRect(colX - 2, lintelBottomY - 2, colW + 4, A4.archClearance + 4);
+      sg.fillStyle(0x555644).fillRect(colX, lintelBottomY, colW, A4.archClearance);
+      sg.fillStyle(0x7c7b63).fillRect(colX + 2, lintelBottomY, 4, A4.archClearance);
+    }
+
+    // Overhead heavy stone lintel beam (drawn on staticFx layer at depth 22 so crawling Phoe passes cleanly underneath)
+    const sfx = this.staticFx;
+    sfx.fillStyle(INK).fillRoundedRect(ax - 5, archTopY - 2, aw + 10, lintelH + 4, 4);
+    sfx.fillStyle(0x696752).fillRoundedRect(ax - 3, archTopY, aw + 6, lintelH, 3);
+    // Top cap & bottom crawl-clearance edge highlight
+    sfx.fillStyle(0x9a9579).fillRect(ax - 5, archTopY, aw + 10, 8);
+    sfx.fillStyle(LIGHT, 0.3).fillRect(ax - 3, archTopY + 1, aw + 6, 2);
+    sfx.fillStyle(0x3f4032).fillRect(ax - 2, lintelBottomY - 6, aw + 4, 6);
+    // Ornamental Ancient Palace arch trim
+    sfx.lineStyle(1.5, 0xcfa861, 0.55).strokeRect(ax + 6, archTopY + 14, aw - 12, lintelH - 24);
+    // Permanent ancient weathering lines
+    sfx.lineStyle(1.5, INK, 0.7)
+      .lineBetween(A4.archX - 14, archTopY + 8, A4.archX - 8, lintelBottomY - 4)
+      .lineBetween(A4.archX + 18, archTopY + 12, A4.archX + 12, lintelBottomY - 2);
+  }
+
+  private spawnParticle(
+    x: number,
+    y: number,
+    vx: number,
+    vy: number,
+    r: number,
+    life: number,
+    maxLife: number,
+    color: number,
+    isDebris: boolean
+  ) {
+    for (let i = 0; i < this.maxParticles; i++) {
+      const pt = this.brawlPool[i];
+      if (pt && !pt.active) {
+        pt.active = true;
+        pt.x = x;
+        pt.y = y;
+        pt.vx = vx;
+        pt.vy = vy;
+        pt.r = r;
+        pt.life = life;
+        pt.maxLife = maxLife;
+        pt.color = color;
+        pt.isDebris = isDebris;
+        return;
+      }
+    }
+    let lowestIdx = 0;
+    let lowestLife = Infinity;
+    for (let i = 0; i < this.maxParticles; i++) {
+      const p = this.brawlPool[i];
+      if (p && p.life < lowestLife) {
+        lowestLife = p.life;
+        lowestIdx = i;
+      }
+    }
+    const pt = this.brawlPool[lowestIdx];
+    if (pt) {
+      pt.active = true;
+      pt.x = x;
+      pt.y = y;
+      pt.vx = vx;
+      pt.vy = vy;
+      pt.r = r;
+      pt.life = life;
+      pt.maxLife = maxLife;
+      pt.color = color;
+      pt.isDebris = isDebris;
+    }
+  }
+
   private spawnBrawlBurst(cx: number, cy: number, count: number, intensity = 1) {
     const dustColors = [0xe5d3a7, 0xd8c394, 0xcbb382, 0xb59e72, 0x8d8c76];
     const debrisColors = [0x6e6a59, 0x8d8c76, 0xc6c09c, 0x4f4739];
@@ -124,28 +271,32 @@ export class ArenaView {
       const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.45;
       const speed = (isDebris ? 140 + Math.random() * 180 : 45 + Math.random() * 110) * intensity;
       const maxLife = isDebris ? 0.38 + Math.random() * 0.28 : 0.42 + Math.random() * 0.35;
-      this.brawlParticles.push({
-        x: cx + (Math.random() - 0.5) * 44,
-        y: cy + (Math.random() - 0.5) * 36,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - (isDebris ? 95 * intensity : 35),
-        r: isDebris ? 3 + Math.random() * 3.5 : 14 + Math.random() * 16 * intensity,
-        life: maxLife,
+      this.spawnParticle(
+        cx + (Math.random() - 0.5) * 44,
+        cy + (Math.random() - 0.5) * 36,
+        Math.cos(angle) * speed,
+        Math.sin(angle) * speed - (isDebris ? 95 * intensity : 35),
+        isDebris ? 3 + Math.random() * 3.5 : 14 + Math.random() * 16 * intensity,
         maxLife,
-        color: isDebris
+        maxLife,
+        isDebris
           ? debrisColors[i % debrisColors.length]!
           : dustColors[i % dustColors.length]!,
-        isDebris,
-      });
+        isDebris
+      );
     }
   }
 
   private updateAndDrawBrawlParticles(dt: number) {
-    if (this.brawlParticles.length === 0) return;
-    const active: BrawlParticle[] = [];
-    for (const pt of this.brawlParticles) {
+    for (let i = 0; i < this.maxParticles; i++) {
+      const pt = this.brawlPool[i]!;
+      if (!pt.active) continue;
+
       pt.life -= dt;
-      if (pt.life <= 0) continue;
+      if (pt.life <= 0) {
+        pt.active = false;
+        continue;
+      }
 
       pt.x += pt.vx * dt;
       pt.y += pt.vy * dt;
@@ -178,9 +329,7 @@ export class ArenaView {
         this.fx.lineStyle(1.5, 0xf2e3be, ratio * 0.28);
         this.fx.strokeCircle(pt.x, pt.y, pt.r * 0.88);
       }
-      active.push(pt);
     }
-    this.brawlParticles = active;
   }
 
   /**
@@ -220,7 +369,7 @@ export class ArenaView {
   }
 
   /**
-   * Draws a clean, segmented Bagan-style overhead health bar above an actor's head.
+   * Draws a clean, segmented Ancient Palace-style overhead health bar above an actor's head.
    */
   private drawOverheadHealthBar(
     x: number,
@@ -274,6 +423,42 @@ export class ArenaView {
         this.fx.lineBetween(sx, y, sx, y + height);
       }
     }
+  }
+
+  private drawSonicRoarRings(apeX: number, apeFacing: -1 | 1, progress: number, isSilver = false) {
+    const mouthX = apeX + apeFacing * (isSilver ? 22 : 28);
+    const mouthY = VISUAL_GROUND_Y - (isSilver ? 88 : 94);
+    const fx = this.fx;
+
+    // 3 expanding concentric sound shockwave arcs radiating forward
+    for (let i = 0; i < 3; i++) {
+      const ringOffset = i * 0.28;
+      const ringP = (progress * 1.5 + ringOffset) % 1;
+      if (ringP < 0.04 || ringP > 0.94) continue;
+
+      const radius = 16 + ringP * 58;
+      const alpha = Math.sin(ringP * Math.PI) * 0.88;
+      const color = isSilver ? 0x93c5fd : 0xfde047;
+
+      // Outer glow line
+      fx.lineStyle(4.5 * (1 - ringP * 0.4), color, alpha * 0.45);
+      fx.beginPath();
+      const startAngle = apeFacing > 0 ? -Math.PI * 0.38 : Math.PI * 0.62;
+      const endAngle = apeFacing > 0 ? Math.PI * 0.38 : Math.PI * 1.38;
+      fx.arc(mouthX, mouthY, radius, startAngle, endAngle, false);
+      fx.strokePath();
+
+      // Sharp inner core line
+      fx.lineStyle(2.5 * (1 - ringP * 0.4), 0xffffff, alpha * 0.85);
+      fx.beginPath();
+      fx.arc(mouthX, mouthY, radius, startAngle, endAngle, false);
+      fx.strokePath();
+    }
+
+    // Ground micro-dust ripples from the sheer acoustic volume of the roar
+    const dustAlpha = Math.sin(progress * Math.PI) * 0.38;
+    this.g.fillStyle(0xcbb382, dustAlpha);
+    this.g.fillEllipse(apeX - apeFacing * 10, VISUAL_GROUND_Y - 2, 34 * progress + 12, 7);
   }
 
   private renderBrownApe(
@@ -349,15 +534,21 @@ export class ArenaView {
           offsetY = -4;
         }
       }
-    } else if (e.phase === 'WINDUP') {
-      // Heavy muscular windup coil + rage tremor before melee smash
+    } else if (e.phase === 'WINDUP' || (e.roarTimeLeft ?? 0) > 0) {
+      // Roaring muscular windup coil + rage tremor before melee smash
       setSheetPose(5, 'windup');
-      const progress = Phaser.Math.Clamp(1 - e.phaseLeft / A4.meleeWindup, 0, 1);
-      const tremor = Math.sin(clock * 44) * progress;
-      multY = 1 + progress * 0.11 + tremor * 0.025;
-      multX = 1 - progress * 0.05 - tremor * 0.02;
-      offsetY = -progress * 5;
-      angle = -progress * 7 * e.facing + tremor * 1.8;
+      const windupDur = A4.meleeWindup;
+      const progress =
+        e.phase === 'WINDUP'
+          ? Phaser.Math.Clamp(1 - e.phaseLeft / windupDur, 0, 1)
+          : Phaser.Math.Clamp(1 - (e.roarTimeLeft ?? 0) / 0.85, 0, 1);
+      const tremor = Math.sin(clock * 44) * (0.35 + progress * 0.65);
+      multY = 1 + progress * 0.16 + tremor * 0.035;
+      multX = 1 + progress * 0.06 - tremor * 0.02;
+      offsetY = -progress * 6;
+      angle = -progress * 8 * e.facing + tremor * 2.2;
+
+      this.drawSonicRoarRings(e.x, e.facing, progress, false);
     } else if (e.phase === 'STRIKE') {
       // Explosive ground-slam lunge
       setSheetPose(6, 'strike');
@@ -467,7 +658,7 @@ export class ArenaView {
     if (actor && e.id === 'brown') {
       this.renderBrownApe(a, e, actor, clock, isMoving);
     } else if (actor) {
-      // Silver Ape (Ranged stone thrower + brawl reaction)
+      // Silver Ape (Ranged stone thrower + brawl reaction + procedural retreat hop)
       let pose: 'idle' | 'windup' | 'strike' | 'recover' =
         e.phase === 'WINDUP'
           ? 'windup'
@@ -479,20 +670,80 @@ export class ArenaView {
 
       let angle = 0;
       let offsetY = 0;
-      if (e.phase === 'BRAWL') {
+      let multX = 1;
+      let multY = 1;
+
+      if (e.hp <= 0 || e.phase === 'DOWN') {
+        pose = 'recover';
+        multY = 0.4;
+        multX = 1.25;
+        offsetY = 4;
+        angle = -8 * e.facing;
+      } else if (e.phase === 'BRAWL') {
         const cycle = Math.sin(clock * 22 + Math.PI);
         pose = cycle > 0 ? 'strike' : 'windup';
         angle = (cycle > 0 ? 8 : -5) * e.facing;
         offsetY = -Math.abs(Math.sin(clock * 18)) * 5;
+      } else if (e.phase === 'WINDUP' || (e.roarTimeLeft ?? 0) > 0) {
+        pose = 'windup';
+        const windupDur = A4.throwWindup;
+        const progress =
+          e.phase === 'WINDUP'
+            ? Phaser.Math.Clamp(1 - e.phaseLeft / windupDur, 0, 1)
+            : Phaser.Math.Clamp(1 - (e.roarTimeLeft ?? 0) / 0.85, 0, 1);
+        const windupTremor = Math.sin(clock * 38) * (0.35 + progress * 0.65);
+        multY = 1 + progress * 0.14 + windupTremor * 0.028;
+        multX = 1 + progress * 0.04;
+        offsetY = -progress * 5;
+        angle = -progress * 7 * e.facing + windupTremor * 1.8;
+
+        this.drawSonicRoarRings(e.x, e.facing, progress, true);
+      } else if (e.phase === 'STRIKE') {
+        // Dynamic arm throw stretch and recoil fling during rock launch
+        pose = 'strike';
+        const strikeProgress = Phaser.Math.Clamp(1 - e.phaseLeft / A4.meleeStrike, 0, 1);
+        const flingCurve = Math.sin(strikeProgress * Math.PI);
+        multX = 1 + flingCurve * 0.14;
+        multY = 1 - flingCurve * 0.08;
+        offsetY = 2 - flingCurve * 4;
+        angle = 11 * flingCurve * e.facing;
+      } else if (e.phase === 'RECOVER' || e.phase === 'STUN') {
+        pose = 'recover';
+        const pant = Math.sin(clock * 9);
+        multY = 0.95 + pant * 0.03;
+        multX = 1.04 - pant * 0.02;
+        offsetY = 2;
+        angle = 3 * e.facing;
+      } else if (isMoving) {
+        // Procedural knuckle-step / hopping bob during retreat locomotion
+        pose = 'idle';
+        const hopFreq = 12;
+        const hopPhase = clock * hopFreq;
+        offsetY = -Math.abs(Math.sin(hopPhase)) * 5;
+        const stepSquash = Math.sin(hopPhase * 2) * 0.045;
+        multY = 1 + stepSquash;
+        multX = 1 - stepSquash * 0.5;
+        angle = (-3.5 + Math.sin(hopPhase) * 2) * e.facing;
+
+        // Emit small dust ellipses at foot/knuckle contact point (VISUAL_GROUND_Y - 2) when stepping
+        if (Math.abs(Math.sin(hopPhase)) < 0.22) {
+          const contactX = e.x + e.facing * 16;
+          this.g.fillStyle(0xbba577, 0.24);
+          this.g.fillEllipse(contactX, VISUAL_GROUND_Y - 2, 18, 6);
+        }
+      } else {
+        // Menacing idle breathing
+        pose = 'idle';
+        const breath = Math.sin(clock * 2.8);
+        multY = 1 + breath * 0.024;
+        multX = 1 - breath * 0.012;
+        angle = Math.sin(clock * 1.4) * 1.2 * e.facing;
       }
 
       const frame = APE_FRAMES[`${e.id}_${pose}`]!;
       const offset = (0.5 - frame.anchor) * frame.w * 0.4 * (e.facing < 0 ? 1 : -1);
-      const breath = e.hp > 0 && pose === 'idle' ? Math.sin(clock * 2.8) * 0.022 : 0;
-      const windupStretch =
-        e.phase === 'WINDUP' ? (1 - e.phaseLeft / A4.throwWindup) * 0.06 : 0;
-      const scaleY = e.hp > 0 ? 0.4 * (1 + breath + windupStretch) : 0.16;
-      const scaleX = 0.4 * (1 - breath * 0.5 - windupStretch * 0.3);
+      const scaleX = 0.4 * multX;
+      const scaleY = 0.4 * multY;
 
       actor.setTexture(ARENA_ART.apes.key, `${e.id}_${pose}`).setPosition(e.x + offset, VISUAL_GROUND_Y + offsetY);
       actor.setAngle(angle);
@@ -548,60 +799,25 @@ export class ArenaView {
 
   private drawArenaObstacles(a: ArenaAttempt) {
     const g = this.g;
-
-    // 1. Fallen Stone Pillar (Jump Hurdle at A4.pillarX = 380)
-    const px = A4.pillarX - A4.pillarW / 2;
-    const py = VISUAL_GROUND_Y - A4.pillarH;
-    const pw = A4.pillarW;
-    const ph = A4.pillarH;
-
-    // Ground contact shadow
-    g.fillStyle(0x10190e, 0.52).fillEllipse(A4.pillarX, VISUAL_GROUND_Y + 2, pw + 18, 12);
-    // Outer ink frame & carved sandstone block
-    g.fillStyle(INK).fillRoundedRect(px - 2, py - 2, pw + 4, ph + 4, 4);
-    g.fillStyle(0x6e6c56).fillRoundedRect(px, py, pw, ph, 3);
-    // Stepped top landing ledge highlight
-    g.fillStyle(0x9d987b).fillRect(px - 3, py, pw + 6, 8);
-    g.fillStyle(LIGHT, 0.35).fillRect(px - 1, py + 1, pw + 2, 2);
-    // Bagan diamond relief band & weathering cracks
-    g.lineStyle(1.5, 0x3b3d2f, 0.85)
-      .lineBetween(px + 6, py + 18, px + pw - 6, py + 18)
-      .lineBetween(px + 6, py + 28, px + pw - 6, py + 28)
-      .lineBetween(px + 18, py + 8, px + 23, py + ph - 4);
-    g.fillStyle(0xcfa861, 0.45).fillCircle(A4.pillarX, py + 23, 3.5);
-
-    // 2. Collapsed Temple Stone Lintel Arch (Crawl Tunnel at A4.archX = 580)
-    const ax = A4.archX - A4.archW / 2;
-    const aw = A4.archW;
-    const archTopY = VISUAL_GROUND_Y - A4.archTopH;
-    const lintelBottomY = VISUAL_GROUND_Y - A4.archClearance;
-    const lintelH = lintelBottomY - archTopY;
-    const colW = 16;
-
-    // Ground shadows under left/right arch columns and dark crawl tunnel recess
-    g.fillStyle(0x0d1510, 0.55).fillRect(ax + colW - 2, lintelBottomY, aw - colW * 2 + 4, A4.archClearance);
-    g.fillStyle(0x10190e, 0.55).fillEllipse(A4.archX, VISUAL_GROUND_Y + 2, aw + 20, 14);
-
-    // Left & right broken stone columns supporting the low lintel
-    for (const colX of [ax, ax + aw - colW]) {
-      g.fillStyle(INK).fillRect(colX - 2, lintelBottomY - 2, colW + 4, A4.archClearance + 4);
-      g.fillStyle(0x555644).fillRect(colX, lintelBottomY, colW, A4.archClearance);
-      g.fillStyle(0x7c7b63).fillRect(colX + 2, lintelBottomY, 4, A4.archClearance);
-    }
-
-    // Overhead heavy stone lintel beam (drawn on fx layer so crawling Phoe passes cleanly underneath)
     const fx = this.fx;
-    fx.fillStyle(INK).fillRoundedRect(ax - 5, archTopY - 2, aw + 10, lintelH + 4, 4);
-    fx.fillStyle(0x696752).fillRoundedRect(ax - 3, archTopY, aw + 6, lintelH, 3);
-    // Top cap & bottom crawl-clearance edge highlight
-    fx.fillStyle(0x9a9579).fillRect(ax - 5, archTopY, aw + 10, 8);
-    fx.fillStyle(LIGHT, 0.3).fillRect(ax - 3, archTopY + 1, aw + 6, 2);
-    fx.fillStyle(0x3f4032).fillRect(ax - 2, lintelBottomY - 6, aw + 4, 6);
-    // Ornamental Bagan arch trim & cracks
-    fx.lineStyle(1.5, 0xcfa861, 0.55).strokeRect(ax + 6, archTopY + 14, aw - 12, lintelH - 24);
-    fx.lineStyle(1.5, INK, 0.7)
-      .lineBetween(A4.archX - 14, archTopY + 8, A4.archX - 8, lintelBottomY - 4)
-      .lineBetween(A4.archX + 18, archTopY + 12, A4.archX + 12, lintelBottomY - 2);
+
+    // Comedic dizzy stars (💫) orbiting above any downed apes
+    for (const ape of a.apes) {
+      if (ape.hp <= 0 || ape.phase === 'DOWN') {
+        const starTime = a.elapsed * 5.2;
+        for (let i = 0; i < 3; i++) {
+          const ang = starTime + (i * Math.PI * 2) / 3;
+          const starX = ape.x + Math.cos(ang) * 18;
+          const starY = VISUAL_GROUND_Y - 36 + Math.sin(ang) * 6;
+          const sr = 3.5;
+          fx.fillStyle(0xfbbf24).fillCircle(starX, starY, sr);
+          fx.lineStyle(1.2, 0x182720, 0.8).strokeCircle(starX, starY, sr);
+          fx.lineStyle(1.5, 0xfef08a, 0.95)
+            .lineBetween(starX - sr - 2, starY, starX + sr + 2, starY)
+            .lineBetween(starX, starY - sr - 2, starX, starY + sr + 2);
+        }
+      }
+    }
 
     // 3. Dynamically Placed Brown Ape Obstacles ('PILLAR' jump blocks & 'LOG' crouch/crawl barricades)
     for (const obs of a.obstacles) {
@@ -665,6 +881,18 @@ export class ArenaView {
       this.spawnBrawlBurst(hitX, VISUAL_GROUND_Y - 58, 18, 1.15);
       this.scene.cameras?.main?.shake(190, 0.0085);
     }
+
+    // Trigger stone chips & impact dust when the arch sustains damage
+    if (a.events.includes('arch_hit')) {
+      this.spawnBrawlBurst(A4.archX, VISUAL_GROUND_Y - A4.archClearance + 6, 16, 0.95);
+    }
+
+    // Trigger massive collapse rubble explosion when the stone arch collapses
+    if (a.events.includes('arch_collapsed')) {
+      this.spawnBrawlBurst(A4.archX, VISUAL_GROUND_Y - 34, 38, 1.55);
+      this.spawnBrawlBurst(A4.archX - 28, VISUAL_GROUND_Y - 20, 18, 1.25);
+      this.spawnBrawlBurst(A4.archX + 28, VISUAL_GROUND_Y - 20, 18, 1.25);
+    }
   }
 
   public getActorSprite(): Phaser.GameObjects.Sprite | null {
@@ -678,7 +906,9 @@ export class ArenaView {
 
     // Reset particle state if attempt restarted
     if (a.elapsed < this.lastBrawlTime) {
-      this.brawlParticles = [];
+      for (let i = 0; i < this.maxParticles; i++) {
+        this.brawlPool[i]!.active = false;
+      }
       this.wasClashing = false;
       this.lastShakeTime = -1;
       this.lastEmitTime = -1;
@@ -686,18 +916,7 @@ export class ArenaView {
     const dt = Phaser.Math.Clamp(a.elapsed - this.lastBrawlTime, 0, 0.05);
     this.lastBrawlTime = a.elapsed;
 
-    g.lineStyle(2, 0xcfb37b, 0.6).lineBetween(0, VISUAL_GROUND_Y, C.width, VISUAL_GROUND_Y);
-    for (const x of A4.refillX) {
-      g.fillStyle(0x302b20, 0.5).fillEllipse(x, VISUAL_GROUND_Y + 2, 82, 13);
-      for (let i = 0; i < 5; i++) {
-        const sx = x - 27 + i * 13,
-          y = VISUAL_GROUND_Y - 5 - (i % 2) * 6;
-        g.fillStyle(0x8d8c76).fillEllipse(sx, y, 19, 13);
-        g.lineStyle(1, 0xc6c09c, 0.6).strokeEllipse(sx, y, 19, 13);
-      }
-    }
-
-    // Draw Fallen Stone Pillar & Low Stone Crawl-Arch obstacles
+    // Draw dynamic obstacles, dizzy stars, and obstacle events
     this.drawArenaObstacles(a);
 
     for (const e of a.apes) this.enemy(a, e);
@@ -803,9 +1022,9 @@ export class ArenaView {
       visualFeetY - (isLowProfile ? 62 : 98),
       a.hp,
       A4.health,
-      56,
+      54,
       7,
-      4,
+      3,
       true,
       a.staggerLeft > 0 || a.hurtLeft > A4.hurtGrace - 0.18
     );
@@ -864,19 +1083,19 @@ export class ArenaView {
       const angle = (Math.PI * 2 * i) / 38 + (Math.random() - 0.5) * 0.35;
       const speed = isDebris ? 180 + Math.random() * 260 : 75 + Math.random() * 165;
       const maxLife = isDebris ? 0.48 + Math.random() * 0.35 : 0.45 + Math.random() * 0.35;
-      this.brawlParticles.push({
-        x: cx + (Math.random() - 0.5) * 28,
-        y: cy + (Math.random() - 0.5) * 24,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - (isDebris ? 145 : 55),
-        r: isDebris ? 3.5 + Math.random() * 4 : 18 + Math.random() * 22,
-        life: maxLife,
+      this.spawnParticle(
+        cx + (Math.random() - 0.5) * 28,
+        cy + (Math.random() - 0.5) * 24,
+        Math.cos(angle) * speed,
+        Math.sin(angle) * speed - (isDebris ? 145 : 55),
+        isDebris ? 3.5 + Math.random() * 4 : 18 + Math.random() * 22,
         maxLife,
-        color: isDebris
+        maxLife,
+        isDebris
           ? shrapnelColors[i % shrapnelColors.length]!
           : fireColors[i % fireColors.length]!,
-        isDebris,
-      });
+        isDebris
+      );
     }
     this.scene.cameras?.main?.shake(420, 0.018);
   }

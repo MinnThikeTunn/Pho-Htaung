@@ -105,6 +105,9 @@ class AudioDirector {
     // Active looping sound IDs
     this.activeLoops = {};
 
+    // Pending callback timers
+    this._pendingTimers = new Set();
+
     this.initialized = false;
   }
 
@@ -121,14 +124,23 @@ class AudioDirector {
         loop: Boolean(cfg.loop),
         volume: cfg.baseVol,
         html5: false, // Force Web Audio API for sample-accurate stem synchronization
-        preload: true
+        preload: true,
+        onloaderror: (_id, err) => {
+          console.warn(`[AudioDirector] Failed to load audio ${key}:`, err);
+        },
+        onplayerror: (_id, err) => {
+          console.warn(`[AudioDirector] Play error for ${key}:`, err);
+          if (Howler.ctx && Howler.ctx.state === 'suspended') {
+            Howler.ctx.resume().catch(() => {});
+          }
+        }
       });
     }
 
     // Resume AudioContext if suspended by browser autoplay policy on first interaction
     const unlockAudio = () => {
       if (Howler.ctx && Howler.ctx.state === 'suspended') {
-        Howler.ctx.resume();
+        Howler.ctx.resume().catch(() => {});
       }
       window.removeEventListener('pointerdown', unlockAudio);
       window.removeEventListener('keydown', unlockAudio);
@@ -144,42 +156,36 @@ class AudioDirector {
   startStems(initialDroneVol = 0.18, initialJungleVol = 0.00, initialKalimbaVol = 0.00) {
     this.init();
 
+    if (Howler.ctx && Howler.ctx.state === 'suspended') {
+      try { Howler.ctx.resume().catch(() => {}); } catch {}
+    }
+
     this.stemTargetVolumes.STEM_DRONE = initialDroneVol;
     this.stemTargetVolumes.STEM_JUNGLE = initialJungleVol;
     this.stemTargetVolumes.STEM_KALIMBA = initialKalimbaVol;
 
-    if (!this.stemsStarted) {
-      this.stemsStarted = true;
+    this.activeStemLevels = {
+      STEM_DRONE: initialDroneVol,
+      STEM_JUNGLE: initialJungleVol,
+      STEM_KALIMBA: initialKalimbaVol
+    };
 
-      // Start all 3 simultaneously at identical playback position
-      const drone = this.howls.STEM_DRONE;
-      const jungle = this.howls.STEM_JUNGLE;
-      const kalimba = this.howls.STEM_KALIMBA;
+    this.stemsStarted = true;
 
-      if (drone) {
-        drone.volume(initialDroneVol);
-        drone.play();
+    for (const [key, targetVol] of Object.entries(this.stemTargetVolumes)) {
+      const howl = this.howls[key];
+      if (!howl) continue;
+      // Ensure individual howl is unmuted
+      howl.mute(false);
+      const effectiveVol = this.isDialoguePlaying ? targetVol * this.duckMultiplier : targetVol;
+      if (!howl.playing()) {
+        howl.volume(effectiveVol);
+        if (!this.isMuted) {
+          howl.play();
+        }
+      } else {
+        howl.fade(howl.volume(), effectiveVol, 600);
       }
-      if (jungle) {
-        jungle.volume(initialJungleVol);
-        jungle.play();
-      }
-      if (kalimba) {
-        kalimba.volume(initialKalimbaVol);
-        kalimba.play();
-      }
-
-      // Synchronize playheads to sample-accurate zero
-      if (drone && jungle && kalimba) {
-        drone.seek(0);
-        jungle.seek(0);
-        kalimba.seek(0);
-      }
-    } else {
-      // If already started, smoothly fade to desired levels
-      this.fadeStem('STEM_DRONE', initialDroneVol, 600);
-      this.fadeStem('STEM_JUNGLE', initialJungleVol, 600);
-      this.fadeStem('STEM_KALIMBA', initialKalimbaVol, 600);
     }
   }
 
@@ -188,11 +194,60 @@ class AudioDirector {
    */
   fadeStem(stemKey, targetVol, durationMs = 600) {
     this.stemTargetVolumes[stemKey] = targetVol;
+    if (targetVol > 0) {
+      if (!this.activeStemLevels) this.activeStemLevels = {};
+      this.activeStemLevels[stemKey] = targetVol;
+    }
     const howl = this.howls[stemKey];
     if (!howl) return;
 
+    howl.mute(false);
     const effectiveTarget = this.isDialoguePlaying ? targetVol * this.duckMultiplier : targetVol;
+    if (effectiveTarget > 0 && !howl.playing() && !this.isMuted) {
+      howl.volume(0);
+      howl.play();
+    }
     howl.fade(howl.volume(), effectiveTarget, durationMs);
+  }
+
+  /**
+   * Cleanly stop all background stems, reset volume, and cancel any pending fade tweens
+   */
+  stopStems() {
+    this.stemsStarted = false;
+    for (const key of ['STEM_DRONE', 'STEM_JUNGLE', 'STEM_KALIMBA']) {
+      this.stemTargetVolumes[key] = 0.0;
+      const howl = this.howls[key];
+      if (howl) {
+        try {
+          howl.stop();
+          howl.volume(0.0);
+        } catch {}
+      }
+    }
+  }
+
+  /**
+   * Stop all Howl instances, step audio, loops, and reset stem states across scene boundaries
+   */
+  stopAll() {
+    this.stopWalking();
+    this.stopStems();
+    for (const key of Object.keys(this.activeLoops)) {
+      this.stopLoop(key);
+    }
+    for (const howl of Object.values(this.howls)) {
+      if (howl) {
+        try { howl.stop(); } catch {}
+      }
+    }
+    if (this._pendingTimers) {
+      for (const tid of this._pendingTimers) {
+        try { clearTimeout(tid); } catch {}
+      }
+      this._pendingTimers.clear();
+    }
+    this.isDialoguePlaying = false;
   }
 
   /**
@@ -215,17 +270,15 @@ class AudioDirector {
   }
 
   /**
-   * Section 2: Comedic Hard Mute
-   * Immediately zeroes out stems (gain = 0.0 within 15ms)
+   * Comedic Trap Hook: halts footsteps, but strictly keeps audio system & ambient stems open
    */
   hardMuteStems() {
     this.stopWalking();
+    // Audio system remains ALWAYS OPEN per user directive: never mute or close stems on death
     for (const key of ['STEM_DRONE', 'STEM_JUNGLE', 'STEM_KALIMBA']) {
-      this.stemTargetVolumes[key] = 0.0;
       const howl = this.howls[key];
-      if (howl) {
-        howl.mute(true);
-        howl.volume(0.0);
+      if (howl && typeof howl.muted === 'function' && howl.muted()) {
+        try { howl.mute(false); } catch {}
       }
     }
   }
@@ -297,16 +350,15 @@ class AudioDirector {
   }
 
   stopWalking() {
-    if (!this.isWalking) return;
     this.isWalking = false;
 
     const howl = this.howls.SFX_STEP_FLIPFLOP;
     if (howl) {
-      howl.stop();
+      try { howl.stop(); } catch {}
     }
     const barefoot = this.howls.SFX_STEP_BAREFOOT;
     if (barefoot) {
-      barefoot.stop();
+      try { barefoot.stop(); } catch {}
     }
   }
 
@@ -318,10 +370,8 @@ class AudioDirector {
    * Section 4 Trap 1: Invisible Block Mid-Air Collision
    */
   handleTrapInvisibleBlock() {
-    // 1. Instant Mute (gain = 0 within 15ms)
-    this.hardMuteStems();
-
-    // 2. Impact Playback
+    this.stopWalking();
+    // Keep audio system open; play impact sound
     this.playOneShot('SFX_CLANG_FALL', 0.90);
   }
 
@@ -329,26 +379,28 @@ class AudioDirector {
    * Section 4 Trap 2: Right Platform Rocket Launch & Crush
    */
   handleTrapRocketPlatform() {
-    // 1. Instant Mute
-    this.hardMuteStems();
-
-    // 2. Rocket & Squash Audio
+    this.stopWalking();
+    // Keep audio system open; play rocket & squash audio
     this.playOneShot('SFX_ROCKET_SPLAT', 0.95);
   }
 
   /**
    * Section 4 Respawn Hook
-   * Fade STEM_DRONE -> 0.18 and STEM_KALIMBA -> 0.16 over 800ms
+   * Ensure audio system remains always open and stems unmuted
    */
   handleRespawn() {
+    if (Howler.ctx && Howler.ctx.state === 'suspended' && !this.isMuted) {
+      try { Howler.ctx.resume().catch(() => {}); } catch {}
+    }
     for (const key of ['STEM_DRONE', 'STEM_JUNGLE', 'STEM_KALIMBA']) {
       const howl = this.howls[key];
       if (howl) {
         howl.mute(false);
       }
     }
-    this.fadeStem('STEM_DRONE', 0.18, 800);
-    this.fadeStem('STEM_KALIMBA', 0.16, 800);
+    this.fadeStem('STEM_DRONE', 0.18, 600);
+    this.fadeStem('STEM_JUNGLE', 0.14, 600);
+    this.fadeStem('STEM_KALIMBA', 0.16, 600);
   }
 
   /**
@@ -364,7 +416,11 @@ class AudioDirector {
     this.fadeStem('STEM_KALIMBA', 0.18, 500);
 
     if (onComplete) {
-      setTimeout(onComplete, 500);
+      const tid = setTimeout(() => {
+        this._pendingTimers?.delete(tid);
+        onComplete();
+      }, 500);
+      this._pendingTimers?.add(tid);
     }
   }
 
@@ -430,12 +486,38 @@ class AudioDirector {
   toggleMute() {
     this.isMuted = !this.isMuted;
     Howler.mute(this.isMuted);
+    this._syncStemsOnMuteChange();
     return this.isMuted;
   }
 
   setMuted(muted) {
     this.isMuted = Boolean(muted);
     Howler.mute(this.isMuted);
+    this._syncStemsOnMuteChange();
+  }
+
+  _syncStemsOnMuteChange() {
+    if (Howler.ctx && Howler.ctx.state === 'suspended' && !this.isMuted) {
+      try { Howler.ctx.resume().catch(() => {}); } catch {}
+    }
+    for (const key of ['STEM_DRONE', 'STEM_JUNGLE', 'STEM_KALIMBA']) {
+      const howl = this.howls[key];
+      if (!howl) continue;
+      if (this.isMuted) {
+        howl.mute(true);
+      } else {
+        howl.mute(false);
+        const targetVol = this.stemTargetVolumes[key] > 0
+          ? this.stemTargetVolumes[key]
+          : (this.activeStemLevels?.[key] || 0);
+        if (targetVol > 0) {
+          howl.volume(this.isDialoguePlaying ? targetVol * this.duckMultiplier : targetVol);
+          if (!howl.playing()) {
+            howl.play();
+          }
+        }
+      }
+    }
   }
 
   getMuted() {

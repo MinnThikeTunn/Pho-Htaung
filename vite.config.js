@@ -6,7 +6,11 @@ export default defineConfig({
   server: {
     port: 3000,
     open: false,
-    host: '0.0.0.0'
+    host: '0.0.0.0',
+    cors: true,
+    headers: {
+      'Access-Control-Allow-Origin': '*'
+    }
   },
   build: {
     assetsInlineLimit: 0,
@@ -16,6 +20,7 @@ export default defineConfig({
         manualChunks(id) {
           if (id.includes('/node_modules/phaser/')) return 'phaser';
           if (id.includes('/node_modules/react/') || id.includes('/node_modules/react-dom/')) return 'react';
+          if (id.includes('/node_modules/howler/')) return 'howler';
         }
       }
     }

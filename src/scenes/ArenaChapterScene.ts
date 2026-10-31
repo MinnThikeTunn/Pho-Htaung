@@ -12,6 +12,7 @@ import InventoryBar from '../ui/InventoryBar.js';
 import DiegeticGrab from '../ui/DiegeticGrab';
 import { ensureBridgeTextures } from '../view/BridgeView';
 import { soundEngine } from '../utils/SoundEngine.js';
+import { audioDirector } from '../audio/AudioDirector.js';
 import { MicroInteractions } from '../utils/MicroInteractions.js';
 
 const ui = () => document.querySelector<HTMLDivElement>('#interface')!;
@@ -124,9 +125,11 @@ export default class ArenaChapterScene extends Phaser.Scene {
   private targetX: number | null = null;
   private pendingAction: (() => void) | null = null;
   private crawlDustTimer = 0;
+  private footstepTimer = 0;
   private grabbedStone = false;
   private activePickups = new Set<string>();
   private lastClueKey = ''; private lastClueAt = -99; private idleSeconds = 0;
+  private prevApeShotCount = 0;
   constructor() { super('CHAPTER_4'); }
   preload() {
     this.load.image(ARENA_ART.background.key, ARENA_ART.background.path);
@@ -158,7 +161,7 @@ export default class ArenaChapterScene extends Phaser.Scene {
     this.activePickups.clear();
     this.hideHeldItem();
     this.finished = false; this.failureShown = false; this.messageUntil = 0; this.held.clear(); this.edges = { jump: false, punch: false, dodge: false };
-    this.lastClueKey = ''; this.lastClueAt = -99; this.idleSeconds = 0;
+    this.lastClueKey = ''; this.lastClueAt = -99; this.idleSeconds = 0; this.prevApeShotCount = 0;
     store.startArena();
   }
   private bind(id: string, fn: () => void) { ui().querySelector(`#${id}`)?.addEventListener('click', () => { try { (soundEngine as any).playPing?.(); } catch {} fn(); }); }
@@ -250,7 +253,7 @@ export default class ArenaChapterScene extends Phaser.Scene {
       }
     } catch {}
     this.view?.triggerGoldExplosion(A4.goldTrapX, VISUAL_GROUND_Y - 22);
-    this.speak(ARENA_LINES.greedTaunt, 6.0, 'direct', 'ဦးဘ');
+    this.speak(ARENA_LINES.greedTaunt, 6.0, 'direct', 'ဦးကြီး');
     this.sync();
     // Show failure modal after brief explosion visual beat
     this.time?.delayedCall?.(360, () => {
@@ -259,6 +262,14 @@ export default class ArenaChapterScene extends Phaser.Scene {
     });
   }
   private speak(text: string, seconds = 3.5, key = 'direct', speaker = 'ဦးကြီး') {
+    let cleanText = text.trim();
+    const prefixMatch = cleanText.match(/^(ဦးကြီး|ဖိုးထောင်)\s*[:—–-]\s*/);
+    if (prefixMatch) {
+      if (!speaker || speaker === 'ဦးကြီး') {
+        speaker = prefixMatch[1]!;
+      }
+      cleanText = cleanText.slice(prefixMatch[0].length).trim();
+    }
     const now = this.session?.attempt?.elapsed ?? 0;
     this.messageUntil = now + seconds;
     this.lastClueKey = key;
@@ -268,9 +279,10 @@ export default class ArenaChapterScene extends Phaser.Scene {
       const sp = el.querySelector<HTMLElement>('span');
       if (sp) sp.textContent = speaker;
       const p = el.querySelector<HTMLElement>('#arena-message-text');
-      if (p) p.textContent = text;
-      else el.textContent = text;
+      if (p) p.textContent = cleanText;
+      else el.textContent = cleanText;
       el.hidden = false;
+      try { (soundEngine as any).playVoiceBlip?.(); } catch {}
     }
   }
   private cue(key: string, text: string, seconds = 2.6, cooldown = 3.5) {
@@ -281,7 +293,14 @@ export default class ArenaChapterScene extends Phaser.Scene {
   }
   create() {
     this.audio.attach(this);
-    try { soundEngine.init?.(); if (!(soundEngine as any).muted) soundEngine.startBGM?.(); } catch {}
+    try {
+      soundEngine.init?.();
+      if (!(soundEngine as any).muted) {
+        soundEngine.startBGM?.();
+        audioDirector.setMuted(false);
+        audioDirector.startStems(0.20, 0.16, 0.14);
+      }
+    } catch {}
     ensureBridgeTextures(this);
     this.view = new ArenaView(this);
 
@@ -399,7 +418,7 @@ export default class ArenaChapterScene extends Phaser.Scene {
     };
     this.input.on('pointerdown', onWorldClick);
 
-    ui().innerHTML = `<div class="hud"><div class="stage-title"><span class="eyebrow">အခန်း ၄ / ACTION</span><strong>လူဝံအစောင့်နှစ်ကောင်</strong></div><div class="arena-weapon-hud"><span id="arena-charge-label">လက်ချည်း</span><progress id="arena-charge" max="1" value="0" aria-label="လောက်လေးခွ ဆွဲအား" hidden></progress></div><div class="ledger"><div><span>တံခါးမပိတ်မီ</span><b id="arena-time">75<small>s</small></b></div><div><span>ကျောက်ခဲ</span><b id="arena-ammo">12</b></div></div><button id="arena-pause" class="icon-button" aria-label="Pause">Ⅱ</button></div>
+    ui().innerHTML = `<div class="hud"><div class="stage-title"><span class="eyebrow">အခန်း ၄ / ACTION</span><strong>လူဝံအစောင့်နှစ်ကောင်</strong></div><div class="arena-weapon-hud"><span id="arena-charge-label">လက်ချည်း</span><progress id="arena-charge" max="1" value="0" aria-label="လောက်လေးခွ ဆွဲအား" hidden></progress></div><div class="ledger"><div><span>တံခါးမပိတ်မီ</span><b id="arena-time">75 s</b></div><div><span>အသက်ကျန်</span><b id="arena-hp-text">3 / 3</b></div><div><span>ကျောက်ခဲ</span><b id="arena-ammo">12</b></div></div><button id="arena-pause" class="icon-button" aria-label="Pause">Ⅱ</button></div>
       <div class="speech arena-speech visible" id="arena-message" aria-live="polite"><span>ဦးကြီး</span><p id="arena-message-text"></p></div>
       <div id="arena-unsaved" class="unsaved-status" hidden>ယာယီ session · save မသိမ်းရသေးပါ</div><div id="arena-modal" class="modal" hidden></div><div id="arena-shortcuts-modal" class="modal shortcut-modal-backdrop" style="pointer-events:none" hidden></div>`;
     const pauseButton = ui().querySelector('#arena-pause')!;
@@ -590,14 +609,24 @@ export default class ArenaChapterScene extends Phaser.Scene {
       }
 
       if (!event.repeat) {
-        if (key === s.jump || key === 'arrowup') this.edges.jump = true;
+        try {
+          soundEngine.init?.();
+          if (soundEngine.ctx && soundEngine.ctx.state === 'suspended') soundEngine.ctx.resume();
+        } catch {}
+        if (key === s.jump || key === 'arrowup') {
+          this.edges.jump = true;
+          try { (soundEngine as any).playJump?.(); } catch {}
+        }
         if (key === s.attack || key === 'j') {
           if (this.session.attempt.weapon !== 'FISTS' && this.session.attempt.charge === 0 && key === s.attack) {
             this.session.equipWeapon('FISTS');
           }
           this.edges.punch = true;
         }
-        if (key === s.dodge || key === 'l') this.edges.dodge = true;
+        if (key === s.dodge || key === 'l') {
+          this.edges.dodge = true;
+          try { (soundEngine as any).playWoosh?.(); } catch {}
+        }
       }
       this.held.add(key);
     };
@@ -623,6 +652,7 @@ export default class ArenaChapterScene extends Phaser.Scene {
       this.diegeticGrab?.clear();
       this.activePickups.clear();
       this.clear();
+      audioDirector.stopWalking();
     });
     this.sync(); this.focusGame();
   }
@@ -709,16 +739,18 @@ export default class ArenaChapterScene extends Phaser.Scene {
     if (this.finished || this.failureShown || store.conflict) return;
     if (this.shortcutsModalOpen) this.closeShortcutModal(false);
     this.inventoryBar?.reveal();
+    try { (soundEngine as any).playBagRustle?.(); } catch {}
     this.pause(true); this.bagOpen = true;
     const a = this.session.attempt, el = ui().querySelector<HTMLDivElement>('#arena-modal')!;
     el.innerHTML = `<section class="dialog arena-bag-panel" role="dialog" aria-modal="true" aria-labelledby="arena-bag-title"><h2 id="arena-bag-title">🎒 လွယ်အိတ်</h2><p>အိတ်ဖွင့်ထားချိန် တိုက်ပွဲရပ်ထားသည်။ သုံးမယ့်အရာကို ရွေးပါ။</p><div class="actions"><button type="button" id="arena-bag-fists" class="secondary" aria-pressed="${a.weapon === 'FISTS'}">လက်ချည်းသုံးမယ်</button>${a.hasSling ? `<button type="button" id="arena-bag-sling" class="primary" aria-pressed="${a.weapon === 'SLING'}">လောက်လေးခွ ထုတ်သုံးမယ်</button>` : ''}</div>${a.hasSling ? '' : '<p id="arena-bag-empty">အိတ်ထဲမှာ လောက်လေးခွ မပါလာဘူး။ လက်ချည်းနဲ့ ဆက်ချနိုင်သည်။</p>'}<div class="actions">${button('arena-bag-close','အိတ်ပိတ်မယ်')}</div></section>`;
     const equip = (weapon: ArenaWeapon) => {
       if (!this.session.equipWeapon(weapon)) return;
       this.inventoryBar?.hide();
+      try { (soundEngine as any).playBagRustle?.(); } catch {}
       this.pause(false); this.speak(weapon === 'SLING' ? 'လောက်လေးခွ ထုတ်ပြီးပြီ — ဆွဲချိန်ပြီး လွှတ်ပစ်ပေတော့!' : 'လက်ချည်းပဲ — အနားကပ် တွန်းထုတ်ပြီး ရှောင်ကစားပေတော့!'); this.sync();
     };
     this.bind('arena-bag-fists',()=>equip('FISTS')); this.bind('arena-bag-sling',()=>equip('SLING'));
-    this.bind('arena-bag-close',()=>{ this.inventoryBar?.hide(); this.pause(false); }); this.sync();
+    this.bind('arena-bag-close',()=>{ this.inventoryBar?.hide(); try { (soundEngine as any).playBagRustle?.(); } catch {} this.pause(false); }); this.sync();
     el.querySelector<HTMLButtonElement>('#arena-bag-fists')?.focus({preventScroll:true});
   }
   private pause(value: boolean) {
@@ -737,36 +769,105 @@ export default class ArenaChapterScene extends Phaser.Scene {
     this.session.restart(); this.session.setPause(false); this.failureShown = false; this.bagOpen = false;
     if (this.shortcutsModalOpen) this.closeShortcutModal(false);
     this.grabControl = null; this.grabbedStone = false; this.hideHeldItem(); this.clear();
-    this.lastClueKey = ''; this.lastClueAt = -99; this.idleSeconds = 0;
+    this.lastClueKey = ''; this.lastClueAt = -99; this.idleSeconds = 0; this.prevApeShotCount = 0;
     const el = ui().querySelector<HTMLDivElement>('#arena-modal'); if (el) { el.hidden = true; el.innerHTML = ''; }
     this.speak(ARENA_LINES.entry, 4.5); this.focusGame(); this.sync();
   }
   private event(kind: ArenaEvent) {
     if (kind === 'empty') this.speak(ARENA_LINES.empty);
-    if (kind === 'hurt') this.speak(this.session.attempt.weapon === 'SLING' ? 'ဒဏ်ထိလို့ ဆွဲအားပျက်ပြီ — ရှောင်ပြီးမှ ပြန်ချိန်ပစ်ပါ!' : 'ဒဏ်ထိသွားပြီ — အချိန်မှန် ခုန်ရှောင်ပါ!', 2.2);
-    if (kind === 'shove') this.speak(this.session.attempt.weapon === 'SLING' ? 'ခွာထုတ်လိုက်ပြီ — အခု အမြန် ဆွဲပစ်ဖို့ အချိန်ရပြီ!' : this.session.hasSling ? 'ခွာထုတ်လိုက်ပြီ — လွယ်အိတ်ဖွင့်ပြီး လောက်လေးခွ ထုတ်နိုင်ပြီ!' : 'ခွာထုတ်လိုက်ပြီ — ပြန်တိုက်ခိုက်ချိန်ကို ကြည့်ပြီး ရှောင်ပါ!', 2.0);
+    if (kind === 'punch') {
+      try {
+        if (typeof (soundEngine as any).playStickWhack === 'function') {
+          (soundEngine as any).playStickWhack();
+        } else if (typeof (soundEngine as any).playWoosh === 'function') {
+          (soundEngine as any).playWoosh();
+        }
+      } catch {}
+    }
+    if (kind === 'hit') {
+      try {
+        if (typeof (soundEngine as any).playBonk === 'function') {
+          (soundEngine as any).playBonk();
+        }
+      } catch {}
+    }
+    if (kind === 'down') {
+      try {
+        if (typeof (soundEngine as any).playBonk === 'function') {
+          (soundEngine as any).playBonk();
+        }
+      } catch {}
+    }
+    if (kind === 'dodge') {
+      try { (soundEngine as any).playWoosh?.(); } catch {}
+    }
+    if (kind === 'hurt') {
+      try {
+        (soundEngine as any).playMumbledGrunt?.('phoe_htaung');
+        (soundEngine as any).playBonk?.();
+      } catch {}
+      this.speak(this.session.attempt.weapon === 'SLING' ? 'ဒဏ်ထိလို့ ဆွဲအားပျက်ပြီ — ရှောင်ပြီးမှ ပြန်ချိန်ပစ်ပါ!' : 'ဒဏ်ထိသွားပြီ — အချိန်မှန် ခုန်ရှောင်ပါ!', 2.2);
+    }
+    if (kind === 'shove') {
+      try { (soundEngine as any).playWoosh?.(); } catch {}
+      this.speak(this.session.attempt.weapon === 'SLING' ? 'ခွာထုတ်လိုက်ပြီ — အခု အမြန် ဆွဲပစ်ဖို့ အချိန်ရပြီ!' : this.session.hasSling ? 'ခွာထုတ်လိုက်ပြီ — လွယ်အိတ်ဖွင့်ပြီး လောက်လေးခွ ထုတ်နိုင်ပြီ!' : 'ခွာထုတ်လိုက်ပြီ — ပြန်တိုက်ခိုက်ချိန်ကို ကြည့်ပြီး ရှောင်ပါ!', 2.0);
+    }
+    if (kind === 'shot') {
+      try { (soundEngine as any).playWoosh?.(); } catch {}
+    }
     if (kind === 'friendly_fire') {
+      try { (soundEngine as any).playBonk?.(); } catch {}
       this.cameras?.main?.shake(110, 0.0038);
       this.speak(ARENA_LINES.friendlyFire, 2.8);
     }
     if (kind === 'brawl') {
+      try {
+        if (typeof (soundEngine as any).playStickWhack === 'function') {
+          (soundEngine as any).playStickWhack();
+        } else if (typeof (soundEngine as any).playImpact === 'function') {
+          (soundEngine as any).playImpact();
+        }
+      } catch {}
       this.cameras?.main?.shake(180, 0.007);
       this.speak(ARENA_LINES.brawl, 3.6);
     }
     if (kind === 'obstacle_outplay') {
+      try { (soundEngine as any).playBonk?.(); } catch {}
       this.speak(ARENA_LINES.obstacleOutplay, 3.0);
     }
     if (kind === 'obstacle_drop') {
       this.cue('obstacle-drop', ARENA_LINES.obstacleDrop, 2.5, 4.5);
     }
+    if (kind === 'ape_roar') {
+      this.cameras?.main?.shake(140, 0.0035);
+    }
+    if (kind === 'arch_deflect' || kind === 'arch_hit') {
+      try {
+        if (typeof (soundEngine as any).playClang === 'function') {
+          (soundEngine as any).playClang();
+        } else if (typeof (soundEngine as any).playBonk === 'function') {
+          (soundEngine as any).playBonk();
+        }
+      } catch {}
+      this.cameras?.main?.shake(80, 0.003);
+      this.speak('ကျောက်တန်းကြီးက ခိုင်မာတယ်ဟေ့! လူဝံတွေ ခဲပစ်ရင် အောက်ငုံ့ပြီး ပုန်းနေလိုက်စမ်း!', 2.8);
+    }
     if (kind === 'refill') {
+      try { soundEngine.playPickup(); } catch {}
       this.speak('ကျောက်ခဲ ပြန်ဖြည့်ပြီးပြီဟေ့!');
       this.performCharacterGrab();
     }
     if (kind === 'won') {
-      this.speak(ARENA_LINES.won, Infinity);
+      try { (soundEngine as any).playVictoryFanfare?.(); } catch {}
+      const route = this.session.attempt.winRoute;
+      const wonLine =
+        route === 'SPEEDRUN_BYPASS'
+          ? ARENA_LINES.speedrunWon
+          : ARENA_LINES.won;
+      this.speak(wonLine, Infinity);
     }
     if (kind === 'failed') {
+      try { soundEngine.playDeath?.(); } catch {}
       if (this.failureShown) return;
       if (this.session.attempt.failure === 'HEALTH' || this.session.attempt.failure === 'GREED_TRAP') {
         store.death(`arena:${this.session.attempt.id}`);
@@ -779,7 +880,7 @@ export default class ArenaChapterScene extends Phaser.Scene {
         ? 'တံခါးပိတ်သွားပြီ'
         : 'ဒီတစ်ခါ ရှုံးသွားပြီ';
       const advice = isGreed
-        ? `ဦးဘ — ${ARENA_LINES.greedTaunt} (လူဝံနှစ်ကောင်ကို အနိုင်ယူပြီးမှ ရွှေထုပ်ထောင်ချောက်ကို ကောက်မိလို့ ပေါက်ကွဲပြီး အသက်ဆုံးရှုံးသွားသည်။)`
+        ? `ဦးကြီး — ${ARENA_LINES.greedTaunt} (လူဝံနှစ်ကောင်ကို အနိုင်ယူပြီးမှ ရွှေထုပ်ထောင်ချောက်ကို ကောက်မိလို့ ပေါက်ကွဲပြီး အသက်ဆုံးရှုံးသွားသည်။)`
         : !this.session.hasSling
         ? 'လက်ချည်းပဲ ပါလာတယ်။ အနားကပ် တွန်းထုတ်ပြီး အချိန်မှန် ခုန်ရှောင်ပါ။'
         : this.session.attempt.weapon === 'FISTS'
@@ -794,7 +895,12 @@ export default class ArenaChapterScene extends Phaser.Scene {
   }
   private result() {
     const r = store.campaign.lastChapter4Result;
-    ui().innerHTML = `<section class="result-panel"><span class="eyebrow">အခန်း ၄ ပြီးပါပြီ</span><h1>လူဝံနှစ်ကောင်ကို ကျော်လာပြီ။</h1><p class="intro">ရှေးဟောင်းမြို့တော်ရဲ့ အတွင်းတံခါးဘက် ဆက်သွားနိုင်ပြီ။</p><div class="result-stats"><div><span>ကျန်သွေး</span><b>${r?.remainingHealth ?? 0}<small>/100</small></b></div><div><span>တိုက်ပွဲချိန်</span><b>${r?.activeSeconds.toFixed(2) ?? '—'}<small>s</small></b></div><div><span>သိမ်းပြီးရွှေ</span><b>${store.campaign.walletCoins}</b></div></div><p class="result-note">အခန်း ၅ ကို မတည်ဆောက်ရသေးပါ။ ဂိမ်းတစ်ခုလုံး၏ ဇာတ်သိမ်းမဟုတ်ပါ။</p>${store.unsaved ? '<p class="warning">Save မသိမ်းရသေးပါ။ Reload လုပ်ပါက ယာယီ progress ပျောက်နိုင်သည်။</p>' : ''}<div class="actions">${button('arena-again','အခန်း ၄ ပြန်စမ်း',true)}${store.unsaved ? button('arena-save','ထပ်သိမ်းမယ်') : ''}${button('arena-menu','ပင်မစာမျက်နှာ')}</div></section>`;
+    const route = this.session?.attempt?.winRoute ?? r?.winRoute ?? 'CANONICAL';
+    const routeLabel =
+      route === 'SPEEDRUN_BYPASS'
+        ? 'အပြေးလမ်း (Speedrun Bypass)'
+        : 'တိုက်ခိုက်ရေးလမ်း (လောက်လေးခွ)';
+    ui().innerHTML = `<section class="result-panel"><span class="eyebrow">အခန်း ၄ ပြီးပါပြီ</span><h1>လူဝံနှစ်ကောင်ကို ကျော်လာပြီ။</h1><p class="intro">ရှေးဟောင်းမြို့တော်ရဲ့ အတွင်းတံခါးဘက် ဆက်သွားနိုင်ပြီ။</p><div class="result-stats"><div><span>ကျန်သွေး</span><b>${r?.remainingHealth ?? 0}<small>/3</small></b></div><div><span>တိုက်ပွဲချိန်</span><b>${r?.activeSeconds.toFixed(2) ?? '—'}<small>s</small></b></div><div><span>အောင်မြင်သည့်လမ်း</span><b>${routeLabel}</b></div><div><span>သိမ်းပြီးရွှေ</span><b>${store.campaign.walletCoins}</b></div></div><p class="result-note">အခန်း ၅ ကို မတည်ဆောက်ရသေးပါ။ ဂိမ်းတစ်ခုလုံး၏ ဇာတ်သိမ်းမဟုတ်ပါ။</p>${store.unsaved ? '<p class="warning">Save မသိမ်းရသေးပါ။ Reload လုပ်ပါက ယာယီ progress ပျောက်နိုင်သည်။</p>' : ''}<div class="actions">${button('arena-again','အခန်း ၄ ပြန်စမ်း',true)}${store.unsaved ? button('arena-save','ထပ်သိမ်းမယ်') : ''}${button('arena-menu','ပင်မစာမျက်နှာ')}</div></section>`;
     ui().querySelector('.result-note')!.textContent='အတွင်းမြို့တော်မှာ ဦးကြီး စောင့်နေတယ်။ အခန်း ၅ မှာ ဆက်ရင်ဆိုင်နိုင်ပြီ။';
     ui().querySelector('.actions')!.insertAdjacentHTML('afterbegin',button('arena-next','အခန်း ၅ ဆက်မယ်',true));
     this.bind('arena-next',()=>this.scene.start('CHAPTER_5',{equipment:{slingshot:this.session.hasSling}}));
@@ -855,6 +961,7 @@ export default class ArenaChapterScene extends Phaser.Scene {
     const a = this.session.attempt;
     const text = (id: string, value: string) => { const el = ui().querySelector(`#${id}`); if (el && el.textContent !== value) el.textContent = value; };
     text('arena-time', a.combatWon ? 'လွတ်ပြီ' : `${Math.max(0, Math.ceil(A4.timeLimit - a.combatSeconds))} s`);
+    text('arena-hp-text', `${Math.max(0, a.hp)} / 3`);
     text('arena-ammo',a.hasSling ? String(a.ammo) : '—');
     const charge = ui().querySelector('#arena-charge') as HTMLProgressElement; charge.value = a.charge / A4.chargeTime; charge.hidden = a.weapon !== 'SLING';
     text('arena-charge-label', a.weapon !== 'SLING' ? 'လက်ချည်း' : 'လောက်လေးခွ');
@@ -915,6 +1022,20 @@ export default class ArenaChapterScene extends Phaser.Scene {
       this.crawlDustTimer = 0;
     }
 
+    // Synchronized footsteps when walking
+    if (p.grounded && p.control === 'FREE' && Math.abs(p.vx) > 15) {
+      this.footstepTimer += dt;
+      if (this.footstepTimer >= 0.28) {
+        this.footstepTimer = 0;
+        try {
+          soundEngine.playFootstepStone();
+          MicroInteractions.spawnFootstepDust(this, p.centerX, vy(p.feetY), p.facing);
+        } catch {}
+      }
+    } else {
+      this.footstepTimer = 0.24;
+    }
+
     if (stepped) this.edges = { jump: false, punch: false, dodge: false };
     if (generation !== this.session.generation) {
       this.failureShown = false;
@@ -933,6 +1054,14 @@ export default class ArenaChapterScene extends Phaser.Scene {
       this.speak(ARENA_LINES.entry, 4.5);
     }
     for (const event of events) this.event(event);
+
+    // Audio trigger when Silver Ape launches a rock
+    const currentApeShots = this.session.attempt.shots.filter(s => s.owner === 'APE').length;
+    if (currentApeShots > this.prevApeShotCount) {
+      try { (soundEngine as any).playWoosh?.(); } catch {}
+    }
+    this.prevApeShotCount = currentApeShots;
+
     this.updateContextClues(dt);
     this.sync();
   }

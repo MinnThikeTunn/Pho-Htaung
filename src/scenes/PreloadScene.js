@@ -7,6 +7,7 @@ export default class PreloadScene extends Phaser.Scene {
   }
 
   preload() {
+    this.load.setPath('/');
     const { width, height } = this.cameras.main;
 
     this.add.rectangle(width / 2, height / 2, width, height, 0x0c0a08);
@@ -91,7 +92,7 @@ export default class PreloadScene extends Phaser.Scene {
     this.load.svg('icon-lock', 'assets/icons/dial-padlock.svg', { width: 64, height: 64 });
     this.load.svg('icon-barn', 'assets/icons/barn.svg', { width: 80, height: 80 });
 
-    // 5-Layer Machinarium Parallax Backgrounds (Bagan Architecture)
+    // 5-Layer Machinarium Parallax Backgrounds (Ancient Palace Architecture)
     this.load.image('bg-layer-0-sky', 'assets/parallax/layer_0_sky.png');
     this.load.image('bg-layer-1-pagodas', 'assets/parallax/layer_1_pagodas.png');
     this.load.image('bg-layer-2-ruins', 'assets/parallax/layer_2_ruins.png');
@@ -170,6 +171,21 @@ export default class PreloadScene extends Phaser.Scene {
   }
 
   createAllGameAssets() {
+    // Skip redundant regeneration if all game asset textures already exist in cache
+    const requiredKeys = [
+      'ugyi-standing',
+      'ph-idle',
+      'item-betel-cutter',
+      'item-cog',
+      'victory-block',
+      'coin-bait',
+      'steam-puff',
+      'screen-vignette'
+    ];
+    if (requiredKeys.every(k => this.textures.exists(k))) {
+      return;
+    }
+
     // 1. Phoe Htaung Character (Longyi tucked up, shoulder bag, one flip-flop, betel nut chewer)
     this.createPhoeHtaungTextures();
 
@@ -187,6 +203,13 @@ export default class PreloadScene extends Phaser.Scene {
   }
 
   createPhoeHtaungTextures() {
+    const phoeKeys = [
+      'ph-idle', 'ph-walk-1', 'ph-walk-2', 'ph-flat', 'ph-boiled',
+      'ph-ash', 'ph-cut-legs', 'ph-denial', 'ph-soot', 'ph-mad',
+      'ph-think', 'ph-laugh'
+    ];
+    if (phoeKeys.every(k => this.textures.exists(k))) return;
+
     // Helper to draw Phoe Htaung in idle or walking frames
     const drawPH = (ctx, mode = 'idle') => {
       ctx.save();
@@ -1090,6 +1113,14 @@ export default class PreloadScene extends Phaser.Scene {
   }
 
   createItemIcons() {
+    const itemKeys = [
+      'item-betel-cutter', 'item-torn-bottle', 'item-half-bottle',
+      'item-rusty-spike', 'item-chili', 'item-twigs', 'item-stone-3',
+      'item-gold-7', 'item-red-gem', 'item-bamboo-pole', 'item-cog',
+      'item-chalk', 'item-engineer-note'
+    ];
+    if (itemKeys.every(k => this.textures.exists(k))) return;
+
     // 1. Betel Nut Cutter (ကွမ်းသီးညှပ်)
     if (!this.textures.exists('item-betel-cutter')) {
       const bcCanvas = this.textures.createCanvas('item-betel-cutter', 44, 44);
@@ -1336,6 +1367,12 @@ export default class PreloadScene extends Phaser.Scene {
   }
 
   createTrapObjects() {
+    const trapKeys = [
+      'victory-block', 'coin-bait', 'iron-safe', 'weight-10',
+      'ch1-trap-block', 'winch-machine', 'chalk-diagram', 'note-overlay'
+    ];
+    if (trapKeys.every(k => this.textures.exists(k))) return;
+
     // 50-Ton "VICTORY!" Stone Block (Chapter 5)
     if (!this.textures.exists('victory-block')) {
       const vicCanvas = this.textures.createCanvas('victory-block', 240, 120);
@@ -1594,11 +1631,14 @@ export default class PreloadScene extends Phaser.Scene {
   }
 
   createParticlesAndVignette() {
+    if (this.textures.exists('steam-puff') && this.textures.exists('screen-vignette')) return;
+
     if (!this.textures.exists('steam-puff')) {
       const steamG = this.make.graphics({ x: 0, y: 0, add: false });
       steamG.fillStyle(0xe2e8f0, 0.5);
       steamG.fillCircle(12, 12, 12);
       steamG.generateTexture('steam-puff', 24, 24);
+      steamG.destroy();
     }
 
     if (!this.textures.exists('screen-vignette')) {

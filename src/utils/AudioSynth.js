@@ -24,6 +24,10 @@ class SoundSynth {
     return this.muted;
   }
 
+  _autoCleanup() {
+    // Disabled: keep audio nodes open without disconnecting
+  }
+
   playCollect() {
     if (this.muted) return;
     this.init();
@@ -42,6 +46,7 @@ class SoundSynth {
 
     osc.connect(gain);
     gain.connect(this.ctx.destination);
+    this._autoCleanup(osc, gain);
 
     osc.start(now);
     osc.stop(now + 0.18);
@@ -65,6 +70,7 @@ class SoundSynth {
 
     osc.connect(gain);
     gain.connect(this.ctx.destination);
+    this._autoCleanup(osc, gain);
 
     osc.start(now);
     osc.stop(now + 0.14);
@@ -88,6 +94,7 @@ class SoundSynth {
 
     osc.connect(gain);
     gain.connect(this.ctx.destination);
+    this._autoCleanup(osc, gain);
 
     osc.start(now);
     osc.stop(now + 0.2);
@@ -122,6 +129,7 @@ class SoundSynth {
     noise.connect(filter);
     filter.connect(gain);
     gain.connect(this.ctx.destination);
+    this._autoCleanup(noise, filter, gain);
 
     noise.start(now);
     noise.stop(now + 0.35);
@@ -146,10 +154,15 @@ class SoundSynth {
 
       osc.connect(gain);
       gain.connect(this.ctx.destination);
+      this._autoCleanup(osc, gain);
 
       osc.start(now);
       osc.stop(now + 0.18);
     });
+  }
+
+  destroy() {
+    // Keep AudioContext open across scene changes
   }
 }
 

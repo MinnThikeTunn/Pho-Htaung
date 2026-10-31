@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { C } from '../content/chapter1';
 import { S3, SCALE_IDS, SCALE_ITEMS, SCALE_LINES } from '../content/chapter3';
 import { soundEngine } from '../utils/SoundEngine.js';
+import { audioDirector } from '../audio/AudioDirector.js';
 import { AudioController } from '../services/AudioController';
 import type { ScaleItemId } from '../content/chapter3';
 import { panWeight, queueScaleCommand } from '../domain/scale';
@@ -14,6 +15,7 @@ import InventoryBar from '../ui/InventoryBar.js';
 import DiegeticGrab from '../ui/DiegeticGrab';
 import { ensureBridgeTextures } from '../view/BridgeView';
 import { MicroInteractions } from '../utils/MicroInteractions.js';
+import { StagedHintManager, PROGRESSIVE_HINTS } from '../utils/StagedHintManager';
 
 const ui = () => document.querySelector<HTMLDivElement>('#interface')!;
 const button = (id: string, text: string, primary = false) =>
@@ -37,6 +39,7 @@ export default class ScaleChapterScene extends Phaser.Scene {
   private lastPendulumAngle = 0;
   private inventoryBar!: InventoryBar;
   private diegeticGrab!: DiegeticGrab;
+  private stagedHintManager = new StagedHintManager();
 
   // Cached DOM test targets for ultra-high framerate execution
   private elWallet: HTMLElement | null = null;
@@ -94,15 +97,24 @@ export default class ScaleChapterScene extends Phaser.Scene {
    * Delivered diegetically via overhead speech balloon fixed at top: 14%.
    */
   private speak(line: string, duration = 3.5, who = 'ဦးကြီး') {
-    if (!line || line === this.lastLine) return;
-    this.lastLine = line;
-    this.history.push(line);
+    if (!line) return;
+    let cleanLine = line.trim();
+    const prefixMatch = cleanLine.match(/^(ဦးကြီး|ဖိုးထောင်)\s*[:—–-]\s*/);
+    if (prefixMatch) {
+      if (!who || who === 'ဦးကြီး') {
+        who = prefixMatch[1]!;
+      }
+      cleanLine = cleanLine.slice(prefixMatch[0].length).trim();
+    }
+    if (!cleanLine || cleanLine === this.lastLine) return;
+    this.lastLine = cleanLine;
+    this.history.push(cleanLine);
 
     const speechEl = ui().querySelector<HTMLElement>('#ugyi-speech');
     if (!speechEl) return;
 
     speechEl.hidden = false;
-    speechEl.innerHTML = `<strong>${who}:</strong> ${line}`;
+    speechEl.innerHTML = `<strong>${who}:</strong> ${cleanLine}`;
     speechEl.classList.remove('speech-pop');
     void speechEl.offsetWidth; // Trigger reflow for micro-animation
     speechEl.classList.add('speech-pop');
@@ -202,6 +214,7 @@ export default class ScaleChapterScene extends Phaser.Scene {
   }
 
   create() {
+    this.stagedHintManager.reset();
     this.view = new ScaleView(this);
     
     // Set up pan item click handler
@@ -283,6 +296,12 @@ export default class ScaleChapterScene extends Phaser.Scene {
 
     // Spawn high-fidelity vector pickups in the world
     this.spawnWorldPickups();
+
+    soundEngine.init?.();
+    if (!(soundEngine as any).muted) {
+      soundEngine.startBGM?.();
+      audioDirector.startStems(0.14, 0.00, 0.12);
+    }
 
     // Standardized Perplexity HUD: zero on-screen shortcut strips, zero world text tags
     ui().innerHTML = `
@@ -426,7 +445,7 @@ export default class ScaleChapterScene extends Phaser.Scene {
         return;
       }
 
-      // 3. Check click on Latch zone (beside the Bagan gate)
+      // 3. Check click on Latch zone (beside the Palace gate)
       if (x >= 970 && x <= 1045 && y >= vy(490) && y <= vy(650)) {
         this.useLatch();
         return;
@@ -565,6 +584,7 @@ export default class ScaleChapterScene extends Phaser.Scene {
         this.speechTimer.remove();
         this.speechTimer = null;
       }
+      audioDirector.stopWalking();
     });
 
     this.speak(SCALE_LINES.entry, 4.5);
@@ -588,7 +608,7 @@ export default class ScaleChapterScene extends Phaser.Scene {
         return;
       }
       if (side === 'LEFT' && onPan.includes('reference')) {
-        this.speak(SCALE_LINES.fixedReference, 3.5);
+        this.speak(this.stagedHintManager.triggerHint('reference_weight', PROGRESSIVE_HINTS.chapter3.reference_weight), 3.5);
         return;
       }
       this.speak(SCALE_LINES.pan, 2.5);
@@ -596,10 +616,10 @@ export default class ScaleChapterScene extends Phaser.Scene {
     }
 
     if (this.selected === 'pin') {
-      this.speak(SCALE_LINES.wrongPin, 3.0);
+      this.speak(this.stagedHintManager.triggerHint('pin_on_pan', PROGRESSIVE_HINTS.chapter3.pin_on_pan), 3.0);
       return;
     }
-
+    
     // Place the selected item onto the pan, then deselect so user must explicitly choose next
     this.queue({ kind: 'pan', pan: side, id: this.selected });
     this.selected = null;
@@ -612,7 +632,7 @@ export default class ScaleChapterScene extends Phaser.Scene {
   private useLatch() {
     if (this.session.paused || this.finished) return;
     if (this.selected !== 'pin' || this.session.attempt.gateLift < S3.gateTravel - C.epsilon) {
-      this.speak(SCALE_LINES.latchClosed, 3.0);
+      this.speak(this.stagedHintManager.triggerHint('latch_closed', PROGRESSIVE_HINTS.chapter3.latch_closed), 3.0);
       return;
     }
     this.queue({ kind: 'latch' });
@@ -622,7 +642,7 @@ export default class ScaleChapterScene extends Phaser.Scene {
     if (this.session.paused || this.finished) return;
     queueScaleCommand(this.session.attempt, command);
     if (command.kind === 'item' && command.id === 'sandbag' && this.session.attempt.locations.sandbag === 'WORLD') {
-      this.speak('သဲအိတ်က စင်ပေါ်မှာရှိတယ်။ အနားသွားပြီး SPACE နဲ့ ခုန်ကောက်လိုက် ဖိုးထောင်!', 3.0);
+      this.speak('သဲအိတ်က ဟိုးစင်ပေါ်မှာ တင်ထားတာကွ! စင်အောက်ကနေ အားရပါးရ ခုန်ကောက်စမ်း ဖိုးထောင်!', 3.0);
     }
     this.focusGame();
   }
@@ -733,7 +753,7 @@ export default class ScaleChapterScene extends Phaser.Scene {
         actor.setData('poseOverride', 'ph-flat');
       }
 
-      this.speak('ဦးကြီး — ကြေးစည်ကြီးနဲ့ ခေါင်းကွဲသွားပြီ! R ကို နှိပ်ပြီး ချက်ချင်း ပြန်စလိုက် ဖိုးထောင်!', 4.0);
+      this.speak('ကြေးစည်ကြီးနဲ့ ခေါင်းကွဲသွားပြီ! ခေါင်းမီးတောက်မနေဘဲ အစကနေ အမြန်ပြန်စမ်း ဖိုးထောင်!', 4.0);
     }
     if (event === 'complete') {
       store.completeScale(this.session.attempt);
@@ -899,7 +919,7 @@ export default class ScaleChapterScene extends Phaser.Scene {
         actor.setData('squashY', 1.0);
         actor.setData('poseOverride', undefined);
       }
-      this.speak('လက်ရှိအခန်းကို ပြန်စထားသည်။ သိမ်းပြီးရွှေနဲ့ campaign progress မပြောင်းပါ။', 2.5);
+      this.stagedHintManager.reset();
       this.inventoryBar?.refresh();
       this.inventoryBar?.clearSelected();
       this.spawnWorldPickups();
@@ -914,7 +934,6 @@ export default class ScaleChapterScene extends Phaser.Scene {
           }
           this.selected = id;
           this.updateHeldItem();
-          this.speak(`${SCALE_ITEMS[id].name} ကို လွယ်အိတ်ထဲ ထည့်ထားပြီ။`);
           bagChanged = true;
         } else if (before[id] === 'BAG' && this.session.attempt.locations[id] !== 'BAG') {
           bagChanged = true;

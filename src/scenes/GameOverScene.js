@@ -37,7 +37,7 @@ export default class GameOverScene extends Phaser.Scene {
       letterSpacing: '0.5px'
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, height / 2 - 92, 'DIED AGAIN IN BAGAN', {
+    this.add.text(width / 2, height / 2 - 92, 'DIED AGAIN IN ANCIENT PALACE', {
       fontFamily: 'Plus Jakarta Sans, sans-serif',
       fontSize: '12px',
       fontWeight: '800',

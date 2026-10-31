@@ -36,8 +36,8 @@ async function walkOut(page: Page) {
 test('Chapter 3 no-treasure clear → Chapter 4 arena → reload keeps progress', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await open(page); await walkOut(page); await expect(page.locator('.result-stats')).toContainText('ထားခဲ့သည်');
-  await page.locator('#scale-next').click(); await expect(page.locator('#arena-hp')).toBeVisible();
-  await page.reload(); await page.locator('#start').click(); await expect(page.locator('#arena-hp')).toBeVisible();
+  await page.locator('#scale-next').click(); await expect(page.locator('#arena-hp-text')).toBeVisible();
+  await page.reload(); await page.locator('#start').click(); await expect(page.locator('#arena-hp-text')).toBeVisible();
   expect(errors).toEqual([]);
 });
 test('pin route recovers treasure and does not mint wallet currency', async ({ page }) => {

@@ -55,7 +55,7 @@ const PROP_SIZES: Record<string, [number, number]> = {
  * - Universal walkable ground baseline at 576px (DY = -64px visual shift)
  * - Zero on-screen floating text labels or measurement tags
  * - Tactile vector items with idle bob and gold aura glow
- * - Hand-inked Bagan gate with smooth lift and lighted exit corridor
+ * - Hand-inked Palace gate with smooth lift and lighted exit corridor
  */
 export class ScaleView {
   private g: Phaser.GameObjects.Graphics;
@@ -273,7 +273,7 @@ export class ScaleView {
       g.lineStyle(2, INK).strokeRoundedRect(refPt.x - 25, refPt.feetY - 43, 50, 40, 5);
     }
 
-    // 3. Bagan Gate & Passageway
+    // 3. Palace Gate & Passageway
     const gate = scaleGate(a);
     const door = this.props.get('gate');
     const visualGateY = vy(gate.y);

@@ -24,6 +24,7 @@ import {
   drawFishingLine
 } from '../view/BridgeView';
 import { DIALOGUE } from '../content/dialogue.my';
+import { StagedHintManager, PROGRESSIVE_HINTS } from '../utils/StagedHintManager';
 
 let retryMustRelease = false;
 
@@ -41,11 +42,42 @@ let retryMustRelease = false;
 export default class BridgeChapterScene extends LegacyBridge {
   init(data = {}) {
     this.replay = Boolean(data.replay);
+    if (!this.stagedHintManager) {
+      this.stagedHintManager = new StagedHintManager();
+    } else {
+      this.stagedHintManager.reset();
+    }
   }
 
-  // Suppress legacy decorative clutter before it creates
+  // Suppress legacy decorative clutter and atmosphere before it creates
   createAmbientToys() {}
   createRightCaveEntrance() {}
+  createAtmosphere() {}
+  createNaturalSignifiers() {}
+
+  createParallaxBackground(width, height) {
+    // Suppress legacy 5-layer moving parallax background at source.
+    // Mount clean static background matching Chapter 2 directly.
+    this.add.rectangle(640, 360, 1280, 720, 0x22382c).setDepth(0);
+    if (this.textures.exists('background')) {
+      this.add
+        .image(640, 360, 'background')
+        .setDisplaySize(1280, 720)
+        .setAlpha(0.82)
+        .setDepth(1);
+    }
+    this.parallax = null;
+    return height * 0.80; // Universal Walkable Baseline: 576px
+  }
+
+  playEntryDialogue() {
+    // Authentic U Gyi opening voiceover prompt from narration.txt
+    this.time.delayedCall(500, () => {
+      this.subtitle?.say(
+        'ဟောဒီမှာ ကြည့်စမ်း... ရွှေမြို့တော် အဝင်တောင်ကြားလမ်းတဲ့။ ရှေ့မှာ တွင်းလေး နည်းနည်းဟနေတယ်။ မောင်ဖိုးထောင်ရေ... မင်း ခြေထောက်သန်ပါတယ်၊ တစ်ချက်လောက် ခုန်ကူးပြလိုက်စမ်းပါ!'
+      );
+    });
+  }
 
   createCeilingSpikes() {
     this.spikesG = this.add.graphics().setDepth(20);
@@ -56,6 +88,11 @@ export default class BridgeChapterScene extends LegacyBridge {
     this.physics.world.resume();
     this.time.paused = false;
     this.input.enabled = true;
+    if (!this.stagedHintManager) {
+      this.stagedHintManager = new StagedHintManager();
+    } else {
+      this.stagedHintManager.reset();
+    }
 
     // Ensure our crisp procedural vector textures exist
     const pitWidth = this.scale.width * 0.15;
@@ -63,38 +100,20 @@ export default class BridgeChapterScene extends LegacyBridge {
 
     super.create();
 
+    soundEngine.init?.();
+    if (!soundEngine.muted) {
+      soundEngine.startBGM?.();
+      audioDirector.startStems(0.18, 0.14, 0.16);
+      audioDirector.handleRespawn();
+    }
+
     // Ensure clean 60% left platform, 15% pit, 25% right platform proportions
     this.leftPlatWidth = this.scale.width * 0.60;
     this.pitWidth = this.scale.width * 0.15;
     this.rightPlatX = this.scale.width * 0.75;
     this.rightPlatWidth = this.scale.width - this.rightPlatX;
 
-    // 1. Deactivate & destroy moving parallax background
-    if (this.parallax) {
-      this.parallax.destroy();
-      this.parallax = null;
-    }
-
-    // 2. Clean up heavy atmospheric clutter (dust motes, volumetric rays, dark silhouettes)
-    this.children.list
-      .filter(
-        c =>
-          (c.depth >= 110 && c.depth <= 130) ||
-          (c.depth >= 240 && c.depth <= 260)
-      )
-      .forEach(c => c.destroy());
-
-    // 3. Mount clean static background matching Chapter 2
-    this.add.rectangle(640, 360, 1280, 720, 0x22382c).setDepth(0);
-    if (this.textures.exists('background')) {
-      this.add
-        .image(640, 360, 'background')
-        .setDisplaySize(1280, 720)
-        .setAlpha(0.82)
-        .setDepth(1);
-    }
-
-    // 4. Draw crisp procedural terrain, platforms, pit, and exit gateway
+    // Draw crisp procedural terrain, platforms, pit, and exit gateway
     this.terrainG = this.add.graphics().setDepth(15);
     drawBridgeTerrain(
       this.terrainG,
@@ -112,12 +131,7 @@ export default class BridgeChapterScene extends LegacyBridge {
     this.leftWall.setAlpha(0.001); // Invisible click collider
     this.secretTunnelDoor.setDepth(17);
 
-    // Authentic U Gyi opening voiceover prompt from narration.txt
-    this.time.delayedCall(500, () => {
-      this.subtitle.say(
-        'ဟောဒီမှာ ကြည့်စမ်း... ရွှေမြို့တော် အဝင်တောင်ကြားလမ်းတဲ့။ ရှေ့မှာ တွင်းလေး နည်းနည်းဟနေတယ်။ မောင်ဖိုးထောင်ရေ... မင်း ခြေထောက်သန်ပါတယ်၊ တစ်ချက်လောက် ခုန်ကူးပြလိုက်စမ်းပါ!'
-      );
-    });
+
 
     // State & physics setup
     this.sharedPaused = false;
@@ -263,11 +277,16 @@ export default class BridgeChapterScene extends LegacyBridge {
     const up = e => {
       if (e.key.toLowerCase() === 'r') retryMustRelease = false;
     };
+    const blur = () => {
+      this.jumpPressed = false;
+      this.targetX = null;
+    };
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
+    window.addEventListener('blur', blur);
 
     // Projectile throwing interaction for 'ancient_brick'
-    this.input.on('pointerdown', (pointer, currentlyOver) => {
+    const onPointerDown = (pointer, currentlyOver) => {
       if (this.isDead || this.completing || this.isVaulting) return;
       if (this.inventoryBar?.getSelected() === 'ancient_brick') {
         if (currentlyOver?.some(obj => obj.depth >= 100)) return;
@@ -279,16 +298,18 @@ export default class BridgeChapterScene extends LegacyBridge {
         this.hideHeldItem();
         this.throwBrick(pointer.worldX || pointer.x, pointer.worldY || pointer.y);
       }
-    });
+    };
+    this.input.on('pointerdown', onPointerDown);
 
     this.events.once('shutdown', () => {
       this.beeChaseTimer?.remove();
+      this.mudBubbleTimer?.remove();
       this.activeBees = [];
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', blur);
+      this.input.off('pointerdown', onPointerDown);
       audioDirector.stopWalking();
-      audioDirector.hardMuteStems();
-      soundEngine.stopBGM();
     });
   }
 
@@ -605,9 +626,9 @@ export default class BridgeChapterScene extends LegacyBridge {
       return;
     }
 
-    // Bare-handed click: Narrator speaks clue directly
+    // Bare-handed click: Narrator speaks clue directly via 3-stage progressive hint
     soundEngine.playPing();
-    this.subtitle.say(DIALOGUE.bridge_rope_hint);
+    this.subtitle.say(this.stagedHintManager.triggerHint('pole', PROGRESSIVE_HINTS.chapter1.pole));
   }
 
   handleStuckCogInteraction() {
@@ -701,9 +722,9 @@ export default class BridgeChapterScene extends LegacyBridge {
       return;
     }
 
-    // Bare-handed click: Narrator speaks clue directly
+    // Bare-handed click: Narrator speaks clue directly via 3-stage progressive hint
     soundEngine.playPing();
-    this.subtitle.say(DIALOGUE.bridge_cog_hint);
+    this.subtitle.say(this.stagedHintManager.triggerHint('cog', PROGRESSIVE_HINTS.chapter1.cog));
   }
 
   spawnCogPickup(px, py) {
@@ -810,7 +831,7 @@ export default class BridgeChapterScene extends LegacyBridge {
         if (this.hasCog && !this.winchLubricated) {
           this.winchJammed = true;
           soundEngine.playStoneGrind();
-          this.subtitle.say(DIALOGUE.bridge_winch_jammed);
+          this.subtitle.say(this.stagedHintManager.triggerHint('winch', PROGRESSIVE_HINTS.chapter1.winch));
           return;
         }
 
@@ -831,7 +852,7 @@ export default class BridgeChapterScene extends LegacyBridge {
       if (this.jamCounter >= 2) {
         this.triggerWinchCatapult();
       } else {
-        this.subtitle.say(DIALOGUE.bridge_winch_jammed);
+        this.subtitle.say(this.stagedHintManager.triggerHint('winch', PROGRESSIVE_HINTS.chapter1.winch));
         soundEngine.playStoneGrind();
         this.tweens.add({
           targets: [this.winchCogSlot, this.winchLeverSlot],
@@ -854,9 +875,13 @@ export default class BridgeChapterScene extends LegacyBridge {
     this.checkWinchReady();
   }
 
+  handleWinchInteraction() {
+    return this.interactWithWinch();
+  }
+
   checkWinchReady() {
     if (this.winchJammed) {
-      this.subtitle.say(DIALOGUE.bridge_winch_jammed);
+      this.subtitle.say(this.stagedHintManager.triggerHint('winch', PROGRESSIVE_HINTS.chapter1.winch));
       soundEngine.playStoneGrind();
       return;
     }
@@ -1195,8 +1220,10 @@ export default class BridgeChapterScene extends LegacyBridge {
         fade.style.opacity = String(
           Math.max(0, (this.deathClock - C.deathFreeze) / C.resetFade)
         );
-      if (this.deathClock >= C.deathTotal)
+      if (this.deathClock >= C.deathTotal) {
+        audioDirector.handleRespawn();
         this.scene.restart({ replay: this.replay });
+      }
       this.drawPhoe();
       return;
     }
@@ -1211,6 +1238,7 @@ export default class BridgeChapterScene extends LegacyBridge {
       if (this.restartHeldTime >= C.restartHold) {
         retryMustRelease = true;
         this.input.keyboard.resetKeys();
+        audioDirector.handleRespawn();
         this.scene.restart({ replay: this.replay });
         return;
       }

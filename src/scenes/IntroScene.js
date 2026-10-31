@@ -122,7 +122,7 @@ export default class IntroScene extends Phaser.Scene {
     // 3. Wall gecko clinging to the ancient stone pillar
     this.gecko = MicroInteractions.createWallGecko(this, width * 0.22, groundY - 110);
 
-    // 4. Ancient Bagan bronze temple bell with verdigris patina
+    // 4. Ancient Palace bronze bell with verdigris patina
     const bellContainer = this.add.container(width * 0.85, groundY - 180).setSize(48, 64).setDepth(45);
     const bellChain = this.add.graphics();
     bellChain.lineStyle(2, 0x261a12, 0.95);
@@ -132,7 +132,7 @@ export default class IntroScene extends Phaser.Scene {
     MicroInteractions.attachAmbientToy(this, bellContainer, 'bell');
     this.bell = bellContainer;
 
-    // Interactive Point-and-Click movement on the Bagan stone slab
+    // Interactive Point-and-Click movement on the Ancient Palace stone slab
     this.targetX = null;
     this.input.on('pointerdown', (pointer) => {
       // Don't intercept clicks on UI buttons

@@ -185,12 +185,26 @@ export function drawStuckRockCrevice(g: Phaser.GameObjects.Graphics, x: number, 
  * Updates both dedicated ch1_* keys and global item-* keys so the bag and all UI
  * display the clean vector art style.
  */
-export function ensureBridgeTextures(scene: Phaser.Scene, bridgeLength: number = 218) {
+export function ensureBridgeTextures(scene: Phaser.Scene, bridgeLength: number = 218, force: boolean = false) {
   const textures = scene.textures;
   const bridgeH = Math.max(120, Math.round(bridgeLength));
 
+  // Fast path: if bridge and essential vector textures already exist in cache, skip redundant regeneration
+  const sentinelKeys = [
+    'ch1_vector_bridge',
+    'ch1_vector_cog',
+    'ch1_vector_bamboo',
+    'myanmar_traditional_bag'
+  ];
+  if (!force && sentinelKeys.every(k => textures.exists(k))) {
+    return;
+  }
+
   // Helper to safely register/replace a texture
   const registerTexture = (key: string, width: number, height: number, drawFn: (g: Phaser.GameObjects.Graphics) => void) => {
+    if (!force && textures.exists(key)) {
+      return;
+    }
     if (textures.exists(key)) {
       textures.remove(key);
     }
@@ -374,7 +388,7 @@ export function ensureBridgeTextures(scene: Phaser.Scene, bridgeLength: number =
   registerTexture('ch4_vector_stone_bundle', 44, 44, drawStoneBundle);
 
   // 4b. Chapter 3 Scale Puzzle Procedural Icons & World Vector Props
-  // Bagan Tile Door / Portcullis Gate (64x380px)
+  // Ancient Palace Tile Door / Portcullis Gate (64x380px)
   registerTexture('ch3_vector_gate', 64, 380, (g) => {
     const gw = 64, gh = 380;
     // Outer INK boundary
@@ -394,7 +408,7 @@ export function ensureBridgeTextures(scene: Phaser.Scene, bridgeLength: number =
       g.lineBetween(34, y + 5, 44, y + 2);
     }
 
-    // 2. Terracotta Roof Tile Eaves (အုတ်ကြွပ်အမိုး / ပုဂံအမိုးကြွပ်ပြားစတိုင်)
+    // 2. Terracotta Roof Tile Eaves (အုတ်ကြွပ်အမိုး / ရှေးဟောင်းနန်းတော် အမိုးကြွပ်ပြားစတိုင်)
     // Tiered terracotta eave brackets
     g.fillStyle(0x5c2318, 1).fillRect(1, 2, gw - 2, 22);
     g.fillStyle(0x8b3a2b, 1).fillRect(3, 4, gw - 6, 18);
@@ -422,7 +436,7 @@ export function ensureBridgeTextures(scene: Phaser.Scene, bridgeLength: number =
       g.fillStyle(CREAM, 0.8).fillCircle(9.5, y + 4, 1).fillCircle(gw - 10.5, y + 4, 1);
     }
 
-    // 4. Central Decorative Iron Spine with Bagan Geometric Relief
+    // 4. Central Decorative Iron Spine with Ancient Palace Geometric Relief
     g.fillStyle(INK, 1).fillRect(28, 24, 8, gh - 46);
     g.fillStyle(0x2d3227, 1).fillRect(29, 24, 6, gh - 46);
     g.fillStyle(CREAM, 0.18).fillRect(29, 24, 2, gh - 46);
@@ -873,11 +887,11 @@ export function drawFloatingPlatform(
   if (h > 6) {
     g.fillStyle(STONE, 0.6).fillRect(x + 2, y + h - 4, w - 4, 2);
   }
-  // Subtle Bagan stone fissure lines
+  // Subtle Ancient Palace stone fissure lines
   g.lineStyle(1.5, INK, 0.45);
   g.lineBetween(x + w * 0.28, y + 4, x + w * 0.34, y + h - 6);
   g.lineBetween(x + w * 0.68, y + 4, x + w * 0.64, y + h - 5);
-  // Subtle ancient Bagan gold glyph / fossil stud
+  // Subtle Ancient Palace gold glyph / fossil stud
   g.fillStyle(GOLD, 0.65).fillCircle(x + w * 0.5, y + h * 0.5, 2.5);
   g.lineStyle(1, INK, 0.7).strokeCircle(x + w * 0.5, y + h * 0.5, 2.5);
 }
@@ -1199,13 +1213,14 @@ export function drawMyanmarTraditionalBag(
 }
 
 /**
- * Draws the Bagan Tile Door (Gate) using the 3-layer inking formula:
+ * Draws the Ancient Palace Tile Door (Gate) using the 3-layer inking formula:
  * Terracotta roof tile eaves (အုတ်ကြွပ်အမိုး / 0x8b3a2b, 0xa44c3b), weathered teak timber core (0x6a482b / 0x8c5e35)
  * with vertical mortise plank grooves, horizontal iron cross-straps (0x3e4232) spaced every 28px with dual diamond-faceted
  * golden brass rivet studs (0xe7bb55), central decorative geometric iron spine, and bottom spiked portcullis teeth
  * resting solidly at ground baseline.
  */
-export function drawBaganGate(
+export const drawBaganGate = drawPalaceGate;
+export function drawPalaceGate(
   g: Phaser.GameObjects.Graphics,
   x: number,
   y: number,
@@ -1469,7 +1484,7 @@ export function drawStoneWeight(
 }
 
 /**
- * Draws the Bagan teak timber chest (0x9d7047) with diagonal cross-braces,
+ * Draws the Ancient Palace teak timber chest (0x9d7047) with diagonal cross-braces,
  * forged iron corner angle brackets, and golden brass nail studs (0xe7bb55).
  */
 export function drawTeakCrate(

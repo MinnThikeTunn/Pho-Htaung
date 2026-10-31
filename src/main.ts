@@ -5,6 +5,7 @@ import { C } from './content/chapter1';
 import { store } from './services/adventure';
 import { AudioController } from './services/AudioController';
 import { soundEngine } from './utils/SoundEngine.js';
+import { audioDirector } from './audio/AudioDirector.js';
 import PreloadScene from './scenes/PreloadScene.js';
 import BridgeChapterScene from './scenes/BridgeChapterScene.js';
 import Chapter2Scene from './scenes/Chapter2Scene';
@@ -76,7 +77,7 @@ export class MenuScene extends Phaser.Scene {
       <div class="fm-content">
         <div class="fm-crest">❖</div>
         <h1 class="fm-title">PHO HTAUNG</h1>
-        <p class="fm-subtitle">ပုဂံရွှေမြို့တော် စွန့်စားခန်း</p>
+        <p class="fm-subtitle">ရှေးဟောင်းနန်းတော် စွန့်စားခန်း</p>
         <div class="fm-rule"><span></span><b>❖</b><span></span></div>
         <nav class="fm-actions">
           <button type="button" id="start" class="fm-btn fm-primary">
@@ -164,10 +165,10 @@ function openMechanicsModal() {
 
   const modal = document.createElement('div');
   modal.id = 'fm-modal';
-  modal.className = 'fm-modal-backdrop';
+  modal.className = 'fm-modal fm-modal-backdrop';
   modal.innerHTML = `
     <div class="fm-modal-panel">
-      <header class="fm-modal-header">
+      <header class="fm-modal-head">
         <h2>ဂိမ်းလမ်းညွှန် နှင့် ထိန်းချုပ်နည်း <span>/ Controls & Rules</span></h2>
         <button type="button" class="fm-modal-close" id="fm-modal-close">✕</button>
       </header>
@@ -421,6 +422,8 @@ export function jumpToChapter5() {
         try { s.scene.stop(); } catch {}
       }
     }
+    soundEngine.stopBGM();
+    audioDirector.stopStems();
     game.scene.start('CHAPTER_5', { equipment: { slingshot: true }, skipIntro: false });
   }
 }
@@ -431,7 +434,7 @@ function setupAudioWidget() {
   if (!btn || !icon) return;
 
   const updateIcon = () => {
-    const isMuted = Boolean((soundEngine as any).muted);
+    const isMuted = Boolean((soundEngine as any).muted) || Boolean(audioDirector.getMuted());
     icon.textContent = isMuted ? '🔇' : '🔊';
     btn.setAttribute('aria-label', isMuted ? 'အသံ ဖွင့်မည် (Unmute)' : 'အသံ ပိတ်မည် (Mute)');
   };
@@ -444,6 +447,7 @@ function setupAudioWidget() {
         (soundEngine as any).toggleMute();
       } else {
         (soundEngine as any).muted = !(soundEngine as any).muted;
+        audioDirector.toggleMute();
       }
       updateIcon();
     } catch {}
@@ -501,6 +505,7 @@ export const game = new Phaser.Game({
 
 (window as any).__PHOE_GAME__ = game;
 (window as any).jumpToChapter5 = jumpToChapter5;
+(window as any).soundEngine = soundEngine;
 
 declare global { interface Window { __PHOE_TEST__?: { snapshot(): unknown } } }
 window.__PHOE_TEST__ = {

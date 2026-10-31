@@ -12,9 +12,11 @@ import InventoryBar from '../ui/InventoryBar.js';
 import DiegeticGrab from '../ui/DiegeticGrab';
 import { ensureBridgeTextures } from '../view/BridgeView';
 import { soundEngine } from '../utils/SoundEngine.js';
+import { audioDirector } from '../audio/AudioDirector.js';
 import { gameState } from '../utils/AdventureState.js';
 import { ITEM_TEXTURE_KEYS } from '../utils/GameState.js';
 import { MicroInteractions } from '../utils/MicroInteractions.js';
+import { StagedHintManager, PROGRESSIVE_HINTS } from '../utils/StagedHintManager';
 
 const uid = () => crypto.randomUUID();
 const ui = () => document.querySelector<HTMLDivElement>('#interface')!;
@@ -58,6 +60,7 @@ export default class Chapter2Scene extends Phaser.Scene {
   private isCollectingSlingshot = false;
   private isLaying = false;
   private crawlDustTimer = 0;
+  private stagedHintManager = new StagedHintManager();
 
   constructor() {
     super('CHAPTER_2');
@@ -77,6 +80,7 @@ export default class Chapter2Scene extends Phaser.Scene {
   init(data: { preset?: Preset; mode?: Mode }) {
     if (!store.campaign.bridgeCompleted) throw new Error('Chapter 2 is locked');
     this.mode = data.mode ?? 'CAMPAIGN';
+    this.stagedHintManager.reset();
     const preset = data.preset ?? 'A';
     if ((preset === 'A') !== (this.mode !== 'PRACTICE') || (preset !== 'A' && !store.campaign.chapter2Completed)) {
       throw new Error('Invalid chapter entry');
@@ -235,6 +239,12 @@ export default class Chapter2Scene extends Phaser.Scene {
     });
 
     // HUD: Standardized with 🎒 Bag Toggle, zero on-screen keyboard shortcut strips
+    soundEngine.init?.();
+    if (!(soundEngine as any).muted) {
+      soundEngine.startBGM?.();
+      audioDirector.startStems(0.12, 0.00, 0.10);
+    }
+
     ui().innerHTML = `<div class="hud"><div class="stage-title"><span class="eyebrow">အခန်း ၂ / ${
       this.session.preset
     }</span><strong>ကျောက်တုံးချစက်</strong></div><div class="ledger"><div><span>စုထား</span><b id="coins">0<small>/15</small></b></div><div><span>သိမ်းပြီး</span><b id="wallet">${
@@ -373,6 +383,7 @@ export default class Chapter2Scene extends Phaser.Scene {
       if (this.gearBoxVisual) { this.gearBoxVisual.destroy(); this.gearBoxVisual = null; }
       if (this.steamNozzleSprite) { this.steamNozzleSprite.destroy(); this.steamNozzleSprite = null; }
       this.hideHeldItem();
+      audioDirector.stopWalking();
     });
 
     focusGame(this);
@@ -580,10 +591,10 @@ export default class Chapter2Scene extends Phaser.Scene {
           this.hideHeldItem();
           this.inventoryBar?.clearSelected();
           this.inventoryBar?.refresh();
-          this.speak(DIALOGUE.gearbox_rusted, 2.5);
+          this.speak(this.stagedHintManager.triggerHint('gearbox_rusted', PROGRESSIVE_HINTS.chapter2.gearbox_rusted), 2.5);
         } else {
           soundEngine.playPing();
-          this.speak(DIALOGUE.gearbox_needs_cog, 2.5);
+          this.speak(this.stagedHintManager.triggerHint('gearbox_empty', PROGRESSIVE_HINTS.chapter2.gearbox_empty), 2.5);
         }
         break;
 
@@ -594,10 +605,13 @@ export default class Chapter2Scene extends Phaser.Scene {
           p.tauntLeft = 0.6;
           soundEngine.playPoleSnapback();
           this.speak(DIALOGUE.gearbox_slapstick, 2.5);
-        } else {
+        } else if (hasPole) {
           a.gearboxState = 'LUBRICATED';
           soundEngine.playRustSizzle();
           this.speak(DIALOGUE.gearbox_lubed, 2.5);
+        } else {
+          soundEngine.playPing();
+          this.speak(this.stagedHintManager.triggerHint('gearbox_rusted', PROGRESSIVE_HINTS.chapter2.gearbox_rusted), 2.5);
         }
         break;
 
@@ -626,7 +640,7 @@ export default class Chapter2Scene extends Phaser.Scene {
         break;
 
       case 'ACTIVE':
-        this.speak('ဂီယာ box တပ်ဆင်ထားပြီးသားပါ။ စင်တွေ အပေါ်မှာ ရှိနေပြီ!', 1.8);
+        this.speak('ဂီယာသေတ္တာက လည်နေပြီပဲကွ! အပေါ်စင်တွေ ထွက်လာပြီ၊ အပေါ်တက်တော့!', 1.8);
         break;
     }
   }
@@ -745,6 +759,7 @@ export default class Chapter2Scene extends Phaser.Scene {
         this.clearKeys();
         ui().querySelector('#death-vignette')?.classList.remove('visible');
         this.resetInteractivePickups();
+        this.stagedHintManager.reset();
       }
       this.voiceCooldown = Math.max(0, this.voiceCooldown - dt);
       for (const event of events) {

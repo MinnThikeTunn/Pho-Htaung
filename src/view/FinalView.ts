@@ -136,7 +136,7 @@ export class FinalView {
     // Universal walkable flagstone baseline at VISUAL_GROUND_Y = 576px
     g.lineStyle(2, 0xcfb37b, 0.6).lineBetween(0, VISUAL_GROUND_Y, C.width, VISUAL_GROUND_Y);
 
-    // Bagan Stone refill clusters per core design system
+    // Ancient Palace Stone refill clusters per core design system
     for (const x of F5.refillX) {
       g.fillStyle(0x302b20, 0.5).fillEllipse(x, VISUAL_GROUND_Y + 2, 82, 13);
       for (let i = 0; i < 5; i++) {

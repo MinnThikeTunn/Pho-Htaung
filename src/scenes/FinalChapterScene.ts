@@ -10,8 +10,10 @@ import {
 } from '../content/chapter5Quiz';
 import type { ActiveQuizQuestion, QuizQuestion } from '../content/chapter5Quiz';
 import { FINAL_ART, UGYI_FRAMES, UGYI_SOURCE_SCALE } from '../content/chapter5Art';
+import { CHAPTER5_THINKING_PHRASES } from '../content/progressiveHints';
 import { store } from '../services/adventure';
 import { soundEngine } from '../utils/SoundEngine.js';
+import { audioDirector } from '../audio/AudioDirector.js';
 import { MicroInteractions } from '../utils/MicroInteractions.js';
 import { createPhoe, renderPhoe } from '../view/PhoeHtaungView';
 import { VISUAL_GROUND_Y } from '../view/FinalView';
@@ -45,6 +47,7 @@ export default class FinalChapterScene extends Phaser.Scene {
   private isDead = false;
   private walkTargetX: number | null = null;
   private keysHeld = new Set<string>();
+  private clueTimer: Phaser.Time.TimerEvent | null = null;
 
   // Actors & Positions
   private playerX = F5.spawnX;
@@ -141,9 +144,10 @@ export default class FinalChapterScene extends Phaser.Scene {
     soundEngine.init();
     if (!soundEngine.muted) {
       soundEngine.startBGM?.();
+      audioDirector.startStems(0.18, 0.12, 0.14);
     }
 
-    // 1. Lavish Royal Bagan Treasury Background
+    // 1. Lavish Royal Ancient Palace Treasury Background
     const bgKey = this.textures.exists(FINAL_ART.background.key)
       ? FINAL_ART.background.key
       : 'arena_chamber_v1';
@@ -288,7 +292,7 @@ export default class FinalChapterScene extends Phaser.Scene {
     baseMoundG.closePath();
     baseMoundG.fillPath();
 
-    // 3. Royal Bagan Teakwood & Brass Vault Chest
+    // 3. Royal Ancient Palace Teakwood & Brass Vault Chest
     const chestG = this.add.graphics();
     const cx = -18;
     const cy = -68;
@@ -397,7 +401,7 @@ export default class FinalChapterScene extends Phaser.Scene {
       // Outline
       treasureG.lineStyle(1.5, 0x713f12, 1);
       treasureG.strokeRect(-w / 2, -h / 2, w, h);
-      // Embossed Bagan lotus mark
+      // Embossed Palace lotus mark
       treasureG.fillStyle(0xca8a04, 1);
       treasureG.fillCircle(0, 0, 2.5);
       treasureG.restore();
@@ -783,14 +787,32 @@ export default class FinalChapterScene extends Phaser.Scene {
       }
     };
 
+    const onBlur = () => {
+      this.keysHeld.clear();
+      this.walkTargetX = null;
+    };
+
+    const onVisibility = () => {
+      if (document.hidden) onBlur();
+    };
+
     window.addEventListener('keydown', onDown);
     window.addEventListener('keyup', onUp);
+    window.addEventListener('blur', onBlur);
+    document.addEventListener('visibilitychange', onVisibility);
     this.input.on('pointerdown', onPointerDown);
 
     this.events.once('shutdown', () => {
       window.removeEventListener('keydown', onDown);
       window.removeEventListener('keyup', onUp);
+      window.removeEventListener('blur', onBlur);
+      document.removeEventListener('visibilitychange', onVisibility);
       this.input.off('pointerdown', onPointerDown);
+      if (this.clueTimer) {
+        this.clueTimer.remove();
+        this.clueTimer = null;
+      }
+      audioDirector.stopWalking();
       ui().innerHTML = '';
     });
   }
@@ -887,16 +909,36 @@ export default class FinalChapterScene extends Phaser.Scene {
       }
     }
 
-    // Presenter U Gyi speech with randomized 50/50 honest or deceptive suggestion
-    if (speechText) {
-      speechText.textContent = q.activeClue || q.ugyiTrick;
+    // 5-second thinking window before revealing U Gyi's 50/50 clue
+    if (this.clueTimer) {
+      this.clueTimer.remove();
+      this.clueTimer = null;
     }
+
+    if (speechText) {
+      const phrases = CHAPTER5_THINKING_PHRASES;
+      const phrase = phrases[Math.floor(Math.random() * phrases.length)] || phrases[0]!;
+      speechText.textContent = phrase;
+    }
+
+    this.clueTimer = this.time.delayedCall(5000, () => {
+      const currentSpeechText = ui().querySelector<HTMLElement>('#ugyi-speech-text');
+      if (currentSpeechText && !this.isProcessingAnswer && this.phase === 'QUIZ') {
+        currentSpeechText.textContent = q.activeClue || q.ugyiTrick;
+      }
+      this.clueTimer = null;
+    });
+
     this.setUgyiPose('guard');
     this.isProcessingAnswer = false;
   }
 
   private handleAnswerSelected(selectedIndex: number, buttonEl: HTMLButtonElement) {
     this.isProcessingAnswer = true;
+    if (this.clueTimer) {
+      this.clueTimer.remove();
+      this.clueTimer = null;
+    }
     const q = this.activeQuestions[this.currentQIndex] || CHAPTER_5_QUIZ[this.currentQIndex]!;
     const isCorrect = selectedIndex === q.correctIndex;
 
@@ -1107,7 +1149,7 @@ export default class FinalChapterScene extends Phaser.Scene {
 
     const speechText = ui().querySelector<HTMLElement>('#ugyi-speech-text');
     if (speechText) {
-      speechText.textContent = 'ဟောဟိုမှာ ရွှေပုံကြီး... မင်း ချမ်းသာပြီ ဖိုးထောင်ရေ! အနားသွားယူတော့! (A / D သို့မဟုတ် ကလစ်နှိပ်၍ လျှောက်ပါ)';
+      speechText.textContent = 'ဟောဟိုမှာ ရွှေပုံကြီး... မင်း ချမ်းသာပြီ ဖိုးထောင်ရေ! အနားသွားပြီး ကောက်စမ်း မောင်မင်းကြီးသား!';
     }
 
     // U Gyi standing watchfully at x = 780
@@ -1434,7 +1476,7 @@ export default class FinalChapterScene extends Phaser.Scene {
       g.lineBetween(keyX, keyY - 8 - pulse, keyX, keyY + 8 + pulse);
     }
 
-    // 4. Draw Overhead Bagan Health Bar (3 Segments)
+    // 4. Draw Overhead Palace Health Bar (3 Segments)
     if (!this.isDead && this.phase !== 'OPENING') {
       this.drawOverheadHealthBar(this.playerX, VISUAL_GROUND_Y - 98);
     }

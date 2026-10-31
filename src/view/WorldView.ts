@@ -14,11 +14,11 @@ const vy = (y: number): number => y + DY;
 const vr = (r: Rect): Rect => ({ ...r, y: r.y + DY });
 
 export class WorldView {
+  private staticG: Phaser.GameObjects.Graphics;
   private g: Phaser.GameObjects.Graphics;
   private actor: Phaser.GameObjects.Image | null = null;
   private clock = 0;
   private shookAttempt = '';
-
 
   constructor(private scene: Phaser.Scene) {
     if (scene.textures.exists('background')) {
@@ -26,12 +26,14 @@ export class WorldView {
     } else {
       scene.add.rectangle(640, 360, 1280, 720, 0x263b32);
     }
+    this.staticG = scene.add.graphics().setDepth(9);
     this.g = scene.add.graphics().setDepth(10);
     this.actor = createPhoe(scene);
+    this.drawStaticGeometry();
   }
 
-  private block(r: Rect, fill: number, wood = false) {
-    const g = this.g;
+  private block(r: Rect, fill: number, wood = false, target: Phaser.GameObjects.Graphics = this.g) {
+    const g = target;
     g.fillStyle(INK, 1).fillRoundedRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4, 3);
     g.fillStyle(fill).fillRect(r.x, r.y, r.w, r.h);
     g.fillStyle(CREAM, .16).fillRect(r.x + 2, r.y + 2, r.w - 4, Math.min(5, r.h - 2));
@@ -48,15 +50,34 @@ export class WorldView {
     }
   }
 
+  private drawStaticGeometry() {
+    const sg = this.staticG;
+
+    // Fixed visual rail shifted to preserve head clearance and line with trolley
+    sg.fillStyle(INK).fillRect(0, vy(83), 1280, 22);
+    sg.fillStyle(0x667462).fillRect(0, vy(84), 1280, 6);
+    for (let x = 32; x < 1280; x += 60) sg.fillStyle(0xb7b790).fillCircle(x, vy(95), 2);
+
+    // Universal Walkable Baseline: groundY = 576px, subterranean height = 144px (down to 720px)
+    this.block({ id: 'ground', x: 0, y: VISUAL_GROUND_Y, w: 1280, h: 144 }, 0x3b4b3d, false, sg);
+    sg.fillStyle(0x8e9470).fillRect(0, VISUAL_GROUND_Y, 1280, 8);
+    for (let x = 0; x < 1280; x += 92) sg.lineStyle(1, 0x172820, .5).lineBetween(x, VISUAL_GROUND_Y + 10, x + 12, 720);
+
+    // Fixed stone fixtures (STEP)
+    this.block(vr(STEP), 0x6e7c66, false, sg);
+
+    // The exit remains visible even while the breakable gate blocks the lower route
+    sg.fillStyle(0xb8b782, .09).fillRoundedRect(1214, vy(440), 64, 200, 25);
+    for (let i = 0; i < 5; i++) sg.fillStyle(i % 2 ? 0xb0b082 : 0x8a9a79, .6).fillRect(1220 + i * 9, vy(632) - i * 8, 60 - i * 9, 8 + i * 8);
+    sg.lineStyle(3, GOLD, .7).lineBetween(1230, vy(554), 1261, vy(554)).lineBetween(1252, vy(545), 1261, vy(554)).lineBetween(1252, vy(563), 1261, vy(554));
+    sg.fillStyle(0x343c2d).fillRect(0, vy(360), 24, 280);
+  }
+
   render(a: Attempt, delta = 0, debug = false, shake = true) {
     this.clock += delta;
     const g = this.g; g.clear();
     const p = a.player, aim = preview(a), m = a.machine;
 
-    // Fixed visual rail shifted to preserve head clearance and line with trolley
-    g.fillStyle(INK).fillRect(0, vy(83), 1280, 22);
-    g.fillStyle(0x667462).fillRect(0, vy(84), 1280, 6);
-    for (let x = 32; x < 1280; x += 60) g.fillStyle(0xb7b790).fillCircle(x, vy(95), 2);
     const trolleyX = m.state === 'READY' ? Math.max(64, Math.min(1168, p.centerX)) : m.targetX;
     this.block(vr({ id: 'trolley', x: trolleyX - 42, y: 72, w: 84, h: 38 }), 0x596e60);
     g.fillStyle(GOLD).fillCircle(trolleyX - 24, vy(91), 7).fillCircle(trolleyX + 24, vy(91), 7);
@@ -66,12 +87,6 @@ export class WorldView {
     g.lineStyle(2, GOLD, .4).lineBetween(400, vy(636), 400, vy(690)).lineBetween(400, vy(690), 704, vy(690)).lineBetween(704, vy(690), 704, vy(a.liftY + 16));
     for (const x of [648, 760]) for (let y = 115; y < a.liftY; y += 14) g.lineStyle(2, 0x8c9674, .6).strokeRoundedRect(x - 3, vy(y), 6, 10, 3);
 
-    // Universal Walkable Baseline: groundY = 576px, subterranean height = 144px (down to 720px)
-    this.block({ id: 'ground', x: 0, y: VISUAL_GROUND_Y, w: 1280, h: 144 }, 0x3b4b3d);
-    g.fillStyle(0x8e9470).fillRect(0, VISUAL_GROUND_Y, 1280, 8);
-    for (let x = 0; x < 1280; x += 92) g.lineStyle(1, 0x172820, .5).lineBetween(x, VISUAL_GROUND_Y + 10, x + 12, 720);
-
-    this.block(vr(STEP), 0x6e7c66);
     this.block(vr(liftRect(a.liftY)), METAL);
     g.fillStyle(a.plateWeighted ? GOLD : 0x556d58).fillRoundedRect(PLATE.x, vy(PLATE.y), PLATE.w, PLATE.h, 3);
     g.lineStyle(2, GOLD, .7).strokeRect(PLATE.x, vy(PLATE.y), PLATE.w, PLATE.h);
@@ -81,12 +96,6 @@ export class WorldView {
       this.block(vr(PLATFORM_MID), WOOD, true);
       this.block(vr(PLATFORM_HIGH), WOOD, true);
     }
-
-    // The exit remains visible even while the breakable gate blocks the lower route
-    g.fillStyle(0xb8b782, .09).fillRoundedRect(1214, vy(440), 64, 200, 25);
-    for (let i = 0; i < 5; i++) g.fillStyle(i % 2 ? 0xb0b082 : 0x8a9a79, .6).fillRect(1220 + i * 9, vy(632) - i * 8, 60 - i * 9, 8 + i * 8);
-    g.lineStyle(3, GOLD, .7).lineBetween(1230, vy(554), 1261, vy(554)).lineBetween(1252, vy(545), 1261, vy(554)).lineBetween(1252, vy(563), 1261, vy(554));
-    g.fillStyle(0x343c2d).fillRect(0, vy(360), 24, 280);
 
     for (const pickup of a.pickups) {
       if (pickup.collected) continue;

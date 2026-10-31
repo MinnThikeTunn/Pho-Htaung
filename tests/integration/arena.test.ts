@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { A4 } from '../../src/content/chapter4';
 import { C } from '../../src/content/chapter1';
-import { ARENA_IDLE, arenaHasSlingshot, createArena, equipArenaWeapon, settleArena, stepArena, triggerArenaGoldTrap } from '../../src/domain/arena';
+import { ARENA_IDLE, arenaHasSlingshot, createArena, equipArenaWeapon, settleArena, stepArena, triggerArchCollapse, triggerArenaGoldTrap } from '../../src/domain/arena';
 import type { ArenaAttempt, ArenaInput } from '../../src/domain/arena';
 import { newCampaign, validateCampaign } from '../../src/domain/settlement';
 import { ArenaSession } from '../../src/services/ArenaSession';
@@ -61,6 +61,7 @@ it('bag selection cancels a held draw without a phantom shot or any combat-state
 
 it('clears both apes from real spawn using charged shots and the actual exit, with attacks active', () => {
   const a = clearRoute('real'); expect(a.shotsFired).toBeGreaterThanOrEqual(8); expect(a.hp).toBeGreaterThan(0); expect(a.apes.every(e => e.hp === 0)).toBe(true);
+  expect(a.winRoute).toBe('CANONICAL');
 });
 it.each([[9,30], [33,30], [34,32], [37,31], [120,32]])('stationary charge %i/release %i frames fails without defence', (hold, release) => {
   const a = armed('stationary');
@@ -139,7 +140,7 @@ it('pause cancels held charge and buffered jump, freezes all clocks, and does no
 it('retry restores player/enemy HP, ammo, AI, projectiles and unique attempt, without a reset loop', () => {
   let id = 0; const s = new ArenaSession(() => String(++id), true); s.equipWeapon('SLING'); s.tick(.1, { ...ARENA_IDLE, sling: true });
   for (let i = 0; i < 90; i++) s.tick(C.dt, ARENA_IDLE, true);
-  expect(s.generation).toBe(1); expect(s.attempt.hp).toBe(100); expect(s.attempt.apes.map(e => e.hp)).toEqual([150,150]); expect(s.attempt.shots).toEqual([]); expect(s.attempt.ammo).toBe(12); expect(s.attempt.elapsed).toBe(0); expect(s.attempt.weapon).toBe('FISTS'); expect(s.attempt.hasSling).toBe(true);
+  expect(s.generation).toBe(1); expect(s.attempt.hp).toBe(A4.health); expect(s.attempt.apes.map(e => e.hp)).toEqual([150,150]); expect(s.attempt.shots).toEqual([]); expect(s.attempt.ammo).toBe(12); expect(s.attempt.elapsed).toBe(0); expect(s.attempt.weapon).toBe('FISTS'); expect(s.attempt.hasSling).toBe(true);
 });
 it('same held-input trace agrees at 30/60/144Hz and long stalls are capped', () => {
   const states = [30,60,144].map(hz => { const s = new ArenaSession(() => 'same', true); s.equipWeapon('SLING'); for(let i=0;i<hz*2;i++)s.tick(1/hz,{...ARENA_IDLE,sling:true});return s.attempt; });
@@ -327,5 +328,192 @@ it('defeating both apes spawns the gold pouch greed trap which explodes and kill
   expect(a.failure).toBe('GREED_TRAP');
   expect(a.events).toContain('gold_trap_exploded');
 });
+
+it('unbreakable stone arch: deflects silver rocks and stuns charging brown ape without cracking or collapsing', () => {
+  const a = createArena('unbreakable-arch', false);
+  expect(a.archCollapsed).toBe(false);
+
+  a.status = 'ACTIVE';
+  // Hit 1: Brown Ape bonks into arch while player is crouched under it
+  a.player.centerX = A4.archX;
+  a.player.feetY = C.floor;
+  a.player.grounded = true;
+  a.apes[0]!.x = A4.archX + 50;
+  a.apes[0]!.facing = -1;
+  tick(a, { ...ARENA_IDLE, crawl: true }, 1);
+  expect(a.events).toContain('arch_deflect');
+  expect(a.events).toContain('obstacle_outplay');
+  expect(a.archCollapsed).toBe(false);
+  expect(a.combatWon).toBe(false);
+  expect(a.apes[0]!.phase).toBe('STUN');
+
+  // Hit 2: Silver Ape thrown rock hits the arch lintel while player crawls under
+  a.shots.push({ id: a.nextShot++, owner: 'APE', x: A4.archX + 10, y: C.floor - 70, vx: -A4.throwSpeed, vy: 0, damage: A4.throwDamage, age: 0 });
+  tick(a, { ...ARENA_IDLE, crawl: true }, 1);
+  expect(a.events).toContain('arch_deflect');
+  expect(a.archCollapsed).toBe(false);
+  expect(a.combatWon).toBe(false);
+
+  // Hit 3: Additional Silver Ape rocks continue to be safely deflected without breaking the arch
+  a.shots.push({ id: a.nextShot++, owner: 'APE', x: A4.archX + 10, y: C.floor - 70, vx: -A4.throwSpeed, vy: 0, damage: A4.throwDamage, age: 0 });
+  tick(a, { ...ARENA_IDLE, crawl: true }, 1);
+  expect(a.events).toContain('arch_deflect');
+  expect(a.archCollapsed).toBe(false);
+  expect(a.combatWon).toBe(false);
+  expect(a.apes.every(e => e.hp > 0)).toBe(true);
+});
+
+it('speedrun bypass route: player can bypass distracted apes to exit without firing a shot, settling successfully without sling', () => {
+  const a = createArena('speedrun-bypass', false);
+  a.status = 'ACTIVE';
+  a.player.centerX = A4.exitX;
+  a.player.feetY = C.floor;
+  a.player.grounded = true;
+
+  // Apes are active: bypass is not allowed
+  a.apes[0]!.phase = 'IDLE';
+  a.apes[1]!.phase = 'IDLE';
+  tick(a, ARENA_IDLE, 1);
+  expect(a.combatWon).toBe(false);
+  expect(a.status).toBe('ACTIVE');
+
+  // Apes are distracted (Brown in STUN, Silver in RECOVER)
+  a.apes[0]!.phase = 'STUN';
+  a.apes[0]!.phaseLeft = 1.0;
+  a.apes[1]!.phase = 'RECOVER';
+  a.apes[1]!.phaseLeft = 1.0;
+  tick(a, ARENA_IDLE, 1);
+  expect(a.combatWon).toBe(true);
+  expect(a.winRoute).toBe('SPEEDRUN_BYPASS');
+  expect(a.status).toBe('COMPLETE');
+  expect(a.events).toContain('won');
+  expect(a.events).toContain('complete');
+  expect(a.apes.some(e => e.hp > 0)).toBe(true);
+
+  // Settle campaign without slingshot and with living apes
+  const c = campaign();
+  const settled = settleArena(c, a);
+  expect(settled.chapter4Completed).toBe(true);
+  expect(settled.resumeAt).toBe('CHAPTER_5_PENDING');
+  expect(settled.lastChapter4Result?.shotsFired).toBe(0);
+  expect(validateCampaign(settled)).toBe(true);
+});
+
+it('settleArena strictly enforces slingshot requirement only for CANONICAL route', () => {
+  const c = campaign();
+
+  // CANONICAL without sling throws
+  const canonicalNoSling = createArena('c-no-sling', false);
+  canonicalNoSling.status = 'COMPLETE';
+  canonicalNoSling.combatWon = true;
+  canonicalNoSling.winRoute = 'CANONICAL';
+  canonicalNoSling.apes.forEach(e => { e.hp = 0; e.phase = 'DOWN'; });
+  canonicalNoSling.player.centerX = A4.exitX;
+  canonicalNoSling.player.feetY = C.floor;
+  canonicalNoSling.player.grounded = true;
+  expect(() => settleArena(c, canonicalNoSling)).toThrow('Invalid Chapter 4 completion');
+
+  // CANONICAL with living apes throws
+  const canonicalApesAlive = createArena('c-alive', true);
+  canonicalApesAlive.status = 'COMPLETE';
+  canonicalApesAlive.combatWon = true;
+  canonicalApesAlive.winRoute = 'CANONICAL';
+  canonicalApesAlive.player.centerX = A4.exitX;
+  canonicalApesAlive.player.feetY = C.floor;
+  canonicalApesAlive.player.grounded = true;
+  expect(() => settleArena(c, canonicalApesAlive)).toThrow('Invalid Chapter 4 completion');
+
+  // CANONICAL with sling and dead apes succeeds
+  const canonicalValid = createArena('c-valid', true);
+  canonicalValid.status = 'COMPLETE';
+  canonicalValid.combatWon = true;
+  canonicalValid.winRoute = 'CANONICAL';
+  canonicalValid.apes.forEach(e => { e.hp = 0; e.phase = 'DOWN'; });
+  canonicalValid.player.centerX = A4.exitX;
+  canonicalValid.player.feetY = C.floor;
+  canonicalValid.player.grounded = true;
+  expect(settleArena(c, canonicalValid).chapter4Completed).toBe(true);
+});
+
+it('settleArena persists winRoute on lastChapter4Result for all routes', () => {
+  const c = campaign();
+
+  // 1. CANONICAL
+  const canonical = createArena('c-route', true);
+  canonical.status = 'COMPLETE';
+  canonical.combatWon = true;
+  canonical.winRoute = 'CANONICAL';
+  canonical.apes.forEach(e => { e.hp = 0; e.phase = 'DOWN'; });
+  canonical.player.centerX = A4.exitX;
+  canonical.player.feetY = C.floor;
+  canonical.player.grounded = true;
+  const settled1 = settleArena(c, canonical);
+  expect(settled1.lastChapter4Result?.winRoute).toBe('CANONICAL');
+
+  // 2. SPEEDRUN_BYPASS
+  const bypass = createArena('b-route', false);
+  bypass.status = 'COMPLETE';
+  bypass.combatWon = true;
+  bypass.winRoute = 'SPEEDRUN_BYPASS';
+  bypass.player.centerX = A4.exitX;
+  bypass.player.feetY = C.floor;
+  bypass.player.grounded = true;
+  const settled2 = settleArena(c, bypass);
+  expect(settled2.lastChapter4Result?.winRoute).toBe('SPEEDRUN_BYPASS');
+});
+
+it('ape roar: emits ape_roar event on combat start and ape windup, and sets roarTimeLeft', () => {
+  const a = createArena('ape-roar-test', false);
+  expect(a.status).toBe('WAITING');
+
+  // Input triggers active transition and opening roar
+  tick(a, { ...ARENA_IDLE, right: true }, 1);
+  expect(a.status).toBe('ACTIVE');
+  expect(a.events).toContain('ape_roar');
+  expect(a.apes.every(e => (e.roarTimeLeft ?? 0) > 0)).toBe(true);
+
+  // Silver Ape windup triggers roar
+  const silver = a.apes.find(e => e.id === 'silver')!;
+  silver.cooldown = 0;
+  a.attackGap = 0;
+  tick(a, ARENA_IDLE, 1);
+  expect(a.events).toContain('ape_roar');
+  expect(silver.phase).toBe('WINDUP');
+  expect((silver.roarTimeLeft ?? 0)).toBeGreaterThan(0);
+});
+
+it('phoe htaung has 3 health bars and dies after exactly 3 hits (like chapter 5)', () => {
+  const a = createArena('three-hit-health', true);
+  a.status = 'ACTIVE';
+  expect(a.hp).toBe(3);
+  expect(A4.health).toBe(3);
+
+  // Hit 1: 3 -> 2
+  a.shots.push({ id: a.nextShot++, owner: 'APE', x: a.player.centerX, y: a.player.feetY - 40, vx: -A4.throwSpeed, vy: 0, damage: A4.throwDamage, age: 0 });
+  tick(a, ARENA_IDLE, 1);
+  expect(a.hp).toBe(2);
+  expect(a.status).toBe('ACTIVE');
+
+  // Clear hurt grace time
+  a.hurtLeft = 0;
+
+  // Hit 2: 2 -> 1
+  a.shots.push({ id: a.nextShot++, owner: 'APE', x: a.player.centerX, y: a.player.feetY - 40, vx: -A4.throwSpeed, vy: 0, damage: A4.throwDamage, age: 0 });
+  tick(a, ARENA_IDLE, 1);
+  expect(a.hp).toBe(1);
+  expect(a.status).toBe('ACTIVE');
+
+  // Clear hurt grace time
+  a.hurtLeft = 0;
+
+  // Hit 3: 1 -> 0 -> FAILED (Death)
+  a.shots.push({ id: a.nextShot++, owner: 'APE', x: a.player.centerX, y: a.player.feetY - 40, vx: -A4.throwSpeed, vy: 0, damage: A4.throwDamage, age: 0 });
+  tick(a, ARENA_IDLE, 1);
+  expect(a.hp).toBe(0);
+  expect(a.status).toBe('FAILED');
+  expect(a.failure).toBe('HEALTH');
+});
+
+
 
 

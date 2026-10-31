@@ -1,4 +1,4 @@
-// Ambient Atmosphere System for Phoe Htaung: The Lost City of Bagan
+// Ambient Atmosphere System for Phoe Htaung: The Lost Ancient Palace
 // Implements Machinarium-style floating dust motes, cavern drips, and interactive hotspot reveals.
 
 import Phaser from 'phaser';

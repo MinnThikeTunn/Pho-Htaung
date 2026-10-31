@@ -34,7 +34,12 @@ export default class Chapter1Scene extends Phaser.Scene {
 
     // Start Machinarium Ambient Sneaky BGM & Floex Drone Stems (Soft background bed)
     gameState.setCurrentScene('Chapter1Scene');
-    audioDirector.startStems(0.18, 0.14, 0.16);
+    soundEngine.init?.();
+    if (!soundEngine.muted) {
+      soundEngine.startBGM?.();
+      audioDirector.startStems(0.18, 0.14, 0.16);
+      audioDirector.handleRespawn();
+    }
 
     this.events.on('shutdown', () => {
       audioDirector.stopWalking();
@@ -45,23 +50,7 @@ export default class Chapter1Scene extends Phaser.Scene {
     });
 
     // 1. High-End 5-Layer Machinarium Parallax Background (Adolf Lachman Style)
-    this.parallax = new ParallaxBackground(this, {
-      enableMouseParallax: true,
-      enableBreathing: true,
-      depthBase: 0,
-      darkness: 0.18,
-      layerKeys: [
-        'ch1-layer-0-sky',
-        'ch1-layer-1-machinery',
-        'ch1-layer-2-cliffs',
-        'ch1-layer-3-ground',
-        'ch1-layer-4-foreground'
-      ],
-      targetSurfaceY: height * 0.80,
-      surfaceNativeY: 595 // Calibrated flat flagstone paving baseline in 1376x768 coords
-    });
-
-    const groundY = this.parallax.getWalkableGroundY();
+    const groundY = this.createParallaxBackground(width, height);
     const leftPlatWidth = width * 0.60;
     const pitWidth = width * 0.15;
     const rightPlatX = width * 0.75;
@@ -171,23 +160,55 @@ export default class Chapter1Scene extends Phaser.Scene {
     this.wasd = this.input.keyboard.addKeys('A,D,W,S,SPACE');
 
     // 13. Floating Atmospheric Dust Motes & Cavern Water Drips & Volumetric Rays
-    AmbientAtmosphere.createDustMotes(this, 26);
-    AmbientAtmosphere.startCavernDrips(this, groundY);
-    AmbientAtmosphere.createVolumetricRays(this, width * 0.26, 0);
-    AmbientAtmosphere.createWeatheredOverlay(this);
-    AmbientAtmosphere.createForegroundSilhouettes(this, 'canyon');
+    this.createAtmosphere(width, height, groundY);
 
     // 14. High-End Perplexity HUD & Auto-Hiding Inventory Bar
     this.hud = new GameHUD(this);
     this.inventoryBar = new InventoryBar(this);
 
     // Natural Signifiers
-    AmbientAtmosphere.startNaturalSignifiers(this, [this.winchContainer, this.bambooItem, this.cogItem]);
+    this.createNaturalSignifiers();
 
     // 15. Subtitle Box
     this.subtitle = new SubtitleBox(this);
 
     // Entry Dialogue
+    this.playEntryDialogue();
+  }
+
+
+  createParallaxBackground(width, height) {
+    this.parallax = new ParallaxBackground(this, {
+      enableMouseParallax: true,
+      enableBreathing: true,
+      depthBase: 0,
+      darkness: 0.18,
+      layerKeys: [
+        'ch1-layer-0-sky',
+        'ch1-layer-1-machinery',
+        'ch1-layer-2-cliffs',
+        'ch1-layer-3-ground',
+        'ch1-layer-4-foreground'
+      ],
+      targetSurfaceY: height * 0.80,
+      surfaceNativeY: 595 // Calibrated flat flagstone paving baseline in 1376x768 coords
+    });
+    return this.parallax.getWalkableGroundY();
+  }
+
+  createAtmosphere(width, height, groundY) {
+    AmbientAtmosphere.createDustMotes(this, 26);
+    AmbientAtmosphere.startCavernDrips(this, groundY);
+    AmbientAtmosphere.createVolumetricRays(this, width * 0.26, 0);
+    AmbientAtmosphere.createWeatheredOverlay(this);
+    AmbientAtmosphere.createForegroundSilhouettes(this, 'canyon');
+  }
+
+  createNaturalSignifiers() {
+    AmbientAtmosphere.startNaturalSignifiers(this, [this.winchContainer, this.bambooItem, this.cogItem]);
+  }
+
+  playEntryDialogue() {
     this.time.delayedCall(500, () => {
       this.subtitle.say('ဟောဒီမှာ ကြည့်စမ်း... ရွှေမြို့တော် အဝင်တောင်ကြားလမ်းတဲ့။ ရှေ့မှာ တွင်းကြီးဟနေတယ်! စက်သီးကြိုးတံတား စက်ကြီးက ပျက်နေသလိုပဲ... အနားမှာ ပစ္စည်းလေးတွေ ကောက်စမ်း မောင်ဖိုးထောင်!');
     });

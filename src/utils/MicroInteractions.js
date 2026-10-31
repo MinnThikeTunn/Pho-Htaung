@@ -871,7 +871,7 @@ export class MicroInteractions {
   }
 
   /**
-   * Spawns an animated Bagan wall gecko clinging to stone
+   * Spawns an animated Ancient Palace wall gecko clinging to stone
    */
   static createWallGecko(scene, x, y) {
     const gecko = scene.add.image(x, y, 'prop-gecko')
